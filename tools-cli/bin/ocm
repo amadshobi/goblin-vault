@@ -1,0 +1,2 @@
+#!/usr/bin/env node
+require('../src/ocm/index.js');

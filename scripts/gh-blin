@@ -1,2 +1,0 @@
-#!/usr/bin/env node
-require('./gh_tui_src/index.js');
