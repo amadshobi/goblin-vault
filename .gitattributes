@@ -1,0 +1,27 @@
+# Normalize line endings — critical for cross-device (WSL + PROOT)
+* text=auto
+
+# Scripts must keep LF even on Windows
+*.sh text eol=lf
+*.bash text eol=lf
+*.zsh text eol=lf
+
+# Config files
+*.json text
+*.jsonc text
+*.yaml text
+*.yml text
+*.md text
+*.txt text
+
+# Binary files — don't touch
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
