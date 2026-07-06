@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+
+# ============================================================
+# fe — File Explorer with fzf + tmux split (VS Code mini)
+# Letak: ~/goblin/.opencode/scripts/fe
+# Usage:
+#   fe                Browse files from CWD
+#   fe ~/projects     Browse files from folder
+#   fe .js            Filter by extension
+#   fe ~/projects .js Browse + filter
+#   fe --search q     Search content for "q"
+# ============================================================
+
+set -euo pipefail
+
+# === Config ===
+FE_BOOKMARKS="$HOME/.cache/fe-bookmarks"
+FIND_DEPTH=4
+FIND_FILTER='-not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/__pycache__/*" -not -path "*/vendor/*" -not -path "*/.npm/"'
+
+# Detect preview command
+PREVIEW_CMD="batcat --style=numbers --color=always --line-range :80"
+if ! command -v batcat &>/dev/null; then
+  PREVIEW_CMD="bat --style=numbers --color=always --line-range :80"
+  if ! command -v bat &>/dev/null; then
+    PREVIEW_CMD="cat -n"
+  fi
+fi
+
+# === Help ===
+show_help() {
+  cat <<EOF
+fe — File Explorer with fzf + tmux split
+
+Usage:
+  fe                     Browse files from current directory
+  fe <path>              Browse files from <path>
+  fe <extension>         Filter by extension (e.g. fe .js)
+  fe <path> <extension>  Both
+  fe --search <query>    Search file content
+  fe -h, --help          Show help
+
+Keybindings (inside fzf):
+  Enter       Open file in micro (right pane if tmux)
+  Tab         Multi-select
+  Ctrl-d      Delete file (with confirmation)
+  Ctrl-r      Rename file
+  Ctrl-g      Git status / log
+  Ctrl-f      Search content (rg) dengan query
+  Ctrl-b      Bookmark current file
+  Ctrl-o      Open file location in tmux (right pane)
+  Esc         Cancel / back
+EOF
+  exit 0
+}
+
+# === Parse args ===
+SEARCH_MODE=false
+SEARCH_QUERY=""
+TARGET_DIR="."
+EXT_FILTER=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) show_help ;;
+    --search|-s)
+      SEARCH_MODE=true
+      SEARCH_QUERY="${2:-}"
+      shift 2 || shift
+      ;;
+    *)
+      if [[ -d "$1" ]]; then
+        TARGET_DIR="$1"
+      else
+        # Treat as extension filter
+        EXT_FILTER="$1"
+      fi
+      shift
+      ;;
+  esac
+done
+
+# Resolve target directory
+TARGET_DIR="${TARGET_DIR:-.}"
+if [[ "$TARGET_DIR" =~ ^~ ]]; then
+  TARGET_DIR="$HOME${TARGET_DIR:1}"
+fi
+TARGET_DIR="$(cd "$TARGET_DIR" 2>/dev/null && pwd)" || {
+  echo "Error: Cannot access $TARGET_DIR"
+  exit 1
+}
+
+# === Setup tmux split ===
+TMUX_RIGHT_PANE=""
+if [[ -n "${TMUX:-}" ]]; then
+  local pane_count
+  pane_count="$(tmux list-panes | wc -l)"
+  if [[ "$pane_count" -lt 2 ]]; then
+    local current_pane
+    current_pane="$(tmux display -p '#{pane_id}')"
+    tmux split-window -h -p 30
+    TMUX_RIGHT_PANE="$(tmux display -p '#{pane_id}')"
+    tmux select-pane -t "$current_pane"
+    tmux send-keys -t "$TMUX_RIGHT_PANE" "clear && echo '  === fe editor panel ==='" C-m
+  fi
+fi
+export TMUX_RIGHT_PANE
+
+# === Ensure bookmarks file ===
+mkdir -p "$(dirname "$FE_BOOKMARKS")"
+touch "$FE_BOOKMARKS"
+
+# === Preview command ===
+# Show file info (permissions, size, date) + content preview
+PREVIEW="
+  stat --format='%a %s %y' {} 2>/dev/null || echo '(no info)';
+  echo '────────────────────────────────────────';
+  $PREVIEW_CMD {} 2>/dev/null || cat -n {} 2>/dev/null || echo '(preview not available)'
+"
+
+# === File list source ===
+if [[ "$SEARCH_MODE" == true && -n "$SEARCH_QUERY" ]]; then
+  FILE_SOURCE="rg --files-with-matches -i '$SEARCH_QUERY' '$TARGET_DIR' 2>/dev/null"
+else
+  EXTRA=""
+  if [[ -n "$EXT_FILTER" ]]; then
+    # Jika filter dimulai dengan ., cari file dengan extension itu
+    if [[ "$EXT_FILTER" == .* ]]; then
+      EXTRA="-name '*$EXT_FILTER'"
+    else
+      EXTRA="-name '*$EXT_FILTER*'"
+    fi
+  fi
+  FILE_SOURCE="find '$TARGET_DIR' -maxdepth $FIND_DEPTH -type f $EXTRA $FIND_FILTER 2>/dev/null"
+fi
+
+# === Build fzf keybinding ===
+# Enter: open file in micro (send to right tmux pane if available, else current)
+if [[ -n "$TMUX_RIGHT_PANE" ]]; then
+  ENTER_CMD="execute-silent(tmux send-keys -t $TMUX_RIGHT_PANE 'micro \"{1}\"' C-m)"
+else
+  ENTER_CMD="execute(micro {1})"
+fi
+
+FZF_BINDS=(
+  "enter:$ENTER_CMD"
+  "ctrl-d:execute(rm -i {1})"
+  "ctrl-r:execute(echo 'Rename: {1}' && read -p 'New name: ' n && mv \"{1}\" \"\$(dirname \"{1}\")/\$n\")"
+  "ctrl-g:execute(git -C '$TARGET_DIR' status -s 2>/dev/null || echo 'Not a git repo')"
+  "ctrl-f:reload(rg --files-with-matches -i '{q}' '$TARGET_DIR' 2>/dev/null)"
+  "ctrl-b:execute(echo '{1}' >> '$FE_BOOKMARKS' && echo 'Bookmarked: {1}')"
+  "ctrl-o:execute-silent(tmux send-keys -t $TMUX_RIGHT_PANE 'cd \"$(dirname {1})\" && clear && ls -la' C-m)"
+)
+
+# Convert binds array to fzf --bind args
+BIND_ARGS=()
+for bind in "${FZF_BINDS[@]}"; do
+  BIND_ARGS+=("--bind" "$bind")
+done
+
+# === Run fzf ===
+PROMPT_STR="fe:$(basename "$TARGET_DIR")${EXT_FILTER:+ ($EXT_FILTER)} > "
+
+# If search mode with no query, prompt first
+if [[ "$SEARCH_MODE" == true && -z "$SEARCH_QUERY" ]]; then
+  read -r -p "Search for: " SEARCH_QUERY
+  if [[ -z "$SEARCH_QUERY" ]]; then
+    echo "No search query."
+    exit 0
+  fi
+  FILE_SOURCE="rg --files-with-matches -i '$SEARCH_QUERY' '$TARGET_DIR' 2>/dev/null"
+fi
+
+# Execute fzf
+SELECTED=$(
+  eval "$FILE_SOURCE" | \
+    fzf --multi \
+        --prompt "$PROMPT_STR" \
+        --preview "$PREVIEW" \
+        --preview-window='up:75%' \
+        "${BIND_ARGS[@]}"
+)
+
+# === Handle selection ===
+if [[ -z "$SELECTED" ]]; then
+  exit 0
+fi
+
+# Open first selection in micro 
+# (selected items are separated by newline, take the first)
+FIRST_FILE=$(echo "$SELECTED" | head -1)
+if [[ -n "$FIRST_FILE" ]]; then
+  if [[ -n "$TMUX_RIGHT_PANE" ]]; then
+    tmux send-keys -t "$TMUX_RIGHT_PANE" "micro \"$FIRST_FILE\"" C-m
+  else
+    micro "$FIRST_FILE"
+  fi
+fi
