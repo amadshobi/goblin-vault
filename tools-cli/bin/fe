@@ -1,102 +1,34 @@
 #!/usr/bin/env bash
-
 # ============================================================
-# fe — File Explorer with fzf + tmux split (v2.0)
-# Letak: ~/civil/goblin-vault/tools-cli/bin/fe
-# 
-# Usage:
-#   fe                Browse files from CWD
-#   fe ~/projects     Browse files from folder
-#   fe .js            Filter by extension
-#   fe ~/projects .js Browse + filter
-#   fe --search q     Search content for "q"
-#   fe --bookmarks    Browse bookmarks
+# fe — File Explorer with fzf + tmux split (v3.0 - Modular)
+# Letak: tools-cli/bin/fe
 # ============================================================
-
 set -euo pipefail
 
-# === Config ===
-FE_BOOKMARKS="$HOME/.cache/fe-bookmarks"
-FE_CONFIG_HOME="$HOME/.config/fe"
-FIND_DEPTH=5
-FIND_FILTER='-not -path "*/.npm/*" -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/__pycache__/*" -not -path "*/vendor/*" -not -path "*/target/debug/*" -not -path "*/dist/*"'
-
-# === Tools detection ===
-# Preview command chain
-PREVIEW_CMD=""
-for cmd in "batcat --style=numbers --color=always --line-range :80" \
-           "bat --style=numbers --color=always --line-range :80" \
-           "cat -n"; do
-  if command -v "${cmd%% *}" &>/dev/null; then
-    PREVIEW_CMD="$cmd"
-    break
-  fi
-done
-
-# Find command: prefer fd if available (much faster)
-USE_FD=false
-if command -v fd &>/dev/null; then
-  USE_FD=true
-fi
-
-# Editor chain
-EDITOR="micro"
-for cmd in micro nano vim vi; do
-  if command -v "$cmd" &>/dev/null; then
-    EDITOR="$cmd"
-    break
-  fi
-done
-# Fallback
-[[ -z "$EDITOR" ]] && EDITOR="cat"
-
-# Wrapper script untuk editor — handle proot (micro butuh PTY via script)
-EDITOR_CMD="$EDITOR"
-if command -v script &>/dev/null && [[ "$(tty)" == "not a tty" ]]; then
-  # Buat wrapper script portable (gak perlu export -f)
-  FE_EDITOR_WRAPPER=$(mktemp /tmp/fe-editor-XXXXXX.sh 2>/dev/null)
-  cat > "$FE_EDITOR_WRAPPER" <<- WRAPEOF
-	#!/usr/bin/env bash
-	editor="\$1"
-	file="\$2"
-	if command -v script &>/dev/null && [[ "\$(tty)" == "not a tty" ]]; then
-	  script -q -c "\$editor '\$file'" /dev/null
-	else
-	  \$editor "\$file"
-	fi
-	WRAPEOF
-  chmod +x "$FE_EDITOR_WRAPPER"
-  trap 'rm -f "$FE_EDITOR_WRAPPER"' EXIT
-  EDITOR_CMD="$FE_EDITOR_WRAPPER $EDITOR"
-fi
-
-# Function buat open editor (dipake langsung dari script, bukan child shell)
-editor_open() {
-  local file="$1"
-  [[ -z "$file" ]] && return
-  if [[ -n "$FE_EDITOR_WRAPPER" ]]; then
-    "$FE_EDITOR_WRAPPER" "$EDITOR" "$file"
-  else
-    $EDITOR "$file"
-  fi
+# ── Cleanup System ──
+CLEANUP_FILES=()
+cleanup() {
+  for file in "${CLEANUP_FILES[@]}"; do
+    rm -f "$file"
+  done
 }
+trap cleanup EXIT
 
-# === Dynamic preview sizing based on terminal height ===
-get_preview_size() {
-  local lines
-  lines=$(tput lines 2>/dev/null || echo 40)
-  if   [[ $lines -lt 25 ]]; then echo 'up:55%'
-  elif [[ $lines -lt 35 ]]; then echo 'up:65%'
-  elif [[ $lines -lt 50 ]]; then echo 'up:70%'
-  else                            echo 'up:75%'
-  fi
-}
-PREVIEW_SIZE=$(get_preview_size)
+# ── Load Core Modules ──
+FE_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../src/fe" && pwd)"
+export FE_LIB_DIR
+source "$FE_LIB_DIR/config.sh"
+source "$FE_LIB_DIR/tmux.sh"
+source "$FE_LIB_DIR/ui.sh"
+source "$FE_LIB_DIR/find.sh"
+source "$FE_LIB_DIR/tree.sh"
+source "$FE_LIB_DIR/search.sh"
+source "$FE_LIB_DIR/bookmarks.sh"
 
-# === Help ===
+# ── Show Help ──
 show_help() {
   cat <<EOF
-fe — File Explorer with fzf + tmux split (v2.0)
+fe — File Explorer with fzf + tmux split (v3.0 - Modular)
 
 Usage:
   fe                     Browse files from current directory
@@ -109,10 +41,10 @@ Usage:
   fe -h, --help          Show help
 
 Keybindings (inside fzf):
-  Enter       Open file in ${EDITOR} (right pane if tmux)
+  Enter       Open file (switch focus / split if busy in tmux)
   Tab         Multi-select
-  Ctrl-d      Delete file (with confirmation)
-  Ctrl-r      Rename file
+  Ctrl-d      Delete file (with confirmation & auto-reload)
+  Ctrl-r      Rename file (with confirmation & auto-reload)
   Ctrl-g      Git status / log
   Ctrl-f      Search content (rg) — type query after trigger
   Ctrl-y      Copy file path to clipboard
@@ -120,7 +52,6 @@ Keybindings (inside fzf):
   Ctrl-x      Remove bookmark for current file
   Ctrl-o      Open file location in shell (right pane)
   Ctrl-p      Toggle preview
-  Esc         Cancel
 
 Tree mode keybindings:
   Enter       Open folder (navigate in) / Open file
@@ -132,7 +63,7 @@ EOF
   exit 0
 }
 
-# === Parse args ===
+# ── Parse Args ──
 SEARCH_MODE=false
 SEARCH_QUERY=""
 TREE_MODE=false
@@ -167,7 +98,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# === Resolve target directory ===
+# ── Resolve target directory ──
 if [[ "$TARGET_DIR" =~ ^~ ]]; then
   TARGET_DIR="$HOME${TARGET_DIR:1}"
 fi
@@ -176,293 +107,16 @@ TARGET_DIR="$(cd "$TARGET_DIR" 2>/dev/null && pwd)" || {
   exit 1
 }
 
-# === Setup tmux split ===
-TMUX_RIGHT_PANE=""
-if [[ -n "${TMUX:-}" ]]; then
-  pane_count="$(tmux list-panes 2>/dev/null | wc -l)" || pane_count=1
-  if [[ "$pane_count" -lt 2 ]]; then
-    current_pane="$(tmux display -p '#{pane_id}' 2>/dev/null)" || current_pane=""
-    if [[ -n "$current_pane" ]]; then
-      tmux split-window -h -p 30 2>/dev/null || true
-      TMUX_RIGHT_PANE="$(tmux display -p '#{pane_id}' 2>/dev/null)" || TMUX_RIGHT_PANE=""
-      tmux select-pane -t "$current_pane" 2>/dev/null || true
-      tmux send-keys -t "$TMUX_RIGHT_PANE" "clear && echo '  === fe editor panel ==='" C-m 2>/dev/null || true
-    fi
-  fi
-fi
-export TMUX_RIGHT_PANE
+# ── Setup tmux split if active ──
+setup_tmux_split
 
-# === Ensure bookmarks & config dirs ===
-mkdir -p "$(dirname "$FE_BOOKMARKS")" "$FE_CONFIG_HOME"
-touch "$FE_BOOKMARKS"
-
-# ============================================================
-# TREE MODE — Directory tree navigation
-# ============================================================
+# ── Dispatcher (Mode Selector) ──
 if [[ "$TREE_MODE" == true ]]; then
-
-  # State: temp file untuk tracking current directory
-  FE_TREE_FILE=$(mktemp /tmp/fe-tree-XXXXXX 2>/dev/null) || FE_TREE_FILE="/tmp/fe-tree-$$"
-  echo "$TARGET_DIR" > "$FE_TREE_FILE"
-  trap 'rm -f "$FE_TREE_FILE"' EXIT
-
-  # ── List: pake ls clean biar gak ada icon di path ──
-  #      Preview: pake eza biar cantik (icon + warna)
-  list_tree() {
-    local dir
-    dir=$(cat "$FE_TREE_FILE") || return
-    echo "📁 $dir"
-    # Kasih opsi naik kalo bukan root
-    [[ "$dir" != "/" ]] && echo ".."
-    # ls -1Ap = satu per baris, tambah / di folder, tampilin dotfiles
-    ls -1Ap "$dir" 2>/dev/null
-  }
-
-  TREE_LABEL=" 🌳 Tree: $(basename "$TARGET_DIR") "
-
-  list_tree | fzf \
-    --prompt "🌳 " \
-    --header-lines=1 \
-    --preview "
-      dir=\$(cat '$FE_TREE_FILE' 2>/dev/null) || exit 1
-      item='{}'
-      fp=\"\$dir/\$item\"
-      if [ -d \"\$fp\" ]; then
-        echo '📂 \$item/'
-        echo '──────────────────────────────'
-        eza -1 --group-directories-first --icons=always --color=always \"\$fp\" 2>/dev/null | head -40
-        echo '──────────────────────────────'
-        echo '↑ Enter: masuk folder'
-      elif [ -f \"\$fp\" ]; then
-        echo '━━━ \$item ━━━'
-        ${PREVIEW_CMD%% *} ${PREVIEW_CMD#* } \"\$fp\" 2>/dev/null || cat -n \"\$fp\" 2>/dev/null
-      fi
-    " \
-    --preview-window="$PREVIEW_SIZE" \
-    --style=full \
-    --highlight-line \
-    --gap=1 \
-    --filepath-word \
-    --info=inline-right \
-    --border-label="$TREE_LABEL" \
-    --header-first \
-    --header "Enter:buka • Esc↑ • N:file • K:folder • P:prev" \
-    --bind "enter:execute(
-      dir=\$(cat '$FE_TREE_FILE')
-      item='{}'
-      fp=\"\$dir/\$item\"
-      if [ -f \"\$fp\" ]; then
-        $EDITOR_CMD \"\$fp\"
-      fi
-    )+reload(
-      dir=\$(cat '$FE_TREE_FILE')
-      item='{}'
-      fp=\"\$dir/\$item\"
-      if [ -d \"\$fp\" ]; then
-        echo \"\$fp\" > '$FE_TREE_FILE'
-      elif [ \"\$item\" = '..' ]; then
-        parent=\$(dirname \"\$dir\")
-        echo \"\$parent\" > '$FE_TREE_FILE'
-      fi
-      dir=\$(cat '$FE_TREE_FILE')
-      echo \"📁 \$dir\"
-      [[ \"\$dir\" != '/' ]] && echo '..'
-      ls -1Ap \"\$dir\" 2>/dev/null
-    )" \
-    --bind "ctrl-h:reload(
-      dir=\$(cat '$FE_TREE_FILE')
-      parent=\$(dirname \"\$dir\")
-      echo \"\$parent\" > '$FE_TREE_FILE'
-      echo \"📁 \$parent\"
-      [[ \"\$parent\" != '/' ]] && echo '..'
-      ls -1Ap \"\$parent\" 2>/dev/null
-    )" \
-    --bind "esc:clear-query+reload(
-      dir=\$(cat '$FE_TREE_FILE')
-      parent=\$(dirname \"\$dir\")
-      echo \"\$parent\" > '$FE_TREE_FILE'
-      echo \"📁 \$parent\"
-      [[ \"\$parent\" != '/' ]] && echo '..'
-      ls -1Ap \"\$parent\" 2>/dev/null
-    )" \
-    --bind "ctrl-n:execute(
-      dir=\$(cat '$FE_TREE_FILE')
-      read -p '📄 New file: ' name
-      if [ -n \"\$name\" ]; then
-        touch \"\$dir/\$name\"
-        $EDITOR_CMD \"\$dir/\$name\"
-      fi
-    )+reload(
-      dir=\$(cat '$FE_TREE_FILE')
-      echo \"📁 \$dir\"
-      [[ \"\$dir\" != '/' ]] && echo '..'
-      ls -1Ap \"\$dir\" 2>/dev/null
-    )" \
-    --bind "ctrl-k:execute(
-      dir=\$(cat '$FE_TREE_FILE')
-      read -p '📁 New folder: ' name
-      if [ -n \"\$name\" ]; then
-        mkdir -p \"\$dir/\$name\"
-      fi
-    )+reload(
-      dir=\$(cat '$FE_TREE_FILE')
-      echo \"📁 \$dir\"
-      [[ \"\$dir\" != '/' ]] && echo '..'
-      ls -1Ap \"\$dir\" 2>/dev/null
-    )" \
-    --bind "ctrl-p:toggle-preview"
-
-  exit 0
-fi
-
-# === Build common fzf args ===
-build_fzf_args() {
-  local prompt_str="$1"
-  local border_label="$2"
-  local header_text="$3"
-
-  PREVIEW_CMD_SAFE="${PREVIEW_CMD//\'/\'\"\'\"\'}"
-  local preview_script="stat --format='%a %s %y' {} 2>/dev/null || echo '(no info)'; echo '────────────────────────────────────────'; $PREVIEW_CMD_SAFE {} 2>/dev/null || cat -n {} 2>/dev/null || echo '(preview not available)'"
-
-  # Build key bindings
-  if [[ -n "$TMUX_RIGHT_PANE" ]]; then
-    local enter_cmd="execute-silent(tmux send-keys -t $TMUX_RIGHT_PANE '$EDITOR \"{1}\"' C-m)"
-  else
-    local enter_cmd="execute($EDITOR_CMD {1})"
-  fi
-
-  # Use arrays for fzf args
-  FZF_ARGS=(
-    --multi
-    --prompt "$prompt_str"
-    --preview "$preview_script"
-    --preview-window="$PREVIEW_SIZE"
-    --style=full
-    --highlight-line
-    --gap=1
-    --track
-    --filepath-word
-    --info=inline-right
-    --border-label="$border_label"
-    --header-first
-    --header "$header_text"
-    --bind "enter:$enter_cmd"
-    --bind "ctrl-d:execute(rm -i {1})"
-    --bind "ctrl-r:execute(echo 'Rename: {1}' && read -p 'New name: ' n && mv \"{1}\" \"\$(dirname \"{1}\")/\$n\")"
-    --bind "ctrl-g:execute(git -C '$TARGET_DIR' status -s 2>/dev/null || echo 'Not a git repo'; echo '---'; git -C '$TARGET_DIR' log --oneline -10 2>/dev/null || true)"
-    --bind "ctrl-f:reload(rg --files-with-matches -i '{q}' '$TARGET_DIR' 2>/dev/null)"
-    --bind "ctrl-y:execute-silent(echo -n {1} | termux-clipboard-set 2>/dev/null || echo -n {1} | xclip -sel clip 2>/dev/null || pbcopy 2>/dev/null || true)"
-    --bind "ctrl-b:execute(echo '{1}' >> '$FE_BOOKMARKS' && echo '✅ Bookmarked: {1}')"
-    --bind "ctrl-x:execute(sed -i '\|^{}$|d' '$FE_BOOKMARKS' && echo '🗑️ Removed bookmark')"
-    --bind "ctrl-o:execute-silent(tmux send-keys -t $TMUX_RIGHT_PANE 'cd \"\$(dirname {1})\" && clear && ls -la' C-m)"
-    --bind "ctrl-p:toggle-preview"
-  )
-}
-
-# === Open first selected file ===
-open_file() {
-  local file="$1"
-  [[ -z "$file" ]] && return
-  # Resolve relative path to absolute for tmux (pane has its own CWD)
-  local abs_file
-  case "$file" in
-    /*) abs_file="$file" ;;
-    *)  abs_file="$(pwd)/${file#./}" ;;
-  esac
-  if [[ -n "$TMUX_RIGHT_PANE" ]]; then
-    tmux send-keys -t "$TMUX_RIGHT_PANE" "$EDITOR '$abs_file'" C-m
-  else
-    editor_open "$file"
-  fi
-}
-
-# ============================================================
-# MODE: Bookmarks
-# ============================================================
-if [[ "$BOOKMARK_MODE" == true ]]; then
-  if [[ ! -s "$FE_BOOKMARKS" ]]; then
-    echo "📭 No bookmarks yet. Use Ctrl-b in fe to bookmark files."
-    exit 0
-  fi
-
-  build_fzf_args "fe:bookmarks > " " Bookmarks " "Ctrl-x:remove bookmark | Enter:open"
-
-  SELECTED=$(sort -u "$FE_BOOKMARKS" | fzf "${FZF_ARGS[@]}")
-
-  if [[ -n "$SELECTED" ]]; then
-    FIRST_FILE=$(echo "$SELECTED" | head -1)
-    open_file "$FIRST_FILE"
-  fi
-  exit 0
-fi
-
-# ============================================================
-# MODE: Search content
-# ============================================================
-if [[ "$SEARCH_MODE" == true ]]; then
-  if [[ -z "$SEARCH_QUERY" ]]; then
-    read -r -p "Search for: " SEARCH_QUERY
-    if [[ -z "$SEARCH_QUERY" ]]; then
-      echo "No search query."
-      exit 0
-    fi
-  fi
-
-  build_fzf_args "fe:search:'$SEARCH_QUERY' > " " Search: $SEARCH_QUERY " "Ctrl-f:refine search | matched files for '$SEARCH_QUERY'"
-
-  # rg with relative paths (cd into target dir first)
-  cd "$TARGET_DIR"
-  SELECTED=$(rg --files-with-matches -i "$SEARCH_QUERY" . 2>/dev/null | fzf "${FZF_ARGS[@]}")
-
-  if [[ -n "$SELECTED" ]]; then
-    FIRST_FILE=$(echo "$SELECTED" | head -1)
-    open_file "$FIRST_FILE"
-  fi
-  exit 0
-fi
-
-# ============================================================
-# MODE: Normal browse
-# ============================================================
-PROMPT_STR="fe:$(basename "$TARGET_DIR")${EXT_FILTER:+ ($EXT_FILTER)} > "
-HEADER_STR="Ctrl-f:search • Ctrl-b:bookmark • Ctrl-g:git • Ctrl-d:del • Ctrl-r:rename • Ctrl-y:copy"
-
-build_fzf_args "$PROMPT_STR" " $(basename "$TARGET_DIR") " "$HEADER_STR"
-
-# cd into target dir so file paths show as ./... instead of /root/...
-cd "$TARGET_DIR"
-
-if [[ "$USE_FD" == true ]]; then
-  # fd — much faster
-  ext_flag=""
-  if [[ -n "$EXT_FILTER" ]]; then
-    if [[ "$EXT_FILTER" == .* ]]; then
-      ext_flag="--extension ${EXT_FILTER#.}"
-    else
-      ext_flag="--glob '*${EXT_FILTER}*'"
-    fi
-  fi
-
-  SELECTED=$(fd --type f --hidden --no-ignore-vcs --max-depth "$FIND_DEPTH" \
-                --exclude node_modules --exclude .git --exclude __pycache__ \
-                --exclude vendor --exclude target/debug --exclude dist \
-                $ext_flag . 2>/dev/null | fzf "${FZF_ARGS[@]}")
+  run_tree_mode
+elif [[ "$BOOKMARK_MODE" == true ]]; then
+  run_bookmarks_mode
+elif [[ "$SEARCH_MODE" == true ]]; then
+  run_search_mode
 else
-  # find fallback
-  extra_find=""
-  if [[ -n "$EXT_FILTER" ]]; then
-    if [[ "$EXT_FILTER" == .* ]]; then
-      extra_find="-name '*$EXT_FILTER'"
-    else
-      extra_find="-name '*$EXT_FILTER*'"
-    fi
-  fi
-
-  SELECTED=$(find . -maxdepth "$FIND_DEPTH" -type f $extra_find $FIND_FILTER 2>/dev/null | fzf "${FZF_ARGS[@]}")
-fi
-
-# === Post: open selected file ===
-if [[ -n "$SELECTED" ]]; then
-  FIRST_FILE=$(echo "$SELECTED" | head -1)
-  open_file "$FIRST_FILE"
+  run_find_mode
 fi
