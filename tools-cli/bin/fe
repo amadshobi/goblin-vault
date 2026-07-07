@@ -31,7 +31,10 @@ source "$FE_LIB_DIR/bookmarks.sh"
 FE_FZF_HELPER="$(mktemp /tmp/fe-fzf-helper-XXXXXX.sh)"
 cat > "$FE_FZF_HELPER" << HELPEREOF
 #!/usr/bin/env bash
-source "${FE_LIB_DIR}/ui.sh" 2>/dev/null || exit 1
+# Hardcode FE_LIB_DIR — gak ngandalin environment propagation
+# yang mungkin broken antar shell (bash→zsh→bash).
+FE_LIB_DIR='${FE_LIB_DIR}'
+source "\${FE_LIB_DIR}/ui.sh" 2>/dev/null || exit 1
 "\$@"
 HELPEREOF
 chmod +x "$FE_FZF_HELPER"
