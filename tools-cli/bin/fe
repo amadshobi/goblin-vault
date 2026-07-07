@@ -26,19 +26,9 @@ source "$FE_LIB_DIR/search.sh"
 source "$FE_LIB_DIR/bookmarks.sh"
 
 # ── FZF Helper Wrapper ──
-# fzf execute() runs in a new shell; this wrapper sources the lib
-# so helper functions (fe_rename_selected, fe_delete_selected) are available.
-FE_FZF_HELPER="$(mktemp /tmp/fe-fzf-helper-XXXXXX.sh)"
-cat > "$FE_FZF_HELPER" << HELPEREOF
-#!/usr/bin/env bash
-# Hardcode FE_LIB_DIR — gak ngandalin environment propagation
-# yang mungkin broken antar shell (bash→zsh→bash).
-FE_LIB_DIR='${FE_LIB_DIR}'
-source "\${FE_LIB_DIR}/ui.sh" 2>/dev/null || exit 1
-"\$@"
-HELPEREOF
-chmod +x "$FE_FZF_HELPER"
-CLEANUP_FILES+=("$FE_FZF_HELPER")
+# Static helper script — path absolut, gak perlu mktemp atau env propagation.
+# fzf execute() pake SHELL -c; helper ini pake shebang bash + path absolut.
+FE_FZF_HELPER="$FE_LIB_DIR/fe-helper.sh"
 export FE_FZF_HELPER
 
 # ── Show Help ──
