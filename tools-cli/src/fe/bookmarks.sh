@@ -11,7 +11,7 @@ run_bookmarks_mode() {
   fi
 
   FE_SEARCH_CMD="sort -u '$FE_BOOKMARKS'"
-  build_fzf_args " 🔍 ❯ " " Bookmarks " "Enter:open  Tab:multi-select  Ctrl-x:remove-bookmark  Ctrl-b:re-bookmark  Ctrl-d:del  Ctrl-y:copy-path  Ctrl-p:preview  Ctrl-s:fullscreen"
+  build_fzf_args " 🔍 ❯ " " Bookmarks " "Enter:open  Tab:multi  Ctrl-x:remove  Ctrl-b:bookmark  Del  CopyPath  Preview  Full  Ctrl-h:help"
 
   SELECTED=$(eval "$FE_SEARCH_CMD" | fzf "${FZF_ARGS[@]}")
 

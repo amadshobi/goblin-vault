@@ -14,7 +14,7 @@ run_tree_mode() {
   CLEANUP_FILES+=("$FE_TREE_FILE" "$FE_INPUT_MODE")
 
   local tree_label=" 🌳 Tree: $(basename "$TARGET_DIR") "
-  local tree_header="Enter:open/masuk  Esc/Ctrl-h:naik  Ctrl-n:file-baru  Ctrl-k:folder-baru  Ctrl-q:batal-input  Ctrl-p:preview  Ctrl-s:fullscreen"
+  local tree_header="Enter:buka  Esc/Ctrl-h:naik  Ctrl-n:file  Ctrl-k:folder  Ctrl-q:batal  Ctrl-p:preview  Ctrl-s:full"
   local tree_prompt="🌳 "
 
   # ── List tree helper ──
@@ -32,39 +32,39 @@ run_tree_mode() {
     --header-lines=1 \
     --preview "
       dir=\$(cat '$FE_TREE_FILE' 2>/dev/null) || exit 1
-      fp=\$dir/'{}'
+      _entry='{}'
+      fp=\"\$dir/\$_entry\"
       if [ -d \"\$fp\" ]; then
-        echo '📂 {}/'
+        echo \"📂 \$_entry/\"
         echo '──────────────────────────────'
-        eza -1 --group-directories-first --icons=always --color=always \"\$fp\" 2>/dev/null | head -40
+        eza --tree --level=2 --icons=always --color=always \"\$fp\" 2>/dev/null || tree -L 2 \"\$fp\" 2>/dev/null || eza -1 --icons=always --color=always \"\$fp\" 2>/dev/null || ls -1p \"\$fp\" 2>/dev/null | head -40
         echo '──────────────────────────────'
         echo '↑ Enter: masuk folder'
       elif [ -f \"\$fp\" ]; then
-        echo '━━━ {} ━━━'
+        echo \"━━━ \$_entry ━━━\"
         $PREVIEW_CMD \"\$fp\" 2>/dev/null || cat -n \"\$fp\" 2>/dev/null
       fi
     " \
-    --preview-window="right:60%:wrap,border-left,<80(up:50%:wrap)" \
+    --preview-window="right:80%:wrap,border-left,<80(up:65%:wrap)" \
     --style=full \
     --highlight-line \
     --filepath-word \
     --info=inline-right \
     --border-label="$tree_label" \
-    --header-first \
-    --header "$tree_header" \
     --bind "enter:execute(
       dir=\$(cat '$FE_TREE_FILE')
       fp=\$dir/'{}'
+      _safe_fp=\$(printf '%q' \"\$fp\")
       if [ -f \"\$fp\" ]; then
         if [ -n \"\${TMUX_RIGHT_PANE:-}\" ]; then
           current_cmd=\$(tmux display-message -p -t \"\$TMUX_RIGHT_PANE\" '#{pane_current_command}' 2>/dev/null || echo \"\")
           case \"\$current_cmd\" in
             \"\"|bash|zsh|sh|fish|idle|clear|echo)
-              tmux send-keys -t \"\$TMUX_RIGHT_PANE\" \"$EDITOR '\$fp'\" C-m
+              tmux send-keys -t \"\$TMUX_RIGHT_PANE\" \"$EDITOR \$_safe_fp\" C-m
               tmux select-pane -t \"\$TMUX_RIGHT_PANE\"
               ;;
             *)
-              tmux split-window -h \"$EDITOR '\$fp'\"
+              tmux split-window -h \"$EDITOR \$_safe_fp\"
               ;;
           esac
         else
@@ -94,20 +94,29 @@ run_tree_mode() {
       ls -1Ap \"\$parent\" 2>/dev/null
     )" \
     --bind "esc:reload(
-      dir=\$(cat '$FE_TREE_FILE')
-      parent=\$(dirname \"\$dir\")
-      echo \"\$parent\" > '$FE_TREE_FILE'
-      echo \"📁 \$parent\"
-      [ \"\$parent\" != '/' ] && echo '..'
-      ls -1Ap \"\$parent\" 2>/dev/null
-    )+execute-silent(rm -f '$FE_INPUT_MODE')+change-prompt($tree_prompt)+change-header($tree_header)+clear-query" \
-    --bind "ctrl-q:execute-silent(rm -f '$FE_INPUT_MODE')+change-prompt($tree_prompt)+change-header($tree_header)+clear-query" \
-    --bind "ctrl-n:execute-silent(echo new_file > '$FE_INPUT_MODE')+change-prompt(📄 New file ❯ )+change-header(Ketik nama file  Alt-Enter:buat  Ctrl-q:batal)+clear-query" \
-    --bind "ctrl-k:execute-silent(echo new_dir > '$FE_INPUT_MODE')+change-prompt(📁 New folder ❯ )+change-header(Ketik nama folder  Alt-Enter:buat  Ctrl-q:batal)+clear-query" \
+      if [ -s '$FE_INPUT_MODE' ]; then
+        rm -f '$FE_INPUT_MODE'
+        dir=\$(cat '$FE_TREE_FILE')
+        echo \"📁 \$dir\"
+        [ \"\$dir\" != '/' ] && echo '..'
+        ls -1Ap \"\$dir\" 2>/dev/null
+      else
+        dir=\$(cat '$FE_TREE_FILE')
+        parent=\$(dirname \"\$dir\")
+        echo \"\$parent\" > '$FE_TREE_FILE'
+        echo \"📁 \$parent\"
+        [ \"\$parent\" != '/' ] && echo '..'
+        ls -1Ap \"\$parent\" 2>/dev/null
+      fi
+    )+change-prompt('$tree_prompt')+change-header('$tree_header')+clear-query" \
+    --bind "ctrl-q:execute-silent(rm -f '$FE_INPUT_MODE')+change-prompt('$tree_prompt')+change-header('$tree_header')+clear-query" \
+    --bind "ctrl-n:execute-silent(echo new_file > '$FE_INPUT_MODE')+change-prompt('📄 New file ❯')+change-header('Ketik nama file — Alt-Enter:buat — Ctrl-q:batal')+clear-query" \
+    --bind "ctrl-k:execute-silent(echo new_dir > '$FE_INPUT_MODE')+change-prompt('📁 New folder ❯')+change-header('Ketik nama folder — Alt-Enter:buat — Ctrl-q:batal')+clear-query" \
     --bind "alt-enter:execute(
       _mode=\$(cat '$FE_INPUT_MODE' 2>/dev/null | tr -d '\\n')
-      _name={q}
+      _name='{q}'
       dir=\$(cat '$FE_TREE_FILE')
+      _safe_path=\$(printf '%q' \"\$dir/\$_name\")
       rm -f '$FE_INPUT_MODE'
       if [ \"\$_mode\" = 'new_file' ] && [ -n \"\$_name\" ]; then
         touch \"\$dir/\$_name\"
@@ -115,11 +124,11 @@ run_tree_mode() {
           current_cmd=\$(tmux display-message -p -t \"\$TMUX_RIGHT_PANE\" '#{pane_current_command}' 2>/dev/null || echo \"\")
           case \"\$current_cmd\" in
             \"\"|bash|zsh|sh|fish|idle|clear|echo)
-              tmux send-keys -t \"\$TMUX_RIGHT_PANE\" \"$EDITOR '\$dir/\$_name'\" C-m
+              tmux send-keys -t \"\$TMUX_RIGHT_PANE\" \"$EDITOR \$_safe_path\" C-m
               tmux select-pane -t \"\$TMUX_RIGHT_PANE\"
               ;;
             *)
-              tmux split-window -h \"$EDITOR '\$dir/\$_name'\"
+              tmux split-window -h \"$EDITOR \$_safe_path\"
               ;;
           esac
         else
@@ -133,7 +142,7 @@ run_tree_mode() {
       echo \"📁 \$dir\"
       [ \"\$dir\" != '/' ] && echo '..'
       ls -1Ap \"\$dir\" 2>/dev/null
-    )+change-prompt($tree_prompt)+change-header($tree_header)+clear-query" \
+    )+change-prompt('$tree_prompt')+change-header('$tree_header')+clear-query" \
     --bind "ctrl-p:toggle-preview" \
-    --bind "ctrl-s:change-preview-window(right:99%|right:60%:wrap,border-left,<80(up:50%:wrap))"
+    --bind "ctrl-s:change-preview-window(right:99%|right:80%:wrap,border-left,<80(up:65%:wrap))"
 }

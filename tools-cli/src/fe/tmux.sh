@@ -39,13 +39,15 @@ open_file() {
   if [[ -n "$TMUX_RIGHT_PANE" ]]; then
     local current_cmd
     current_cmd=$(tmux display-message -p -t "$TMUX_RIGHT_PANE" '#{pane_current_command}' 2>/dev/null || echo "")
+    local _safe_abs
+    _safe_abs=$(printf '%q' "$abs_file")
     # Check if the right pane is idle (shell prompt)
     if [[ -z "$current_cmd" || "$current_cmd" =~ ^(bash|zsh|sh|fish|idle|clear|echo)$ ]]; then
-      tmux send-keys -t "$TMUX_RIGHT_PANE" "$EDITOR '$abs_file'" C-m
+      tmux send-keys -t "$TMUX_RIGHT_PANE" "$EDITOR $_safe_abs" C-m
       tmux select-pane -t "$TMUX_RIGHT_PANE"
     else
       # If pane is busy, open in a new split pane and focus it
-      tmux split-window -h "$EDITOR '$abs_file'"
+      tmux split-window -h "$EDITOR $_safe_abs"
     fi
   else
     editor_open "$file"

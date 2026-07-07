@@ -25,6 +25,19 @@ source "$FE_LIB_DIR/tree.sh"
 source "$FE_LIB_DIR/search.sh"
 source "$FE_LIB_DIR/bookmarks.sh"
 
+# ── FZF Helper Wrapper ──
+# fzf execute() runs in a new shell; this wrapper sources the lib
+# so helper functions (fe_rename_selected, fe_delete_selected) are available.
+FE_FZF_HELPER="$(mktemp /tmp/fe-fzf-helper-XXXXXX.sh)"
+cat > "$FE_FZF_HELPER" << HELPEREOF
+#!/usr/bin/env bash
+source "${FE_LIB_DIR}/ui.sh" 2>/dev/null || exit 1
+"\$@"
+HELPEREOF
+chmod +x "$FE_FZF_HELPER"
+CLEANUP_FILES+=("$FE_FZF_HELPER")
+export FE_FZF_HELPER
+
 # ── Show Help ──
 show_help() {
   cat <<EOF

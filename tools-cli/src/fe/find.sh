@@ -6,7 +6,7 @@
 
 run_find_mode() {
   PROMPT_STR=" 🔍 ❯ "
-  HEADER_STR="Enter:open  Tab:multi-select  Ctrl-d:del  Ctrl-r:rename  Ctrl-b:bookmark  Ctrl-x:unbookmark  Ctrl-f:search  Ctrl-g:git  Ctrl-y:copy-path  Ctrl-o:cd-here  Ctrl-p:preview  Ctrl-s:fullscreen"
+  HEADER_STR="Enter:open  Tab:multi  Del  Rename  Bookmark  Search  Git  CopyPath  Preview  Fullscreen  Ctrl-h:help"
 
   # cd into target dir so file paths show as ./... instead of /root/...
   cd "$TARGET_DIR"
