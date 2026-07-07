@@ -31,6 +31,23 @@ done < <(find "$TOOLS_DIR" -type f 2>/dev/null)
 
 echo "────────────────────────────────────────"
 
+# 1b. Check Go files
+echo "🐹 Checking Go files..."
+for dir in "$TOOLS_DIR"/src/*/; do
+    mod_file="${dir}go.mod"
+    if [[ -f "$mod_file" ]]; then
+        tool_name=$(basename "$dir")
+        if go vet "./${dir}..." 2>&1; then
+            echo "   ✅ $tool_name (go vet passed)"
+        else
+            echo "❌ Go vet error: $tool_name"
+            errors=$((errors + 1))
+        fi
+    fi
+done
+
+echo "────────────────────────────────────────"
+
 # 2. Check Javascript files
 echo "📦 Checking JavaScript files..."
 while IFS= read -r file; do

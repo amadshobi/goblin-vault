@@ -58,6 +58,20 @@ else
 fi
 
 echo "────────────────────────────────────────"
+
+# 3. Build fex (Go binary)
+echo "🐹 Building fex (Go file explorer)..."
+FEX_SRC="$ROOT_DIR/tools-cli/src/fex"
+if command -v go &>/dev/null; then
+    cd "$FEX_SRC" && go build -o "$HOME/.local/bin/fex" ./cmd/fe/ 2>&1 && \
+        echo -e "  [${GREEN}OK${NC}] fex built & installed to ~/.local/bin/fex" || \
+        echo -e "  [${RED}ERR${NC}] fex build gagal!"
+else
+    echo -e "  [${YELLOW}WARN${NC}] Go tidak ditemukan — fex tidak bisa di-build."
+    echo "         Install Go dulu: https://go.dev/dl/"
+fi
+
+echo "────────────────────────────────────────"
 echo -e "${GREEN}🎉 Proses integrasi selesai!${NC}"
 echo -e "💡 Silakan jalankan perintah berikut untuk memuat ulang terminal Anda:"
 echo -e "   ${BLUE}source ~/.zshrc${NC} (jika menggunakan Zsh)"
