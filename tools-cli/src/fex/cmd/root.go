@@ -199,7 +199,7 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 		opts := fzf.DefaultFzfOpts()
 		opts.Query = lastQuery
 		opts.Header = "Enter:open/masuk | Ctrl-h:naik | Ctrl-n:file-baru | Ctrl-k:folder-baru | Ctrl-r:rename | Ctrl-d:del | Ctrl-g:git | Ctrl-p:preview | Ctrl-s:fullscreen"
-		opts.Expected = "ctrl-r,ctrl-d,ctrl-n,ctrl-k,ctrl-h"
+		opts.Expected = "ctrl-r,ctrl-d,ctrl-n,ctrl-k,ctrl-h,esc"
 		opts.BorderLabel = fmt.Sprintf(" 🌳 %s ", filepath.Base(currentDir))
 		opts.Prompt = " 🌳 ❯ "
 
@@ -318,6 +318,15 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 
 		case "ctrl-h":
 			// Go up one directory (mirip bash: ctrl-h reload parent)
+			parent := filepath.Dir(currentDir)
+			if parent != currentDir {
+				currentDir = parent
+				sess.SetTreeCwd(currentDir)
+			}
+			continue
+
+		case "esc":
+			// Esc: naik satu folder (sama seperti ctrl-h)
 			parent := filepath.Dir(currentDir)
 			if parent != currentDir {
 				currentDir = parent
