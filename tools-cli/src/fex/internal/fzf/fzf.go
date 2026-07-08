@@ -49,6 +49,7 @@ type FzfOpts struct {
 	Bindings    []string // --bind entries
 	NoSort      bool
 	PrintQuery  bool // --print-query
+	Cycle       bool // --cycle (wrap cursor from top→bottom and vice versa)
 
 	// Delimiter
 	Delimiter string // --delimiter (for field parsing in preview, e.g. ":")
@@ -223,6 +224,9 @@ func buildFzfArgs(opts FzfOpts) []string {
 	}
 	if opts.PrintQuery {
 		args = append(args, "--print-query")
+	}
+	if opts.Cycle {
+		args = append(args, "--cycle")
 	}
 	if opts.PreviewCmd != "" {
 		args = append(args, "--preview", opts.PreviewCmd)

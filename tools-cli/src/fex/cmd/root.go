@@ -134,6 +134,10 @@ Usage:
 
 func runTreeMode(sess *session.Session, currentDir string) error {
 	showHidden := true // tampilin dotfiles biar berguna
+	homeDir, _ := os.UserHomeDir()
+	if homeDir == "" {
+		homeDir = "/home/shobixlinuxdev"
+	}
 
 	for {
 		// ── Navigasi ke folder file terakhir dibuka ──
@@ -223,6 +227,7 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 		)
 		opts.PreviewWindow = "right:80%:wrap,border-left,<80(up:65%:wrap)"
 		opts.WorkDir = currentDir
+		opts.Cycle = true
 
 		// ── In-fzf bindings ──
 		opts.Bindings = buildTreeModeBindings(currentDir, tmux.RightPaneID())
@@ -301,7 +306,22 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 				fmt.Fprintf(os.Stderr, "create file: %v\n", err)
 				continue
 			}
-			sess.SetLastOpened(newPath)
+			// Open the newly created file in editor
+			if tmux.InTmux() {
+				if err := tmux.OpenFileInPane(newPath); err != nil {
+					fmt.Fprintf(os.Stderr, "open: %v\n", err)
+				}
+			} else {
+				editor := ui.DetectEditor()
+				editorCmd := exec.Command(editor, newPath)
+				editorCmd.Stdin = os.Stdin
+				editorCmd.Stdout = os.Stdout
+				editorCmd.Stderr = os.Stderr
+				if err := editorCmd.Run(); err != nil {
+					fmt.Fprintf(os.Stderr, "editor: %v\n", err)
+				}
+			}
+			// Don't set lastOpened — keep search input clean on re-render
 
 		case "ctrl-k":
 			// New folder
@@ -314,24 +334,28 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 				fmt.Fprintf(os.Stderr, "create folder: %v\n", err)
 				continue
 			}
-			sess.SetLastOpened(newPath)
+			// Don't set lastOpened — keep search input clean on re-render
 
 		case "ctrl-h":
 			// Go up one directory (mirip bash: ctrl-h reload parent)
 			parent := filepath.Dir(currentDir)
-			if parent != currentDir {
-				currentDir = parent
-				sess.SetTreeCwd(currentDir)
+			// Boundary: don't go above home dir — exit instead
+			if currentDir == homeDir || !strings.HasPrefix(parent+"/", homeDir+"/") {
+				return nil
 			}
+			currentDir = parent
+			sess.SetTreeCwd(currentDir)
 			continue
 
 		case "esc":
 			// Esc: naik satu folder (sama seperti ctrl-h)
 			parent := filepath.Dir(currentDir)
-			if parent != currentDir {
-				currentDir = parent
-				sess.SetTreeCwd(currentDir)
+			// Boundary: don't go above home dir — exit instead
+			if currentDir == homeDir || !strings.HasPrefix(parent+"/", homeDir+"/") {
+				return nil
 			}
+			currentDir = parent
+			sess.SetTreeCwd(currentDir)
 			continue
 
 		default:
@@ -897,58 +921,52 @@ func renameDialog(path string) string {
 	return newName
 }
 
-// newFileDialog — fzf input: ketik nama file di query, tekan Ctrl-n buat confirm.
+// newFileDialog — fzf input: ketik nama file di query, tekan Enter untuk create.
 func newFileDialog(dir string) string {
 	opts := fzf.DefaultFzfOpts()
-	opts.Header = "📄 New file — Type filename in query, press Enter/Ctrl-n to create"
+	opts.Header = "📄 New file — Type filename in query, press Enter to create"
 	opts.Query = ""
-	opts.Expected = "ctrl-n"
+	opts.Expected = ""
 	opts.PrintQuery = true
 	opts.NoSort = true
 	opts.BorderLabel = " 📄 New File "
 	opts.Prompt = " 📄 ❯ "
 	opts.PreviewCmd = ""
 	opts.PreviewWindow = ""
+	opts.Bindings = []string{"enter:print-query"}
 
-	// Dummy item biar Enter bisa work + user liat ada placeholder
-	result, err := fzf.Run("new-file-name", opts)
+	// No dummy item — kosongkan list, user ketik di query
+	result, err := fzf.Run("", opts)
 	if err != nil {
 		return ""
 	}
-	// Enter (ExpectedKey kosong) atau Ctrl-n = confirm
-	if result.ExpectedKey != "ctrl-n" && result.ExpectedKey != "" {
-		return ""
-	}
 	name := strings.TrimSpace(result.Query)
-	if name == "" || name == "new-file-name" {
+	if name == "" {
 		return ""
 	}
 	return name
 }
 
-// newFolderDialog — fzf input: ketik nama folder di query, tekan Ctrl-k buat confirm.
+// newFolderDialog — fzf input: ketik nama folder di query, tekan Enter untuk create.
 func newFolderDialog(dir string) string {
 	opts := fzf.DefaultFzfOpts()
-	opts.Header = "📁 New folder — Type folder name in query, press Enter/Ctrl-k to create"
+	opts.Header = "📁 New folder — Type folder name in query, press Enter to create"
 	opts.Query = ""
-	opts.Expected = "ctrl-k"
+	opts.Expected = ""
 	opts.PrintQuery = true
 	opts.NoSort = true
 	opts.BorderLabel = " 📁 New Folder "
 	opts.Prompt = " 📁 ❯ "
 	opts.PreviewCmd = ""
 	opts.PreviewWindow = ""
+	opts.Bindings = []string{"enter:print-query"}
 
-	result, err := fzf.Run("new-folder-name", opts)
+	result, err := fzf.Run("", opts)
 	if err != nil {
 		return ""
 	}
-	// Enter (ExpectedKey kosong) atau Ctrl-k = confirm
-	if result.ExpectedKey != "ctrl-k" && result.ExpectedKey != "" {
-		return ""
-	}
 	name := strings.TrimSpace(result.Query)
-	if name == "" || name == "new-folder-name" {
+	if name == "" {
 		return ""
 	}
 	return name
