@@ -37,10 +37,16 @@ for dir in "$TOOLS_DIR"/src/*/; do
     mod_file="${dir}go.mod"
     if [[ -f "$mod_file" ]]; then
         tool_name=$(basename "$dir")
-        if go vet "./${dir}..." 2>&1; then
-            echo "   ✅ $tool_name (go vet passed)"
-        else
-            echo "❌ Go vet error: $tool_name"
+        (
+            cd "$dir" || continue
+            if go vet ./... 2>&1; then
+                echo "   ✅ $tool_name (go vet passed)"
+            else
+                echo "❌ Go vet error: $tool_name"
+                exit 1
+            fi
+        )
+        if [[ $? -ne 0 ]]; then
             errors=$((errors + 1))
         fi
     fi

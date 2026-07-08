@@ -69,16 +69,12 @@ fi
 
 # Check global fe.sh function (Replaced with binary existence checks)
 check_binary() {
-    local bin_path="$TOOLS_BIN/$1"
-    if [[ -f "$bin_path" ]]; then
-        if [[ -x "$bin_path" ]]; then
-            echo -e "  [${GREEN}OK${NC}] Binary $1 ditemukan dan executable"
-        else
-            echo -e "  [${RED}ERR${NC}] Binary $1 ditemukan tapi TIDAK executable!"
-            errors=$((errors + 1))
-        fi
+    local resolved
+    resolved="$(command -v "$1" 2>/dev/null)" || resolved=""
+    if [[ -n "$resolved" && -x "$resolved" ]]; then
+        echo -e "  [${GREEN}OK${NC}] Binary $1 ter-resolve & executable: $resolved"
     else
-        echo -e "  [${RED}ERR${NC}] Binary $1 tidak ditemukan di $TOOLS_BIN!"
+        echo -e "  [${RED}ERR${NC}] Binary $1 TIDAK ter-resolve sebagai executable di \$PATH!"
         errors=$((errors + 1))
     fi
 }
