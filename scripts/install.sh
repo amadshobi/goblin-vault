@@ -72,6 +72,53 @@ else
 fi
 
 echo "────────────────────────────────────────"
+
+# 4. Deploy micro editor config
+echo "📝 Deploying micro editor config..."
+MICRO_VAULT="$ROOT_DIR/configs/micro"
+MICRO_CONFIG="$HOME/.config/micro"
+
+if [[ -d "$MICRO_VAULT" ]]; then
+    # Create micro config directory if missing
+    mkdir -p "$MICRO_CONFIG/colorschemes" "$MICRO_CONFIG/plug/filemanager"
+
+    # Deploy tracked files via symlink (or copy on systems without symlink support)
+    deploy_file() {
+        local src="$1"
+        local dst="$2"
+        if [[ -f "$src" ]]; then
+            if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+                cp "$src" "$dst"
+            else
+                ln -sf "$src" "$dst"
+            fi
+            echo -e "  [${GREEN}OK${NC}] $(basename "$dst")"
+        fi
+    }
+
+    deploy_file "$MICRO_VAULT/settings.json"            "$MICRO_CONFIG/settings.json"
+    deploy_file "$MICRO_VAULT/bindings.json"            "$MICRO_CONFIG/bindings.json"
+    deploy_file "$MICRO_VAULT/init.lua"                 "$MICRO_CONFIG/init.lua"
+    deploy_file "$MICRO_VAULT/palettero.cfg"            "$MICRO_CONFIG/palettero.cfg"
+    deploy_file "$MICRO_VAULT/goblin-help.md"           "$MICRO_CONFIG/goblin-help.md"
+    deploy_file "$MICRO_VAULT/colorschemes/darcula-glass.micro" "$MICRO_CONFIG/colorschemes/darcula-glass.micro"
+    deploy_file "$MICRO_VAULT/colorschemes/darcula-goblin.micro" "$MICRO_CONFIG/colorschemes/darcula-goblin.micro"
+    deploy_file "$MICRO_VAULT/plug/filemanager/filemanager.lua" "$MICRO_CONFIG/plug/filemanager/filemanager.lua"
+    deploy_file "$MICRO_VAULT/plug/filemanager/syntax.yaml"     "$MICRO_CONFIG/plug/filemanager/syntax.yaml"
+    deploy_file "$MICRO_VAULT/plug/filemanager/repo.json"       "$MICRO_CONFIG/plug/filemanager/repo.json"
+
+    # Remind about missing plugins (installed via micro plugin manager)
+    echo -e "  [${BLUE}INFO${NC}] Pastikan plugin micro terinstall:"
+    echo -e "          • filemanager — Ctrl+o file tree"
+    echo -e "          • palettero   — Ctrl+P command palette"
+    echo -e "          • jump        — F4 quick file navigation"
+    echo -e "          • editorconfig"
+    echo -e "          Install: micro -plugin install filemanager palettero jump editorconfig"
+else
+    echo -e "  [${YELLOW}WARN${NC}] configs/micro/ tidak ditemukan — lewati deploy micro"
+fi
+
+echo "────────────────────────────────────────"
 echo -e "${GREEN}🎉 Proses integrasi selesai!${NC}"
 echo -e "💡 Silakan jalankan perintah berikut untuk memuat ulang terminal Anda:"
 echo -e "   ${BLUE}source ~/.zshrc${NC} (jika menggunakan Zsh)"

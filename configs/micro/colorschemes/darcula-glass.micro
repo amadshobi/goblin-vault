@@ -1,0 +1,57 @@
+# darcula-glass.micro — Transparent Darcula theme for Goblin (kaca mode)
+# Syntax: Darcula palette, background: transparent (terminal theme shows through)
+# Enhanced: tab-active, organized sections
+
+# ── Syntax ──────────────────────────────────────────────────
+color-link default "#C5C8C6"
+color-link comment "#7C7C7C"
+color-link identifier "#F9EE98"
+color-link identifier.function "#FFD2A7"
+color-link identifier.var "#C5C8C6"
+color-link constant "#FF73FD"
+color-link constant.string "#A8FF60"
+color-link constant.number "#FF73FD"
+color-link constant.bool "#FF73FD"
+color-link constant.specialChar "#A6E22E"
+color-link statement "#96CBFE"
+color-link statement.control "#96CBFE"
+color-link symbol "#96CBFE"
+color-link symbol.operator "#C5C8C6"
+color-link symbol.brackets "#96CBFE"
+color-link preproc "#62B1FE"
+color-link type "#C6C5FE"
+color-link type.keyword "#C6C5FE"
+color-link special "#A6E22E"
+color-link underlined "#D33682"
+color-link error "bold #FF4444"
+color-link todo "bold #FF8844"
+
+# ── Search / Highlight ──────────────────────────────────────
+color-link hlsearch "#000000,#B4EC85"
+color-link match-brace "#1D1F21,#62B1FE"
+
+# ── Statusline ──────────────────────────────────────────────
+color-link statusline "#1D1F21,#C5C8C6"
+
+# ── Tab bar ─────────────────────────────────────────────────
+color-link tabbar "#1D1F21,#C5C8C6"
+color-link tab-active "#1D1F21,#96CBFE"
+
+# ── Gutters & Line numbers ──────────────────────────────────
+color-link indent-char "#505050"
+color-link line-number "#656866"
+color-link current-line-number "#656866"
+color-link gutter-error "#FF4444"
+color-link gutter-warning "#EEEE77"
+color-link gutter-info "#888888"
+
+# ── Diff gutter ─────────────────────────────────────────────
+color-link diff-added "#00AF00"
+color-link diff-modified "#FFAF00"
+color-link diff-deleted "#D70000"
+
+# ── Editor chrome ───────────────────────────────────────────
+color-link cursor-line "#2D2F31"
+color-link color-column "#2D2F31"
+color-link tab-error "#D75F5F"
+color-link trailingws "#D75F5F"

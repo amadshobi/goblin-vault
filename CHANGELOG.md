@@ -3,9 +3,16 @@
 ## [Unreleased]
 
 ### Added
-- Micro editor config management: `fex backup micro` / `fex restore micro`
-- `install.sh` — deploy configs to `~/.config/` on fresh machine
-- CHANGELOG.md — project changelog
+- `fex backup micro` — backup micro editor config from `~/.config/micro/` to `goblin-vault/configs/micro/`
+- `fex restore micro` — restore micro editor config from `goblin-vault/configs/micro/` to `~/.config/micro/`
+- `install.sh` — now deploys micro config as symlinks to `~/.config/micro/` (auto-sync with goblin-vault)
+- `configs/micro/` — source-of-truth directory for micro editor configuration
+  - `settings.json`, `bindings.json`, `init.lua`, `palettero.cfg`, `goblin-help.md`
+  - `colorschemes/darcula-glass.micro`, `colorschemes/darcula-goblin.micro`
+  - `plug/filemanager/filemanager.lua`, `syntax.yaml`, `repo.json`
+- CHANGELOG.md — project changelog (since initial commit)
+- Micro editor: `softwrap` enabled (long lines auto-wrap, no horizontal scroll)
+- Micro editor: filemanager plugin now opens tree at parent directory of current file (not CWD)
 
 ## [0.1.0] - 2026-07-08
 

@@ -1,0 +1,18 @@
+{
+    "Ctrl-o": "lua:filemanager.toggle_tree",
+    "Ctrl-P": "lua:palettero.palettero",
+    "F4": "lua:jump.jump",
+    "Alt-/": "lua:comment.comment",
+    "Ctrl-d": "lua:comment.comment",
+    "Ctrl-b": "lua:filemanager.open_in_other_pane",
+    "Ctrl-n": "NextSplit",
+    "Alt-w": "PreviousSplit",
+    "F5": "command:plugin run run",
+    "F9": "command:plugin run run-background",
+    "F12": "command:plugin run make",
+    "Ctrl-r": "lua:initlua.closeRightmost",
+    "Ctrl-l": "lua:initlua.closeLeftmost",
+    "Ctrl-h": "command:hsplit ~/.config/micro/goblin-help.md",
+    "Ctrl-q": "Quit",
+    "Ctrl-w": "NextSplit|FirstSplit"
+}

@@ -1,0 +1,33 @@
+{
+    "colorscheme": "darcula-glass",
+    "tabsize": 2,
+    "tabstospaces": true,
+    "diffgutter": true,
+    "cursorline": true,
+    "scrollbar": true,
+    "softwrap": true,
+    "syntax": true,
+    "linter": true,
+    "autoclose": true,
+    "ruler": true,
+    "savecursor": true,
+    "saveundo": true,
+    "statusline": true,
+    "filemanager.openontab": true,
+    "filemanager.showdotfiles": false,
+    "filemanager.showignored": false,
+    "ignorecase": true,
+    "smartpaste": true,
+    "autosave": 5000,
+    "indentchar": "┊",
+    "wordwrap": false,
+    "clipboard": "terminal",
+    "statusformatl": "$(filename) $(modified) | $(opt:filetype) | $(opt:encoding)",
+    "statusformatr": "$(line):$(col) $(status.paste)",
+    "tabhighlight": true,
+    "tabreverse": true,
+    "pluginchannels": [
+        "https://raw.githubusercontent.com/micro-editor/plugin-channel/master/channel.json"
+    ],
+    "pluginrepos": []
+}
