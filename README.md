@@ -3,6 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Goblin-Certified-magenta?style=for-the-badge&logo=opsgenie" alt="Goblin Certified" />
   <img src="https://img.shields.io/badge/Shell-Zsh%20%26%20Bash-blue?style=for-the-badge&logo=gnu-bash" alt="Shell" />
+  <img src="https://img.shields.io/badge/Go-1.2x+-00ADD8?style=for-the-badge&logo=go" alt="Go" />
   <img src="https://img.shields.io/badge/Node-v22+-green?style=for-the-badge&logo=node.js" alt="Node" />
   <img src="https://img.shields.io/badge/Status-Under%20Evolution-orange?style=for-the-badge" alt="Status" />
 </p>
@@ -17,41 +18,115 @@
 
 Repository ini adalah pusat komando dan memori dari seorang builder-goblin:
 
-* 📂 **`./.opencode/`** — Divisi otak & konfigurasi agent OpenCode (prompts, commands, plugins, & skills).
-* 📂 **`./tools-cli/`** — Pusat persenjataan CLI yang mempermudah navigasi dan operasional harian.
-  * 📁 `bin/` — Executable binaries/wrappers siap pakai (`fe`, `ocm`, `gh-blin`).
-  * 📁 `src/` — Source code mentah dari aplikasi CLI.
-  * 📁 `utils/` — Helper script sekali jalan.
-  * 📁 `tests/` — Laboratorium uji coba (scratchpad).
-  * 📁 `docs/` — Dokumentasi dan manual Book.
+```
+goblin-vault/
+├── tools-cli/              # Pusat persenjataan CLI
+│   ├── bin/                # Wrapper executable (ocm, gh-blin)
+│   ├── src/                # Source code CLI
+│   │   ├── fex/            # File Explorer (Go) — binary fex
+│   │   ├── gh-blin/        # GitHub Assistant TUI (Node)
+│   │   ├── goblin-control/ # Control center core (Node)
+│   │   ├── notes/          # Notes utility (Node)
+│   │   └── ocm/            # OpenCode Configurator TUI (Node)
+│   ├── tests/              # Laboratorium uji coba (scratchpad)
+│   └── docs/               # Dokumentasi & manual tiap tool
+├── scripts/                # Utilities shell & js
+│   ├── check_syntax.sh     # Linter/syntax check semua script
+│   ├── doctor.sh           # Health & dependency checker
+│   ├── install.sh          # Setup PATH & symlink config
+│   ├── worktree.sh         # Git worktree manager
+│   └── remove_emojis.js    # Utilitas pembersih emoji
+├── configs/                # Konfigurasi editor & tooling
+│   ├── micro/              # Source-of-truth config micro editor
+│   └── nvim/               # LazyVim setup (init.lua, lua/, stylua.toml)
+├── docs/                   # Rules, skills, & update notes
+│   ├── rules/              # Coding style & operational rules
+│   ├── skills/             # Skill definitions (golang-pro, js-mastery, shell-scripting)
+│   └── update/             # Catatan rilis fitur (fex v4, dll)
+├── AGENTS.md               # Panduan agent & kontributor
+├── kilo.jsonc              # Konfigurasi Kilo (instructions + skills path)
+├── README.md               # Dokumentasi publik utama
+└── CHANGELOG.md            # Riwayat perubahan
+```
 
 ---
 
-## 🛠️ Senjata Utama (`tools-cli/bin/`)
+## 🛠️ Senjata Utama
 
-### 1. 🔍 `fe` (File Explorer)
-Alat navigasi super cepat menggunakan `fzf` + `tmux` split. Dioptimalkan dengan filter `-prune` agar tidak tersangkut di folder sampah (`node_modules`, `.git`, dll.). Dilengkapi state-machine internal untuk mendukung navigasi balik (`Esc` untuk mundur, `Ctrl+H` untuk Home, `Ctrl+R` untuk Root).
+### 1. 🔍 `fex` (File Explorer — Go)
+Alat navigasi super cepat berbasis Go yang menggunakan `fzf` + `tmux` split.
+Subcommand: `tree`, `search`, `create`, `editor`, `path`, `kill`, `backup micro`, `restore micro`.
+State-machine internal dengan boundary `$HOME` (Esc/Ctrl-H untuk navigasi balik, Ctrl+R untuk Root).
+Optimalisasi `-prune` agar tidak tersangkut di folder sampah (`node_modules`, `.git`, dll).
 
 ### 2. ⚙️ `ocm` (OpenCode Configurator)
-Dashboard TUI interaktif berbasis Node.js (`@clack/prompts`) untuk mengelola workspace, agent, session, dan credentials API Key AI tanpa perlu mengedit file JSONC secara manual.
+Dashboard TUI interaktif berbasis Node.js (`@clack/prompts`) untuk mengelola
+workspace, agent, session, dan credentials API Key AI tanpa edit file JSONC manual.
+*Wrapper executable:* `tools-cli/bin/ocm`.
 
 ### 3. 🐙 `gh-blin` (GitHub Assistant TUI)
-Asisten pribadi bermata satu yang membantu menangani pull-requests, issues, dan monitoring repositori GitHub langsung dari terminal dengan nyaman.
+Asisten bermata satu untuk menangani pull-requests, issues, dan monitoring repo
+GitHub langsung dari terminal. Berbasis Node.js.
+*Wrapper executable:* `tools-cli/bin/gh-blin`.
+
+### 4. 🧠 `goblin-control` (Control Center Core)
+Node.js control center dengan modul: `check`, `cmd`, `create`, `delete`, `git`, `shortcuts`.
+Otak di balik orchestration harian goblin.
+
+### 5. 📝 `notes`
+Utility notes berbasis markdown (Node.js) — `create.js` + `storage.js` untuk
+manajemen catatan cepat dari terminal.
 
 ---
 
 ## ⚙️ Setup & Integrasi
 
-Agar semua senjata di dalam `tools-cli/` bisa dipanggil langsung dari terminal mana saja, cukup tambahkan folder `bin` ke `$PATH` shell Anda (Zsh/Bash):
+### PATH (binaries)
+Agar `ocm` & `gh-blin` bisa dipanggil dari mana saja, tambahkan folder `bin` ke `$PATH`:
 
 ```bash
 # Tambahkan ke ~/.zshrc atau exports.sh Anda
 export PATH="$PATH:$HOME/civil/goblin-vault/tools-cli/bin"
 ```
 
-Setelah itu, jalankan reload shell dan panggil `fe`, `ocm`, atau `gh-blin` secara bebas!
+### `fex` (Go binary)
+`fex` di-build dari `tools-cli/src/fex/` (Go module). Binary ter-deploy ke
+`~/.local/bin/fex` (cek via `bash scripts/doctor.sh`). Build ulang bila perlu:
+
+```bash
+cd tools-cli/src/fex && go build -o ~/.local/bin/fex .
+```
+
+### Health Check & Lint
+Sebelum kerja atau setelah perubahan, jalankan:
+
+```bash
+bash scripts/doctor.sh        # cek dependency & PATH
+bash scripts/check_syntax.sh  # lint semua Bash & JS
+```
+
+### Install Configs
+`install.sh` men-deploy config micro & nvim sebagai symlink ke `~/.config/`,
+auto-sync dengan source-of-truth di repo ini:
+
+```bash
+bash scripts/install.sh
+```
 
 ---
+
+## 📜 Konvensi & Rules
+
+- **Agent & kontributor:** baca `AGENTS.md` — berisi struktur, guideline engineering,
+  coding standards, dan daftar tanggung jawab agent.
+- **Coding style:** `docs/rules/coding-style.md` — immutability, batas ukuran file
+  (≤800 baris), error handling, input validation, reusable utilities, shell ISO.
+- **Skills:** definisi skill terdaftar di `kilo.jsonc` → `docs/skills/`
+  (`golang-pro`, `js-mastery`, `shell-scripting`).
+- **Bahasa:** dokumentasi Indonesia (utama), English untuk istilah teknis.
+
+---
+
 <p align="center">
   <i>Dibuat oleh Goblin, dirawat oleh Goblin, untuk kedamaian terminal Goblin. 🍻👹</i>
 </p>

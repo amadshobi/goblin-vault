@@ -3,9 +3,11 @@
 ## [Unreleased]
 
 ### Added
+- `docs/rules/coding-style.md` — panduan gaya kode wajib (immutability, file-size, error handling, input validation, naming, reusable utils, shell ISO, language/emoji)
+- `AGENTS.md` — diekspansi dari 12 baris buzzword menjadi panduan lengkap (struktur repo, guideline engineering, coding standards, agent responsibilities, konvensi, do/don't)
+- `README.md` — di-overhaul agar sync dengan struktur aktual (tambah `goblin-control`, `notes`, `configs/nvim`, `docs/skills`, `docs/rules`; perbaiki penjelasan `fex` sebagai Go binary & panduan build/PATH)
 - `fex backup micro` — backup micro editor config from `~/.config/micro/` to `goblin-vault/configs/micro/`
 - `fex restore micro` — restore micro editor config from `goblin-vault/configs/micro/` to `~/.config/micro/`
-- `install.sh` — now deploys micro config as symlinks to `~/.config/micro/` (auto-sync with goblin-vault)
 - `configs/micro/` — source-of-truth directory for micro editor configuration
   - `settings.json`, `bindings.json`, `init.lua`, `palettero.cfg`, `goblin-help.md`
   - `colorschemes/darcula-glass.micro`, `colorschemes/darcula-goblin.micro`
