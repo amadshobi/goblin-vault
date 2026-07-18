@@ -1,13 +1,24 @@
 #!/usr/bin/env bash
 # Pre-push hook — Goblin Vault
-# Build fex & full lint sebelum push ke remote.
+# Build fex, health check, & full lint sebelum push ke remote.
 # Di-install via scripts/install-hooks.sh (symlink ke .git/hooks).
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
+echo "🩺 goblin pre-push: running doctor (blocking)..."
+if ! bash "$REPO_ROOT/scripts/doctor.sh"; then
+  echo "❌ doctor.sh gagal — push dibatalkan. Pastikan dependency wajib terpasang." >&2
+  exit 1
+fi
+
+# Build ke temp dir unik (hindari race kalau /tmp/fex dipakai bersamaan)
+BUILD_DIR="$(mktemp -d)"
+trap 'rm -rf "$BUILD_DIR"' EXIT
+BIN="$BUILD_DIR/fex"
+
 echo "🔨 goblin pre-push: building fex..."
-if ! (cd "$REPO_ROOT/tools-cli/src/fex" && go build -o /tmp/fex ./cmd/fe); then
+if ! (cd "$REPO_ROOT/tools-cli/src/fex" && go build -o "$BIN" ./cmd/fe); then
   echo "❌ build fex gagal — push dibatalkan." >&2
   exit 1
 fi

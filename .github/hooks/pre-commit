@@ -12,9 +12,10 @@ if ! bash "$REPO_ROOT/scripts/check_syntax.sh"; then
   exit 1
 fi
 
-echo "🩺 goblin pre-commit: running doctor..."
+echo "🩺 goblin pre-commit: running doctor (blocking)..."
 if ! bash "$REPO_ROOT/scripts/doctor.sh"; then
-  echo "⚠️  doctor.sh warning — lanjut, tapi cek dependency lo." >&2
+  echo "❌ doctor.sh gagal — commit dibatalkan. Pastikan dependency wajib (node, fzf, tmux, gh) terpasang." >&2
+  exit 1
 fi
 
 echo "✅ pre-commit OK"
