@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Pre-commit hook — Goblin Vault
+# Auto-run lint + health check sebelum commit di-enforce.
+# Di-install via scripts/install-hooks.sh (symlink ke .git/hooks).
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+echo "🐙 goblin pre-commit: running syntax check..."
+if ! bash "$REPO_ROOT/scripts/check_syntax.sh"; then
+  echo "❌ check_syntax.sh gagal — commit dibatalkan. Fix dulu ya bos." >&2
+  exit 1
+fi
+
+echo "🩺 goblin pre-commit: running doctor..."
+if ! bash "$REPO_ROOT/scripts/doctor.sh"; then
+  echo "⚠️  doctor.sh warning — lanjut, tapi cek dependency lo." >&2
+fi
+
+echo "✅ pre-commit OK"
