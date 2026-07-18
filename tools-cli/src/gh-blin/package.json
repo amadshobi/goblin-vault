@@ -1,0 +1,9 @@
+{
+  "name": "gh-blin",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@clack/prompts": "^0.7.0",
+    "picocolors": "^1.0.0"
+  }
+}
