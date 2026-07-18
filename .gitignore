@@ -1,0 +1,22 @@
+# Build artifacts
+dist/
+node_modules/
+*.log
+
+# Secrets / credentials — JANGAN DI-COMMIT (rule: no secret in repo)
+.env
+.env.*
+*.key
+*.pem
+secrets.json
+credentials.json
+
+# OS & editor noise
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Go build temp
+*.test
+fex-build-temp
