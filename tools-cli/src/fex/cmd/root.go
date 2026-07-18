@@ -149,11 +149,6 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 			}
 		}
 
-		lastQuery := ""
-		if lastPath := sess.GetLastOpened(); lastPath != "" {
-			lastQuery = filepath.Base(lastPath)
-		}
-
 		// ── Baca isi directory ──
 		entries, err := tree.ListDirContents(currentDir, showHidden)
 		if err != nil {
@@ -201,7 +196,6 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 
 		// ── Fzf opts ──
 		opts := fzf.DefaultFzfOpts()
-		opts.Query = lastQuery
 		opts.Header = "Enter:open/masuk | Ctrl-h:naik | Ctrl-n:file-baru | Ctrl-k:folder-baru | Ctrl-r:rename | Ctrl-d:del | Ctrl-g:git | Ctrl-p:preview | Ctrl-s:fullscreen"
 		opts.Expected = "ctrl-r,ctrl-d,ctrl-n,ctrl-k,ctrl-h,esc"
 		opts.BorderLabel = fmt.Sprintf(" 🌳 %s ", filepath.Base(currentDir))
@@ -390,7 +384,7 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 					fmt.Fprintf(os.Stderr, "editor: %v\n", err)
 				}
 			}
-			sess.SetLastOpened(entry.path)
+			// Don't set lastOpened — keep search input clean on re-render
 		}
 	}
 }
@@ -419,9 +413,6 @@ func runBookmarksMode(sess *session.Session) error {
 		opts.BorderLabel = " Bookmarks "
 		opts.Prompt = " 🔍 ❯ "
 		opts.PreviewCmd = ui.DetectPreviewCmd()
-		if lastPath := sess.GetLastOpened(); lastPath != "" {
-			opts.Query = filepath.Base(lastPath)
-		}
 
 		// ── In-fzf bindings ──
 		dir := sess.GetCwd()
@@ -453,7 +444,7 @@ func runBookmarksMode(sess *session.Session) error {
 				fmt.Fprintf(os.Stderr, "editor: %v\n", err)
 			}
 		}
-		sess.SetLastOpened(selected)
+		// Don't set lastOpened — keep search input clean on re-render
 		// Loop: stay di bookmarks mode
 	}
 }
@@ -515,9 +506,6 @@ func runSearchMode(sess *session.Session, initialQuery string) error {
 		opts.Prompt = " 🔍 ❯ "
 		opts.Delimiter = ":"
 		opts.PreviewCmd = `bat --style=numbers --color=always -H {2} {1} 2>/dev/null || cat -n {1} 2>/dev/null || echo '{1}:{2}'`
-		if lastPath := sess.GetLastOpened(); lastPath != "" {
-			opts.Query = filepath.Base(lastPath)
-		}
 		// ── In-fzf bindings ──
 		opts.Bindings = buildFindModeBindings(dir, sess.GetBookmarksFile(), tmux.RightPaneID())
 
@@ -581,11 +569,6 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 	header := "Enter:open | Ctrl-r:rename | Ctrl-d:delete | Ctrl-g:git | Ctrl-f:search | Ctrl-b:bookmark | Ctrl-x:unbookmark | Ctrl-y:copy | Ctrl-o:cd-here | Ctrl-p:preview | Ctrl-s:fullscreen"
 
 	for {
-		lastQuery := ""
-		if lastPath := sess.GetLastOpened(); lastPath != "" {
-			lastQuery = filepath.Base(lastPath)
-		}
-
 		// ── Get file list ──
 		fileList := getFileList(dir, ext, cfg)
 		if fileList == "" {
@@ -594,7 +577,6 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 
 		// ── Fzf opts ──
 		opts := fzf.DefaultFzfOpts()
-		opts.Query = lastQuery
 		opts.Header = header
 		opts.Expected = "ctrl-r,ctrl-d"
 		if findMode {
@@ -670,7 +652,7 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 					fmt.Fprintf(os.Stderr, "editor: %v\n", err)
 				}
 			}
-			sess.SetLastOpened(selected)
+			// Don't set lastOpened — keep search input clean on re-render
 		}
 	}
 }

@@ -205,28 +205,140 @@ func SelectFromTree(currentDir string, showHidden bool, initialQuery string) (se
 	return "", false, fmt.Errorf("could not match selection: %s", selected)
 }
 
-// iconForExt — return icon berdasarkan ekstensi file.
+// iconForExt — emoji icons berdasarkan ekstensi file.
 func iconForExt(name string) string {
 	ext := strings.ToLower(filepath.Ext(name))
+
 	switch ext {
-	case ".go", ".rs", ".py", ".js", ".ts", ".rb", ".java", ".c", ".cpp", ".h":
-		return "💻"
-	case ".md", ".txt", ".rst":
-		return "📝"
-	case ".yaml", ".yml", ".json", ".toml", ".ini", ".cfg":
+	// ── Languages ──
+	case ".go":
+		return "🔷"
+	case ".rs":
+		return "🦀"
+	case ".py", ".pyc":
+		return "🐍"
+	case ".js":
+		return "🟨"
+	case ".ts":
+		return "🩵"
+	case ".jsx", ".tsx":
+		return "⚛️"
+	case ".java", ".class":
+		return "☕"
+	case ".rb":
+		return "💎"
+	case ".c", ".h":
 		return "⚙️"
-	case ".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp":
+	case ".cpp", ".cc", ".hpp":
+		return "⚙️"
+	case ".cs":
+		return "🟣"
+	case ".lua":
+		return "🌙"
+	case ".php":
+		return "🐘"
+	case ".swift":
+		return "🐦"
+	case ".kt":
+		return "🟤"
+	case ".dart":
+		return "🎯"
+	case ".pl":
+		return "🦙"
+	case ".hs":
+		return "λ"
+	case ".scala":
+		return "🔥"
+
+	// ── Web ──
+	case ".html", ".htm":
+		return "🌐"
+	case ".css", ".scss", ".sass", ".less":
+		return "🎨"
+	case ".vue":
+		return "💚"
+	case ".svelte":
+		return "🧡"
+
+	// ── Config / Data ──
+	case ".json", ".jsonc":
+		return "📋"
+	case ".yaml", ".yml":
+		return "📋"
+	case ".toml":
+		return "📋"
+	case ".ini", ".cfg", ".conf":
+		return "⚙️"
+	case ".env":
+		return "🔐"
+	case ".xml", ".plist":
+		return "📋"
+	case ".svg":
 		return "🖼️"
-	case ".zip", ".tar", ".gz", ".bz2", ".xz":
-		return "📦"
-	case ".mp3", ".wav", ".flac":
-		return "🎵"
-	case ".mp4", ".avi", ".mkv", ".mov":
-		return "🎬"
+	case ".sql", ".db", ".sqlite":
+		return "🗄️"
+	case ".csv", ".tsv":
+		return "📊"
+
+	// ── Docs ──
+	case ".md", ".mdx":
+		return "📝"
+	case ".txt", ".rst":
+		return "📄"
+	case ".tex":
+		return "📜"
 	case ".pdf":
 		return "📕"
-	default:
+	case ".doc", ".docx":
+		return "📘"
+	case ".xls", ".xlsx":
+		return "📗"
+
+	// ── Media ──
+	case ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".ico":
+		return "🖼️"
+	case ".mp4", ".avi", ".mkv", ".mov", ".webm":
+		return "🎬"
+	case ".mp3", ".wav", ".flac", ".ogg", ".m4a":
+		return "🎵"
+
+	// ── Archives ──
+	case ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar":
+		return "📦"
+
+	// ── Tools ──
+	case ".sh", ".bash", ".zsh", ".fish":
+		return "💻"
+	case ".log":
 		return "📄"
+	case ".patch", ".diff":
+		return "🔀"
+	case ".lock":
+		return "🔒"
+	case ".pid":
+		return "🔢"
+
+	// ── Name-based ──
+	default:
+		n := strings.ToLower(name)
+		switch n {
+		case "dockerfile", ".dockerignore":
+			return "🐳"
+		case "makefile", "gnumakefile":
+			return "🔧"
+		case "go.mod", "go.sum", "go.work":
+			return "🔷"
+		case "package.json", "package-lock.json":
+			return "📦"
+		case ".gitignore", ".gitattributes", ".gitmodules":
+			return "🔀"
+		case "gemfile", "gemfile.lock":
+			return "💎"
+		case "docker-compose.yml", "docker-compose.yaml", "compose.yml":
+			return "🐳"
+		default:
+			return "📄"
+		}
 	}
 }
 

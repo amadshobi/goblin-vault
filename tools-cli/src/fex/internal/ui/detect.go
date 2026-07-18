@@ -32,13 +32,13 @@ func DetectPreviewCmd() string {
 }
 
 // DetectEditor — auto-detect text editor.
-// Priority: $EDITOR env > micro > nano > vim > vi
+// Priority: $EDITOR env > micro > nano > nvim > vim > vi
 // Returns fallback "cat" kalo ga ada editor satupun.
 func DetectEditor() string {
 	if e := os.Getenv("EDITOR"); e != "" {
 		return e
 	}
-	for _, cmd := range []string{"micro", "nano", "vim", "vi"} {
+	for _, cmd := range []string{"micro", "nano", "nvim", "vim", "vi"} {
 		if path, err := exec.LookPath(cmd); err == nil {
 			return path
 		}
