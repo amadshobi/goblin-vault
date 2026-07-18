@@ -33,7 +33,7 @@ jobs:
 
       - name: Build fex (Go)
         working-directory: tools-cli/src/fex
-        run: go build -o /tmp/fex .
+        run: go build -o /tmp/fex ./cmd/fe
 
       - name: Smoke test fex
         run: /tmp/fex --help || true

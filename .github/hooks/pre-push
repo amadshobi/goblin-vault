@@ -7,7 +7,7 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
 echo "🔨 goblin pre-push: building fex..."
-if ! (cd "$REPO_ROOT/tools-cli/src/fex" && go build -o /tmp/fex .); then
+if ! (cd "$REPO_ROOT/tools-cli/src/fex" && go build -o /tmp/fex ./cmd/fe); then
   echo "❌ build fex gagal — push dibatalkan." >&2
   exit 1
 fi
