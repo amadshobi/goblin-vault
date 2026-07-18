@@ -1,13 +1,32 @@
 # Build artifacts
 dist/
+build/
+.next/
+out/
+coverage/
+.turbo/
 node_modules/
 *.log
+*.tsbuildinfo
+
+# Go build artifacts
+*.exe
+*.test
+*.out
+bin/
+vendor/
+go.work
+go.work.sum
+.build/
 
 # Secrets / credentials — JANGAN DI-COMMIT (rule: no secret in repo)
 .env
 .env.*
+.env.local
+.env.*.local
 *.key
 *.pem
+*.p12
 secrets.json
 credentials.json
 
@@ -16,7 +35,6 @@ credentials.json
 .vscode/
 .idea/
 *.swp
-
-# Go build temp
-*.test
-fex-build-temp
+*~
+*-build-temp
+*.tmp

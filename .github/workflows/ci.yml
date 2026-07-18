@@ -17,13 +17,13 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: tools-cli/src/fex/go.mod
           cache-dependency-path: tools-cli/src/fex/go.sum
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "20"   # LTS
 
       - name: Shell & JS syntax check
         run: bash scripts/check_syntax.sh
@@ -31,9 +31,13 @@ jobs:
       - name: Health & dependency check
         run: bash scripts/doctor.sh
 
+      - name: Go vet
+        working-directory: tools-cli/src/fex
+        run: go vet ./...
+
       - name: Build fex (Go)
         working-directory: tools-cli/src/fex
         run: go build -o /tmp/fex ./cmd/fe
 
       - name: Smoke test fex
-        run: /tmp/fex --help || true
+        run: /tmp/fex --help

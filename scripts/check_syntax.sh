@@ -27,7 +27,7 @@ while IFS= read -r file; do
             fi
         fi
     fi
-done < <(find "$TOOLS_DIR" -type f 2>/dev/null)
+done < <(find "$TOOLS_DIR" -type f \( -name "*.sh" -o -name "*.bash" \) 2>/dev/null)
 
 echo "────────────────────────────────────────"
 
@@ -37,17 +37,11 @@ for dir in "$TOOLS_DIR"/src/*/; do
     mod_file="${dir}go.mod"
     if [[ -f "$mod_file" ]]; then
         tool_name=$(basename "$dir")
-        (
-            cd "$dir" || continue
-            if go vet ./... 2>&1; then
-                echo "   ✅ $tool_name (go vet passed)"
-            else
-                echo "❌ Go vet error: $tool_name"
-                exit 1
-            fi
-        )
-        if [[ $? -ne 0 ]]; then
+        if ! (cd "$dir" && go vet ./... 2>&1); then
+            echo "❌ Go vet error: $tool_name"
             errors=$((errors + 1))
+        else
+            echo "   ✅ $tool_name (go vet passed)"
         fi
     fi
 done
@@ -67,7 +61,7 @@ while IFS= read -r file; do
             echo "   ✅ $file"
         fi
     fi
-done < <(find "$TOOLS_DIR" -type f -name "*.js" 2>/dev/null)
+done < <(find "$TOOLS_DIR" -type f -name "*.js" -not -path "*/node_modules/*" 2>/dev/null)
 
 echo "────────────────────────────────────────"
 

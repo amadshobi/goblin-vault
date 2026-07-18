@@ -13,10 +13,18 @@ indent_size = 2
 
 [*.go]
 indent_style = tab
-indent_size = 4
 
 [*.sh]
 indent_size = 2
 
+[Makefile]
+indent_style = tab
+
+[*.{yml,yaml}]
+indent_size = 2
+
 [*.md]
 trim_trailing_whitespace = false
+
+[*.{js,ts,json}]
+indent_size = 2
