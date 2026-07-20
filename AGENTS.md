@@ -1,0 +1,159 @@
+# AGENTS.md
+
+Panduan ini wajib dibaca dan diikuti oleh semua AI agent, subagent, dan kontributor
+yang beroperasi di dalam repositori **Goblin Vault**. Tujuannya: menjaga agar setiap
+perubahan konsisten, aman, dan selaras dengan arah arsitektur vault.
+
+---
+
+## Overview
+
+**Goblin Vault** adalah repositori yang berisi alat-alat CLI, utilities, dan
+konfigurasi untuk manajemen infrastruktur, pengembangan, dan automasi harian seorang
+builder-goblin. Filosofi utamanya: mengikis friksi di terminal sedikit demi sedikit
+hingga tumpukan script acak ini berevolusi menjadi sebuah **Control Center** yang
+sesungguhnya.
+
+Repositori ini bukan sekadar kumpulan script — ini adalah pusat komando dan memori.
+Oleh karena itu, setiap perubahan harus mempertahankan kestabilan sistem yang sudah
+berjalan, bukan sekadar menambah fitur demi keren-kerenan.
+
+---
+
+## Struktur Repositori
+
+```
+goblin-vault/
+├── tools-cli/              # Pusat persenjataan CLI
+│   ├── bin/                # Executable binaries/wrappers siap pakai (fe, ocm, gh-blin)
+│   ├── src/                # Source code mentah aplikasi CLI
+│   │   ├── fex/            # File Explorer (fzf + tmux)
+│   │   ├── gh-blin/        # GitHub Assistant TUI
+│   │   ├── goblin-control/ # Control center core
+│   │   ├── notes/          # Notes utility
+│   │   └── ocm/            # OpenCode Configurator TUI
+│   ├── tests/              # Laboratorium uji coba (scratchpad)
+│   └── docs/               # Dokumentasi dan manual
+├── scripts/                # Utilities shell & js (doctor, install, worktree, dll)
+├── configs/                # Konfigurasi editor & tooling (micro, nvim)
+├── docs/                   # Rules, skills, dan update notes
+│   ├── rules/              # Aturan coding & operasional
+│   ├── skills/             # Skill definitions (terdaftar di kilo.jsonc)
+│   └── update/             # Catatan rilis fitur
+├── kilo.jsonc              # Konfigurasi Kilo (skills path -> ./docs/skills/)
+├── README.md               # Dokumentasi publik utama
+└── CHANGELOG.md            # Riwayat perubahan
+```
+
+---
+
+## Guideline Engineering
+
+Empat prinsip ini BUKAN sekadar buzzword — ini aturan operasional yang harus terlihat
+di hasil kerja:
+
+- **Modularity** — Pisahkan concern. Satu file = satu tanggung jawab. Hindari file
+  raksasa yang melakukan terlalu banyak hal.
+- **Scalability** — Desain agar mudah ditambah, bukan ditulis ulang. Gunakan pola
+  yang memungkinkan fitur baru menempel tanpa membedah yang lama.
+- **Maintainability** — Kode harus bisa dibaca & di-debug oleh goblin lain 3 bulan
+  ke depan. Hindari magic number, hindari side-effect tersembunyi.
+- **Reusable** — Ekstrak utilitas umum ke modul yang bisa dipakai ulang. Jangan
+  duplikasi logika yang sama di banyak tempat.
+
+---
+
+## Coding Standards
+
+### Immutability (KRITIS)
+
+SELALU buat objek baru, JANGAN mutasi objek yang sudah ada:
+
+```
+// SALAH: modify(original, field, value) -> mengubah original in-place
+// BENAR: update(original, field, value) -> return copy baru dengan perubahan
+```
+
+Rationale: immutable data mencegah side-effect tersembunyi, mempermudah debug, dan
+memungkinkan concurrency yang aman.
+
+### File Organization
+
+MANY SMALL FILES > FEW LARGE FILES:
+- High cohesion, low coupling
+- 200–400 baris typical, 800 maksimal
+- Ekstrak utilities dari modul besar
+- Organisasi berdasarkan fitur/domain, bukan tipe
+
+### Error Handling
+
+- Tangani error secara eksplisit di setiap level
+- Pesan error ramah pengguna di kode yang berhadapan dengan UI
+- Log konteks error detail di sisi server/tooling
+- JANGAN telan error secara diam-diam (silent swallow)
+
+### Input Validation
+
+- Validasi semua input user sebelum diproses
+- Gunakan schema-based validation bila tersedia
+- Fail fast dengan pesan error yang jelas
+- JANGAN percaya data eksternal (API response, user input, file content)
+
+### Shell & Scripting
+
+- Script di `scripts/` dan `bin/` harus POSIX-compliant bila memungkinkan, atau
+  jelas bertarget Zsh/Bash (lihat badge di README — Shell: Zsh & Bash)
+- Set `set -euo pipefail` di script yang berubah state
+- Beri guard terhadap command yang destruktif (rm -rf, git reset --hard)
+
+---
+
+## Agent Responsibilities
+
+Daerah operasi setiap agent (lihat definisi subagent di Kilo):
+
+- **goblin-architect** — Merancang arsitektur & tech decisions. Bukan implementasi.
+- **goblin-implementer** — Implementasi code, fix bug, tulis test, bangun fitur.
+- **goblin-reviewer** — Code review menyeluruh: pattern, anti-pattern, security,
+  performance, readability.
+- **goblin-maintainer** — Maintenance & fix existing: bug fix, update minor, refactor.
+- **goblin-guardian** — Security keeper: jaga stabilitas, deteksi anomali, enforce rules.
+- **goblin-documenter** — Generate/update dokumentasi (README, codemap, guides).
+- **goblin-planner** — Breakdown task jadi milestones & sub-tasks terstruktur.
+- **goblin-cli** — Develop/optimize CLI & TUI tools.
+- **co-founder** — Penjaga kestabilan, perkembangan, dan arah ecosystem.
+
+Aturan delegasi: selalu sertakan Task, Konteks (file/struktur/constraint), dan Rute
+(path benar) agar subagent tidak loop call yang tidak berguna.
+
+---
+
+## Konvensi Repo
+
+- **Bahasa dokumentasi**: Indonesia (utama), English untuk istilah teknis.
+- **Changelog**: update `CHANGELOG.md` untuk setiap perubahan yang berdampak ke
+  pengguna tools.
+- **README**: selalu sync dengan struktur & fitur aktual — jangan biarkan melenceng.
+- **Skills**: letakkan di `docs/skills/` (terdaftar di `kilo.jsonc`).
+- **Branch/Worktree**: gunakan `scripts/worktree.sh` untuk isolasi pekerjaan.
+
+---
+
+## Do / Don't
+
+**Lakukan:**
+- Cek `README.md`, `CHANGELOG.md`, dan struktur `tools-cli/` sebelum mengubah.
+- Jalankan `scripts/doctor.sh` & `scripts/check_syntax.sh` sebelum anggap selesai.
+- Pertahankan kompatibilitas dengan tools yang sudah dipakai BOSS harian.
+- Tulis perubahan kecil, fokused, dan reversible.
+
+**Jangan:**
+- Mutasi objek existing (lihat Immutability).
+- Commit secret / API key / credential ke repo.
+- Ubah struktur `bin/` tanpa update README & PATH guidance.
+- Tambah dependency besar tanpa alasan yang jelas & terukur.
+- Biarkan error di-swallow diam-diam.
+
+---
+
+> *Dibuat oleh Goblin, dirawat oleh Goblin, untuk kedamaian terminal Goblin. 🍻👹*
