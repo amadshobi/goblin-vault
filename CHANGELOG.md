@@ -16,6 +16,9 @@
 - Micro editor: `softwrap` enabled (long lines auto-wrap, no horizontal scroll)
 - Micro editor: filemanager plugin now opens tree at parent directory of current file (not CWD)
 
+### Changed
+- `refactor(fex)`: pecah `cmd/root.go` (989 baris) jadi modul domain (`tree_mode`, `bookmarks_mode`, `search_mode`, `find_mode`, `bindings`, `dialogs`, `filelist`) + extract `internal/util/escape.go` — Closes #1
+
 ## [0.1.0] - 2026-07-08
 
 ### Fixed
