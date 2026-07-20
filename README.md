@@ -34,19 +34,62 @@ goblin-vault/
 │   ├── check_syntax.sh     # Linter/syntax check semua script
 │   ├── doctor.sh           # Health & dependency checker
 │   ├── install.sh          # Setup PATH & symlink config
-│   ├── worktree.sh         # Git worktree manager
-│   └── remove_emojis.js    # Utilitas pembersih emoji
+│   ├── install-hooks.sh    # Install git hooks (pre-commit/pre-push)
+│   └── worktree.sh         # Git worktree manager
 ├── configs/                # Konfigurasi editor & tooling
 │   ├── micro/              # Source-of-truth config micro editor
 │   └── nvim/               # LazyVim setup (init.lua, lua/, stylua.toml)
-├── docs/                   # Rules, skills, & update notes
+├── docs/                   # Rules, skills, update notes & history
+│   ├── history/            # Riwayat implementasi harian (YYYY-MM-DD_nama.md)
 │   ├── rules/              # Coding style & operational rules
 │   ├── skills/             # Skill definitions (golang-pro, js-mastery, shell-scripting)
-│   └── update/             # Catatan rilis fitur (fex v4, dll)
+│   └── update/             # Catatan rilis fitur (fex v4, full-foundation draft)
+├── .github/                # CI workflows + git hooks
+│   ├── workflows/          # GitHub Actions (ci.yml)
+│   └── hooks/              # pre-commit & pre-push hooks
 ├── AGENTS.md               # Panduan agent & kontributor
 ├── kilo.jsonc              # Konfigurasi Kilo (instructions + skills path)
 ├── README.md               # Dokumentasi publik utama
 └── CHANGELOG.md            # Riwayat perubahan
+```
+
+---
+
+## 🧪 Development / Kontribusi Lokal
+
+Repo ini sudah punya **git hooks** + **CI GitHub Actions** untuk menjaga kualitas
+kode sebelum masuk ke repo. Berikut cara kerjanya:
+
+### Git Hooks (lokal)
+
+Install hooks once:
+
+```bash
+bash scripts/install-hooks.sh
+```
+
+Hook yang aktif:
+- **pre-commit**: jalankan `bash scripts/check_syntax.sh` + `bash scripts/doctor.sh` — blocking, commit ditolak jika ada error.
+- **pre-push**: jalankan `bash scripts/doctor.sh` + build `fex` — blocking, push ditolak jika gagal.
+
+### CI (remote)
+
+Setiap PR/commit ke branch `dev` atau `main` memicu GitHub Actions:
+- Lint + syntax check (`check_syntax.sh`)
+- Build `fex` dari `tools-cli/src/fex/`
+
+### Build `fex` (manual)
+
+```bash
+cd tools-cli/src/fex && go build -o ~/.local/bin/fex .
+```
+
+### Checklist sebelum PR
+
+```bash
+bash scripts/doctor.sh        # dependency & PATH check
+bash scripts/check_syntax.sh  # lint Bash & JS
+cd tools-cli/src/fex && go build -o ~/.local/bin/fex .
 ```
 
 ---

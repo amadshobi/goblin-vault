@@ -19,6 +19,20 @@
 ### Changed
 - `refactor(fex)`: pecah `cmd/root.go` (989 baris) jadi modul domain (`tree_mode`, `bookmarks_mode`, `search_mode`, `find_mode`, `bindings`, `dialogs`, `filelist`) + extract `internal/util/escape.go` — Closes #1
 
+### Added
+- Foundation OSS: `LICENSE` (MIT), `.gitignore` hardened, `.editorconfig` untuk konsistensi formatting lintas editor
+- CI + hooks: `.github/workflows/ci.yml` (lint + build otomatis di PR/commit), `.github/hooks/` (pre-commit + pre-push), `scripts/install-hooks.sh` untuk install hooks secara relatif
+- `docs/history/` — direktori riwayat implementasi harian (`YYYY-MM-DD_nama.md`)
+- `check_syntax.sh` diperbaiki: filter `*.sh` + exclude `node_modules`
+
+### Changed
+- `refactor(fex)`: pecah `cmd/root.go` (989 baris) jadi modul domain (`tree_mode`, `bookmarks_mode`, `search_mode`, `find_mode`, `bindings`, `dialogs`, `filelist`) + extract `internal/util/escape.go` — Closes #1
+- `.gitignore` diperbaiki: kritikal files (`AGENTS.md`, `kilo.jsonc`, `docs/rules/*`, `docs/skills/*`, `docs/update/*`) sekarang ter-track
+- Hook hardening: pre-commit menjalankan `doctor.sh` secara blocking, pre-push menjalankan `doctor.sh` + build `fex`
+
+### Fixed
+- Git hooks menggunakan symlink relatif agar tetap jalan mesin berganti direktori repo
+
 ## [0.1.0] - 2026-07-08
 
 ### Fixed

@@ -3,7 +3,7 @@
 > Dokumen ini menyimpan ide & rencana untuk melengkapi pondasi repo open-source
 > **Goblin Vault** ke level "production-ready OSS". Dibuat karena BOSS memutuskan
 > skip implementasi langsung (fokus ke core: LICENSE, CI, hooks — sudah di-shipp).
-> Semua item di bawah masih **belum dikerjakan** — gunakan sebagai backlog.
+> Item bertanda `[x]` sudah selesai. Sisa item **belum dikerjakan** — gunakan sebagai backlog.
 
 Tanggal draft: 2026-07-20
 
@@ -99,8 +99,10 @@ Tanggal draft: 2026-07-20
   - Butuh ubah semua import di `cmd/fe/` & `internal/`.
   - Risk: `go build` lokal jalan, tapi module proxy gagal kalau path gak valid.
   - Lihat issue review: item #1 (MEDIUM).
+- [x] **`.gitignore` hardening** — pastikan file kritikal (`AGENTS.md`, `kilo.jsonc`, `docs/rules/*`, `docs/skills/*`, `docs/update/*`) tidak ter-skip. Sudah diperbaiki & ter-track.
 
-- [ ] **Refactor `fex/cmd/root.go`** (989 baris) → `cmd/modes/*.go` (issue #1).
+- [x] **Refactor `fex/cmd/root.go`** (989 baris) → `cmd/modes/*.go` (issue #1 CLOSED).
+  - Selesai: `cmd/root.go` jadi 140 baris, modul `tree_mode`, `bookmarks_mode`, `search_mode`, `find_mode`, `bindings`, `dialogs`, `filelist` + `internal/util/escape.go`.
 - [ ] **Refactor `fex/internal/tree/tree.go`** (393 baris) (issue #2).
 - [ ] **Fix mutasi `splice` di `ocm/utils.js`** (immutability, issue #3).
 
@@ -125,3 +127,5 @@ Tanggal draft: 2026-07-20
   review gampang.
 - `CODEOWNERS` & template harus pakai username org yang bener (`CivilHQ`?) —
   verifikasi dulu sebelum commit.
+- Issue #1 (`cmd/root.go` refactor) **sudah closed**. Issue #2 (`tree.go`) & #3
+  (`ocm/utils.js` mutasi) masih open sebagai tech-debt selanjutnya.

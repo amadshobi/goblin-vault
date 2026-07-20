@@ -136,6 +136,8 @@ Aturan delegasi: selalu sertakan Task, Konteks (file/struktur/constraint), dan R
 - **README**: selalu sync dengan struktur & fitur aktual — jangan biarkan melenceng.
 - **Skills**: letakkan di `docs/skills/` (terdaftar di `kilo.jsonc`).
 - **Branch/Worktree**: gunakan `scripts/worktree.sh` untuk isolasi pekerjaan.
+- **Git hooks & CI**: repo dilengkapi `scripts/install-hooks.sh` (pre-commit + pre-push
+  blocking) dan GitHub Actions `.github/workflows/ci.yml` (lint + build otomatis).
 
 ---
 
