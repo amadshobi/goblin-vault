@@ -19,8 +19,8 @@ import (
 
 // Build-time vars — diisi pas build (ldflags)
 var (
-	Version = "dev"
-	Date    = "unknown"
+	Version = "0.2.0"
+	Date    = "2026-07-25"
 )
 
 // flagVars — holds parsed CLI flags
