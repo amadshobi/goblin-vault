@@ -15,23 +15,20 @@
 - CHANGELOG.md — project changelog (since initial commit)
 - Micro editor: `softwrap` enabled (long lines auto-wrap, no horizontal scroll)
 - Micro editor: filemanager plugin now opens tree at parent directory of current file (not CWD)
-
-### Changed
-- `refactor(fex)`: pecah `cmd/root.go` (989 baris) jadi modul domain (`tree_mode`, `bookmarks_mode`, `search_mode`, `find_mode`, `bindings`, `dialogs`, `filelist`) + extract `internal/util/escape.go` — Closes #1
-
-### Added
 - Foundation OSS: `LICENSE` (MIT), `.gitignore` hardened, `.editorconfig` untuk konsistensi formatting lintas editor
 - CI + hooks: `.github/workflows/ci.yml` (lint + build otomatis di PR/commit), `.github/hooks/` (pre-commit + pre-push), `scripts/install-hooks.sh` untuk install hooks secara relatif
 - `docs/history/` — direktori riwayat implementasi harian (`YYYY-MM-DD_nama.md`)
-- `check_syntax.sh` diperbaiki: filter `*.sh` + exclude `node_modules`
 
 ### Changed
 - `refactor(fex)`: pecah `cmd/root.go` (989 baris) jadi modul domain (`tree_mode`, `bookmarks_mode`, `search_mode`, `find_mode`, `bindings`, `dialogs`, `filelist`) + extract `internal/util/escape.go` — Closes #1
 - `.gitignore` diperbaiki: kritikal files (`AGENTS.md`, `kilo.jsonc`, `docs/rules/*`, `docs/skills/*`, `docs/update/*`) sekarang ter-track
 - Hook hardening: pre-commit menjalankan `doctor.sh` secara blocking, pre-push menjalankan `doctor.sh` + build `fex`
+- `refactor(fex)`: pecah `tree.go` (393 baris) jadi `tree_core.go` (240 baris, pure data model & filesystem helpers) + `tree_interactive.go` (157 baris, fzf-based selector) — Closes #2. Public API tetap, `go vet` & `go build` pass
+- Binary rename: `fe` → `fex` — konsisten dengan nama folder `fex/` & perintah `fex`, update `.gitignore` & rebuild ke `~/.local/bin/fex`
 
 ### Fixed
 - Git hooks menggunakan symlink relatif agar tetap jalan mesin berganti direktori repo
+- Rename Ctrl+R di fex: rename kedua gagal (file "ngelock") — fix hapus `sess.SetLastOpened(newPath)` dari rename case (bukan navigasi), perbaiki `findEntry` fallback dari `strings.Contains` ke `strings.HasSuffix` dengan separator boundary, surface error `os.Rename` ke stderr, hapus guard `lines[idx] != ""` di parser `--expect` fzf.go, ganti mekanisme rename dialog dari fzf-based ke stdin prompt langsung
 
 ## [0.1.0] - 2026-07-08
 

@@ -70,10 +70,11 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 			}
 			newPath := filepath.Join(filepath.Dir(target), newName)
 			if err := os.Rename(target, newPath); err != nil {
-				fmt.Fprintf(os.Stderr, "rename: %v\n", err)
+				fmt.Fprintf(os.Stderr, "\n⚠ rename error: %v\n", err)
+				fmt.Fprintf(os.Stderr, "  source: %s\n", target)
+				fmt.Fprintf(os.Stderr, "  target: %s\n", newPath)
 				continue
 			}
-			sess.SetLastOpened(newPath)
 
 		case "ctrl-d":
 			// Delete — exit fzf → Go dialog → loop

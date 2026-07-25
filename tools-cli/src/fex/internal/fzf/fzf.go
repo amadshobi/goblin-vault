@@ -156,7 +156,7 @@ func Run(input string, opts FzfOpts) (*Result, error) {
 	// Hanya consume kalo line beneran match salah satu expected key.
 	// Waktu user tekan Enter (normal select), --expect gak nulis key,
 	// jadi line pertama adalah selected item, BUKAN key.
-	if opts.Expected != "" && len(lines) > idx && lines[idx] != "" {
+	if opts.Expected != "" && len(lines) > idx {
 		expectedKeys := strings.Split(opts.Expected, ",")
 		isKey := false
 		for _, ek := range expectedKeys {

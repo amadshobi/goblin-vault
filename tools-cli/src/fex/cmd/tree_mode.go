@@ -134,9 +134,9 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 					return &entryLookup[i]
 				}
 			}
-			// Fallback: match by name (handle emoji encoding mismatch)
+			// Fallback: match by name (handle emoji encoding mismatch) — exact match di akhir line
 			for i := range entryLookup {
-				if entryLookup[i].name != "" && strings.Contains(line, entryLookup[i].name) {
+				if entryLookup[i].name != "" && (line == entryLookup[i].line || strings.HasSuffix(line, " "+entryLookup[i].name) || strings.HasSuffix(line, "/"+entryLookup[i].name)) {
 					return &entryLookup[i]
 				}
 			}
@@ -148,22 +148,30 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 		case "ctrl-r":
 			// Rename
 			if len(result.Selected) == 0 {
+				debugLog("tree: ctrl-r but no selection")
 				continue
 			}
 			entry := findEntry(result.Selected[0])
 			if entry == nil {
+				debugLog("tree: ctrl-r entry not found for %q", result.Selected[0])
 				continue
 			}
+			debugLog("tree: entry found path=%q name=%q", entry.path, entry.name)
 			newName := renameDialog(entry.path)
 			if newName == "" {
+				debugLog("tree: renameDialog returned empty for path=%q", entry.path)
 				continue
 			}
 			newPath := filepath.Join(filepath.Dir(entry.path), newName)
+			debugLog("tree: renaming %q -> %q", entry.path, newPath)
 			if err := os.Rename(entry.path, newPath); err != nil {
-				fmt.Fprintf(os.Stderr, "rename: %v\n", err)
+				debugLog("tree: os.Rename FAILED err=%v", err)
+				fmt.Fprintf(os.Stderr, "\n⚠ rename error: %v\n", err)
+				fmt.Fprintf(os.Stderr, "  source: %s\n", entry.path)
+				fmt.Fprintf(os.Stderr, "  target: %s\n", newPath)
 				continue
 			}
-			sess.SetLastOpened(newPath)
+			debugLog("tree: rename SUCCESS %q -> %q", entry.path, newPath)
 
 		case "ctrl-d":
 			// Delete

@@ -1,13 +1,27 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"civil/goblin-vault/tools-cli/src/fex/internal/fzf"
 )
+
+// debugLog — append debug log ke /tmp/fe-rename.log
+func debugLog(format string, args ...interface{}) {
+	f, err := os.OpenFile("/tmp/fe-rename.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	all := append([]interface{}{time.Now().Format("15:04:05.000")}, args...)
+	msg := fmt.Sprintf("[%s] "+format, all...)
+	f.WriteString(msg + "\n")
+}
 
 // confirmDeleteDialog — fzf confirm: user tekan Ctrl-d lagi buat confirm.
 func confirmDeleteDialog(path string) bool {
@@ -28,32 +42,25 @@ func confirmDeleteDialog(path string) bool {
 	return result.ExpectedKey == "ctrl-d"
 }
 
-// renameDialog — fzf input: edit nama di query, tekan Ctrl-r buat confirm.
+// renameDialog — stdin prompt: user ketik nama baru dan tekan Enter.
+// Lebih reliable dari fzf-based karena menghindari output order ambiguity
+// antara --expect dan --print-query di berbagai versi fzf.
 func renameDialog(path string) string {
 	oldName := filepath.Base(path)
+	fmt.Fprintf(os.Stderr, "✏ Rename '%s'\n> ", oldName)
 
-	opts := fzf.DefaultFzfOpts()
-	opts.Header = fmt.Sprintf("✏ Rename '%s' — Edit name in query, press Ctrl-r to confirm", oldName)
-	opts.Query = oldName
-	opts.Expected = "ctrl-r"
-	opts.PrintQuery = true
-	opts.NoSort = true
-	opts.BorderLabel = " ✏ Rename "
-	opts.Prompt = " ❯ "
-	opts.PreviewCmd = ""
-	opts.PreviewWindow = ""
-
-	result, err := fzf.Run(oldName+"\n", opts)
+	reader := bufio.NewReader(os.Stdin)
+	newName, err := reader.ReadString('\n')
 	if err != nil {
+		debugLog("renameDialog: read error oldName=%q err=%v", oldName, err)
 		return ""
 	}
-	// Enter (ExpectedKey kosong) atau Ctrl-r = confirm
-	if result.ExpectedKey != "ctrl-r" && result.ExpectedKey != "" {
-		return "" // cancelled via other key
-	}
-	newName := strings.TrimSpace(result.Query)
+
+	newName = strings.TrimSpace(newName)
+	debugLog("renameDialog: path=%q oldName=%q newName=%q same=%v empty=%v",
+		path, oldName, newName, newName == oldName, newName == "")
 	if newName == "" || newName == oldName {
-		return "" // no change
+		return ""
 	}
 	return newName
 }
