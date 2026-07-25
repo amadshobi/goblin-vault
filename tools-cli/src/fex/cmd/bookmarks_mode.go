@@ -52,20 +52,14 @@ func runBookmarksMode(sess *session.Session) error {
 
 		selected := result.Selected[0]
 
-		// Open file (tmux-aware)
-		if tmux.InTmux() {
-			if err := tmux.OpenFileInPane(selected); err != nil {
-				fmt.Fprintf(os.Stderr, "open: %v\n", err)
-			}
-		} else {
-			editor := ui.DetectEditor()
-			editorCmd := exec.Command(editor, selected)
-			editorCmd.Stdin = os.Stdin
-			editorCmd.Stdout = os.Stdout
-			editorCmd.Stderr = os.Stderr
-			if err := editorCmd.Run(); err != nil {
-				fmt.Fprintf(os.Stderr, "editor: %v\n", err)
-			}
+		// Open file (spawn editor di pane yang sama)
+		editor := ui.DetectEditor()
+		editorCmd := exec.Command(editor, selected)
+		editorCmd.Stdin = os.Stdin
+		editorCmd.Stdout = os.Stdout
+		editorCmd.Stderr = os.Stderr
+		if err := editorCmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "editor: %v\n", err)
 		}
 		// Don't set lastOpened — keep search input clean on re-render
 		// Loop: stay di bookmarks mode

@@ -1,27 +1,13 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"civil/goblin-vault/tools-cli/src/fex/internal/fzf"
 )
-
-// debugLog — append debug log ke /tmp/fe-rename.log
-func debugLog(format string, args ...interface{}) {
-	f, err := os.OpenFile("/tmp/fe-rename.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	all := append([]interface{}{time.Now().Format("15:04:05.000")}, args...)
-	msg := fmt.Sprintf("[%s] "+format, all...)
-	f.WriteString(msg + "\n")
-}
 
 // confirmDeleteDialog — fzf confirm: user tekan Ctrl-d lagi buat confirm.
 func confirmDeleteDialog(path string) bool {
@@ -42,23 +28,29 @@ func confirmDeleteDialog(path string) bool {
 	return result.ExpectedKey == "ctrl-d"
 }
 
-// renameDialog — stdin prompt: user ketik nama baru dan tekan Enter.
-// Lebih reliable dari fzf-based karena menghindari output order ambiguity
-// antara --expect dan --print-query di berbagai versi fzf.
+// renameDialog — fzf popup: pre-filled dengan nama lama, user edit & Enter.
+// Konsisten dengan newFileDialog / newFolderDialog — gak ada stdin prompt
+// yang bikin terminal kotor, popup di-render di atas fzf.
 func renameDialog(path string) string {
 	oldName := filepath.Base(path)
-	fmt.Fprintf(os.Stderr, "✏ Rename '%s'\n> ", oldName)
+	opts := fzf.DefaultFzfOpts()
+	opts.Header = "✏️ Edit filename, press Enter to confirm"
+	opts.Query = oldName // Pre-filled — user tinggal edit
+	opts.Expected = ""
+	opts.PrintQuery = true
+	opts.NoSort = true
+	opts.BorderLabel = " ✏️ Rename "
+	opts.Prompt = " ✏️ ❯ "
+	opts.PreviewCmd = ""
+	opts.PreviewWindow = ""
+	opts.Bindings = []string{"enter:print-query"}
 
-	reader := bufio.NewReader(os.Stdin)
-	newName, err := reader.ReadString('\n')
+	// Empty input (no candidates) — user ketik/edit di query box
+	result, err := fzf.Run("", opts)
 	if err != nil {
-		debugLog("renameDialog: read error oldName=%q err=%v", oldName, err)
 		return ""
 	}
-
-	newName = strings.TrimSpace(newName)
-	debugLog("renameDialog: path=%q oldName=%q newName=%q same=%v empty=%v",
-		path, oldName, newName, newName == oldName, newName == "")
+	newName := strings.TrimSpace(result.Query)
 	if newName == "" || newName == oldName {
 		return ""
 	}

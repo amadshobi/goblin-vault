@@ -19,8 +19,9 @@ go.work
 go.work.sum
 .build/
 
-# Go build artifact binary (jangan di-commit, build via go build ./cmd/fex)
+# Go build artifact binaries (jangan di-commit, build via go build ./cmd/fe)
 tools-cli/src/fex/fex
+tools-cli/src/fex/fe
 
 # Secrets / credentials — JANGAN DI-COMMIT (rule: no secret in repo)
 .env

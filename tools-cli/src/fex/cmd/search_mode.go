@@ -99,22 +99,14 @@ func runSearchMode(sess *session.Session, initialQuery string) error {
 			filePath = filepath.Join(dir, filePath)
 		}
 
-		// Open file at line
-		if tmux.InTmux() {
-			editor := ui.DetectEditor()
-			openCmd := fmt.Sprintf("%s '+%s' '%s'", editor, lineNum, filePath)
-			if err := tmux.SplitWindow("h", openCmd); err != nil {
-				fmt.Printf("%s:%s\n", filePath, lineNum)
-			}
-		} else {
-			editor := ui.DetectEditor()
-			editorCmd := exec.Command(editor, "+"+lineNum, filePath)
-			editorCmd.Stdin = os.Stdin
-			editorCmd.Stdout = os.Stdout
-			editorCmd.Stderr = os.Stderr
-			if err := editorCmd.Run(); err != nil {
-				fmt.Fprintf(os.Stderr, "editor: %v\n", err)
-			}
+		// Open file at line (spawn editor di pane yang sama)
+		editor := ui.DetectEditor()
+		editorCmd := exec.Command(editor, "+"+lineNum, filePath)
+		editorCmd.Stdin = os.Stdin
+		editorCmd.Stdout = os.Stdout
+		editorCmd.Stderr = os.Stderr
+		if err := editorCmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "editor: %v\n", err)
 		}
 		sess.SetLastOpened(filePath)
 

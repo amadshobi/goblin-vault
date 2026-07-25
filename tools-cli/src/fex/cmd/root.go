@@ -13,7 +13,6 @@ import (
 
 	"civil/goblin-vault/tools-cli/src/fex/internal/config"
 	"civil/goblin-vault/tools-cli/src/fex/internal/session"
-	"civil/goblin-vault/tools-cli/src/fex/internal/tmux"
 
 	"github.com/spf13/cobra"
 )
@@ -89,15 +88,7 @@ Usage:
 			return fmt.Errorf("session init: %w", err)
 		}
 
-		// ── 5. Setup tmux split (if in tmux) ──
-		if tmux.InTmux() {
-			if err := tmux.SplitOnStartup(cfg); err != nil {
-				// Non-fatal: user might not have tmux permissions
-				fmt.Fprintf(os.Stderr, "tmux setup warning: %v\n", err)
-			}
-		}
-
-		// ── 6. Dispatcher ──
+		// ── 5. Dispatcher ──
 		switch {
 		case flagTreeMode:
 			return runTreeMode(sess, absDir)

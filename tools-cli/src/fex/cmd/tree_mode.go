@@ -148,30 +148,23 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 		case "ctrl-r":
 			// Rename
 			if len(result.Selected) == 0 {
-				debugLog("tree: ctrl-r but no selection")
 				continue
 			}
 			entry := findEntry(result.Selected[0])
 			if entry == nil {
-				debugLog("tree: ctrl-r entry not found for %q", result.Selected[0])
 				continue
 			}
-			debugLog("tree: entry found path=%q name=%q", entry.path, entry.name)
 			newName := renameDialog(entry.path)
 			if newName == "" {
-				debugLog("tree: renameDialog returned empty for path=%q", entry.path)
 				continue
 			}
 			newPath := filepath.Join(filepath.Dir(entry.path), newName)
-			debugLog("tree: renaming %q -> %q", entry.path, newPath)
 			if err := os.Rename(entry.path, newPath); err != nil {
-				debugLog("tree: os.Rename FAILED err=%v", err)
 				fmt.Fprintf(os.Stderr, "\n⚠ rename error: %v\n", err)
 				fmt.Fprintf(os.Stderr, "  source: %s\n", entry.path)
 				fmt.Fprintf(os.Stderr, "  target: %s\n", newPath)
 				continue
 			}
-			debugLog("tree: rename SUCCESS %q -> %q", entry.path, newPath)
 
 		case "ctrl-d":
 			// Delete
@@ -200,19 +193,13 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 				continue
 			}
 			// Open the newly created file in editor
-			if tmux.InTmux() {
-				if err := tmux.OpenFileInPane(newPath); err != nil {
-					fmt.Fprintf(os.Stderr, "open: %v\n", err)
-				}
-			} else {
-				editor := ui.DetectEditor()
-				editorCmd := exec.Command(editor, newPath)
-				editorCmd.Stdin = os.Stdin
-				editorCmd.Stdout = os.Stdout
-				editorCmd.Stderr = os.Stderr
-				if err := editorCmd.Run(); err != nil {
-					fmt.Fprintf(os.Stderr, "editor: %v\n", err)
-				}
+			editor := ui.DetectEditor()
+			editorCmd := exec.Command(editor, newPath)
+			editorCmd.Stdin = os.Stdin
+			editorCmd.Stdout = os.Stdout
+			editorCmd.Stderr = os.Stderr
+			if err := editorCmd.Run(); err != nil {
+				fmt.Fprintf(os.Stderr, "editor: %v\n", err)
 			}
 			// Don't set lastOpened — keep search input clean on re-render
 
@@ -268,20 +255,14 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 				continue
 			}
 
-			// Open file
-			if tmux.InTmux() {
-				if err := tmux.OpenFileInPane(entry.path); err != nil {
-					fmt.Fprintf(os.Stderr, "open: %v\n", err)
-				}
-			} else {
-				editor := ui.DetectEditor()
-				editorCmd := exec.Command(editor, entry.path)
-				editorCmd.Stdin = os.Stdin
-				editorCmd.Stdout = os.Stdout
-				editorCmd.Stderr = os.Stderr
-				if err := editorCmd.Run(); err != nil {
-					fmt.Fprintf(os.Stderr, "editor: %v\n", err)
-				}
+			// Open file (spawn editor di pane yang sama)
+			editor := ui.DetectEditor()
+			editorCmd := exec.Command(editor, entry.path)
+			editorCmd.Stdin = os.Stdin
+			editorCmd.Stdout = os.Stdout
+			editorCmd.Stderr = os.Stderr
+			if err := editorCmd.Run(); err != nil {
+				fmt.Fprintf(os.Stderr, "editor: %v\n", err)
 			}
 			// Don't set lastOpened — keep search input clean on re-render
 		}
