@@ -1,7 +1,45 @@
 {
-  "description": "Goblin Privacy Shield - Secret & Sensitive Data Regex Masking Rules",
+  "description": "Goblin Privacy Shield - Secret & Sensitive Data Regex Masking Rules + Smart Model Fallback Router",
   "enabled": true,
   "redact_replacement": "[REDACTED_BY_GOBLIN_SHIELD]",
+  "fallback": {
+    "description": "Smart Model Fallback Router — otomatis chain-retry ketika upstream 410/429/5xx",
+    "enabled": true,
+    "trigger_statuses": [410, 429],
+    "trigger_status_5xx": true,
+    "_comment_schema": "PRIMARY MODEL (Key) -> FALLBACK CHAIN ARRAY (Value in Priority Order)",
+    "fallback_models": {
+      "// PRIMARY: Claude Sonnet 4.6": "--------------------------------------------------",
+      "google-antigravity/claude-sonnet-4-6": [
+        "openai-codex/gpt-5.5",
+        "google-antigravity/gemini-3.1-pro",
+        "google-antigravity/gemini-3.6-flash"
+      ],
+      "// PRIMARY: Claude Opus 4.6": "--------------------------------------------------",
+      "google-antigravity/claude-opus-4-6": [
+        "openai-codex/gpt-5.5",
+        "google-antigravity/gemini-3.1-pro"
+      ],
+      "// PRIMARY: Gemini 3.6 Flash": "--------------------------------------------------",
+      "google-antigravity/gemini-3.6-flash": [
+        "google-antigravity/gemini-3.5-flash",
+        "ollama-cloud/minimax-m3"
+      ],
+      "// PRIMARY: GPT 5.5": "--------------------------------------------------",
+      "openai-codex/gpt-5.5": [
+        "google-antigravity/gemini-3.1-pro",
+        "google-antigravity/gemini-3.6-flash"
+      ]
+    },
+    "default_fallback": [
+      "google-antigravity/gemini-3.6-flash",
+      "google-antigravity/gemini-3.5-flash"
+    ],
+    "endpoints": [
+      "/v1/chat/completions",
+      "/v1/messages"
+    ]
+  },
   "patterns": [
     {
       "name": "OpenAI / Generic API Keys",

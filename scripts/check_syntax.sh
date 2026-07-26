@@ -26,7 +26,7 @@ errors=0
 get_files_to_check() {
     local ext_pattern="$1"
     if $STAGED_ONLY; then
-        git diff --cached --name-only 2>/dev/null | grep -E "$ext_pattern" || true
+        git diff --cached --name-only 2>/dev/null | grep -E "\.(${ext_pattern})$" || true
     else
         find "$ROOT_DIR" -type f \( -name "*.$ext_pattern" \) -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null
     fi
