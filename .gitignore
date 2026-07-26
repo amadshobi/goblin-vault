@@ -23,6 +23,11 @@ go.work.sum
 tools-cli/src/fex/fex
 tools-cli/src/fex/fe
 
+.gitignore
+docs/update/
+opencode.jsonc
+.opencode/
+
 # Secrets / credentials — JANGAN DI-COMMIT (rule: no secret in repo)
 .env
 .env.*

@@ -1,207 +1,220 @@
 # Coding Style — Goblin Vault
 
-Panduan gaya kode wajib untuk seluruh kontributor dan AI agent yang beroperasi di
-**Goblin Vault**. Aturan ini turunan langsung dari hasil eksplorasi struktur repo
-(`tools-cli/`, `scripts/`, `configs/`) dan selaras dengan prinsip engineering:
-modularity, scalability, maintainability, reusable.
+Panduan ini berisi aturan coding yang relatif stabil untuk **Goblin Vault**.
+Isinya sengaja dibuat sebagai **policy**, bukan audit report, bukan refactor backlog,
+dan bukan snapshot kondisi repo hari ini.
 
-Setiap aturan punya badge severity:
-- 🔴 **CRITICAL** — wajib, pelanggaran = blocker
-- 🟠 **IMPORTANT** — kuat disarankan, review akan flags
-- 🟢 **RECOMMENDED** — konvensi, baik diikuti
+Kalau ada temuan spesifik seperti file yang perlu di-refactor, command yang bermasalah,
+atau status jumlah script yang sudah lulus check, taruh di issue, changelog, atau
+catatan history — jangan di file ini.
 
-Bahasa dokumentasi: Indonesia (utama), English untuk istilah teknis.
+## Severity
+
+- 🔴 **MUST** — wajib, pelanggaran bisa jadi blocker.
+- 🟠 **SHOULD** — sangat disarankan, boleh dilanggar dengan alasan jelas.
+- 🟢 **MAY** — preferensi/convention, ikuti kalau tidak ada alasan kuat.
+
+Bahasa dokumentasi utama adalah Indonesia. Istilah teknis boleh memakai English kalau
+lebih natural, misalnya `workflow`, `session`, `config`, `validation`, `error handling`,
+dan `dependency`.
 
 ---
 
-## 1. Immutability 🔴 CRITICAL
+## 1. Prinsip Umum 🔴 MUST
 
-SELALU buat objek baru, JANGAN mutasi objek yang sudah ada:
+- Prioritaskan kode yang stabil, jelas, dan mudah di-debug.
+- Perubahan harus kecil, fokus, dan reversible bila memungkinkan.
+- Jangan menambah abstraction hanya karena terlihat rapi; abstraction harus mengurangi
+  duplikasi nyata atau memperjelas boundary.
+- Jangan menyembunyikan side-effect. Kalau fungsi membaca file, menulis file, menjalankan
+  command eksternal, atau mengubah state, buat efeknya jelas dari nama, lokasi, atau flow.
+- Hindari magic behavior yang membuat CLI sulit diprediksi.
 
-```
-// SALAH: modify(original, field, value) → mengubah original in-place
-// BENAR: update(original, field, value) → returns new copy dengan perubahan
-```
+---
 
-Rationale: immutable data mencegah hidden side-effect, mempermudah debug, dan
-memungkinkan concurrency yang aman.
+## 2. Data & Immutability 🟠 SHOULD
+
+Immutability adalah default yang baik, terutama untuk transformasi config, JSON/JSONC,
+state TUI, dan data yang diterima dari luar fungsi.
 
 ### Aturan
-- Fungsi transformasi HARUS mengembalikan salinan baru, bukan memutasi argumen.
-- DILARANG mutasi array/objek via `Array.prototype.splice`, `Object.assign(target, src)`
-  secara in-place, reassign field objek eksternal.
-- Gunakan spread / `.map` / `.filter` / structured clone untuk menghasilkan copy.
 
-### Contoh (dari repo — perlu diperbaiki)
+- Jangan mutasi input object/array dari caller kecuali kontraknya jelas.
+- Untuk transformasi data, prefer return object/array baru.
+- Mutasi lokal boleh kalau scoped, tidak keluar dari fungsi, dan membuat kode lebih sederhana.
+- Hindari global mutable state kecuali benar-benar diperlukan dan lifecycle-nya jelas.
+
+### Contoh
+
 ```js
-// src/ocm/utils.js — 🚨 MUTASI BERBAHAYA
-parsedLines.splice(idx, 1);                 // salah: mutasi array original
-parsedLines.splice(insertIndex, 0, ...newSection);
+// Prefer: return copy baru
+const nextItems = items.filter((item) => item.enabled);
 
-// BENAR
-const next = parsedLines.filter((_, i) => i !== idx);
-const inserted = [...next.slice(0, insertIndex), ...newSection, ...next.slice(insertIndex)];
-return inserted;
+// Boleh: mutasi lokal yang tidak bocor keluar fungsi
+const lines = [];
+for (const item of nextItems) {
+  lines.push(formatItem(item));
+}
 ```
 
-### Referensi yang sudah baik (ikuti pola ini)
-- `src/ocm/` → `updateAgentField`, `updateNestedField` mengembalikan salinan JSONC baru.
-- Go → `sess := session.New(cfg, absDir)` (value/copy semantics).
+Intinya: yang dilarang bukan “semua mutasi”, tapi mutasi yang bikin side-effect
+tersembunyi dan susah dilacak.
 
 ---
 
-## 2. File Size & Organization 🟠 IMPORTANT
+## 3. File Organization 🟠 SHOULD
 
-MANY SMALL FILES > FEW LARGE FILES.
+- Prefer many small focused files daripada satu file raksasa.
+- Satu file sebaiknya punya satu tanggung jawab utama.
+- File yang terlalu besar perlu dipertimbangkan untuk dipecah, tapi ukuran bukan satu-satunya
+  metric. Cohesion lebih penting daripada angka baris.
+- Fungsi panjang boleh dipecah kalau sudah mencampur parsing, validation, rendering,
+  side-effect, dan error handling dalam satu tempat.
+- Organisasi modul sebaiknya berdasarkan domain/feature, bukan semata-mata tipe file.
 
-### Aturan
-- **Maksimal 800 baris per file.** Target ideal: 200–400 baris.
-- Fungsi maksimal ~50 baris; jika lebih, pecah.
-- Pisahkan concern berdasar domain/feature, bukan tipe.
-- Ekstrak utilities dari modul raksasa.
+Rule praktis:
 
-### File yang WAJIB direfactor (temuan explore)
-| File | Baris | Tindakan |
-|------|-------|----------|
-| `src/fex/cmd/root.go` | 989 | pecah ke `cmd/modes/*.go` |
-| `src/ocm/utils.js` | 587 | pecah ke `parser.js`, `models.js`, `update.js` |
-| `src/fex/internal/tree/tree.go` | 393 | pecah ke `tree_core.go` + `tree_interactive.go` |
-
-### Contoh yang sudah baik
-- `src/ocm/ui/dashboard.js` (95), `src/ocm/ui/menu.js` (150), `src/fex/cmd/backup.go` (169).
+- 🟢 200–400 baris: biasanya nyaman.
+- 🟠 >800 baris: perlu alasan jelas atau rencana pemecahan.
+- 🔴 File besar yang banyak concern dan sulit dites: refactor.
 
 ---
 
-## 3. Error Handling 🔴 CRITICAL
+## 4. Error Handling 🔴 MUST
 
-Tangani error eksplisit di setiap level. JANGAN telan error diam-diam.
+- Tangani error secara eksplisit.
+- Jangan silent swallow error tanpa fallback yang jelas.
+- Error internal boleh detail; pesan ke user harus tetap ramah dan actionable.
+- CLI harus punya exit code yang masuk akal.
+- Saat wrapping error, tambahkan konteks supaya sumber masalah bisa dilacak.
 
-### Aturan
-- Semua fungsi yang bisa gagal mengembalikan / propagate error deskriptif.
-- Kode berhadapan UI: tampilkan pesan ramah user + exit code jelas.
-- Shell script yang berubah state: WAJIB `set -euo pipefail`.
-- Hindari `2>/dev/null` yang menutupi error asli — log atau handle eksplisit.
+### Go
 
-### Contoh (ikuti pola ini)
 ```go
-// Go — wrap dengan konteks
-if err := sess.SetCwd(absDir); err != nil {
-    return fmt.Errorf("session init: %w", err)
+if err := runTask(); err != nil {
+    return fmt.Errorf("run task: %w", err)
 }
 ```
+
+### JavaScript
+
 ```js
-// JS TUI — pesan ramah + exit
-if (err) {
-    p.cancel(color.red(err.message));
-    process.exit(1);
+try {
+  await runTask();
+} catch (err) {
+  console.error(`Gagal menjalankan task: ${err.message}`);
+  process.exit(1);
 }
 ```
+
+### Shell
+
+Script yang mengubah state wajib fail-fast:
+
 ```sh
-# Shell — fail-fast
 set -euo pipefail
 ```
 
-### ⚠️ Yang perlu diperbaiki
-- `src/fex/internal/ui/detect.go` → `DetectPreviewCmd()` terlalu sering `2>/dev/null`,
-  menutupi kegagalan command eksternal.
+`2>/dev/null` boleh dipakai untuk probing command eksternal, selama ada fallback atau
+handling yang jelas. Yang dilarang adalah menutup error lalu lanjut seolah semua aman.
 
 ---
 
-## 4. Input Validation 🟠 IMPORTANT
+## 5. Input Validation 🔴 MUST
 
-Validasi di system boundary. JANGAN percaya input eksternal.
+Validasi semua input di boundary sistem.
 
-### Aturan
-- Validasi argumen/flag user sebelum diproses (fail fast dengan pesan jelas).
-- Command eksternal: cek keberadaan via `exec.LookPath` / `os.Stat` sebelum eksekusi.
-- Validasi tipe data (mis. `isNaN(Number(val))` untuk field numerik).
-- API response / file content → schema/shape check sebelum digunakan.
+- Validasi argumen CLI sebelum diproses.
+- Validasi path sebelum dipakai untuk read/write.
+- Validasi shape config/file sebelum diasumsikan benar.
+- Validasi dependency command eksternal sebelum dieksekusi.
+- Fail fast dengan pesan yang jelas.
 
-### Contoh (sudah baik)
-```go
-// Go — cek sebelum operasi
-if _, statErr := os.Stat(path); statErr != nil {
-    return fmt.Errorf("path tidak ditemukan: %w", statErr)
-}
-```
-```js
-// JS — validasi tipe
-if (isNaN(Number(val))) {
-    p.cancel(color.red("Step harus berupa angka"));
-    return;
-}
-```
+Contoh boundary yang wajib divalidasi:
+
+- CLI flags dan positional arguments.
+- File path dari user.
+- JSON/JSONC/YAML config.
+- Environment variables.
+- Output command eksternal.
+- Response API.
 
 ---
 
-## 5. Naming Conventions 🟢 RECOMMENDED
+## 6. Shell Scripting Standards 🔴 MUST
 
-Konsisten per bahasa (sudah dominan di repo, pertahankan):
-
-| Bahasa | Function/Attr | File | Catatan |
-|--------|---------------|------|---------|
-| Go | `camelCase` | `snake_case.go` | ikuti idiom Go |
-| JS | `camelCase` | `lowercase.js` | `parseArgs`, `cmd_add` |
-| Shell | `snake_case` | `snake_case.sh` | `clear_last_lines`, `add_to_rc` |
-
-- Nama jelas & deskriptif; hindari singkatan ambigu.
-- Hindari variabel generik yang membingungkan (mis. `p` vs `utils` dipakai bergantian).
+- Script yang mengubah state wajib memakai `set -euo pipefail`.
+- Quote semua path dan argumen dinamis.
+- Command destruktif seperti `rm -rf`, `git reset --hard`, dan overwrite file massal wajib
+  punya guard atau validasi target.
+- Hindari eval kecuali benar-benar tidak ada opsi lain.
+- Kalau script membutuhkan Bash/Zsh-specific feature, sebutkan lewat shebang dan komentar.
+- Prefer command yang predictable daripada alias/function dari environment user.
 
 ---
 
-## 6. Reusable Utilities 🟠 IMPORTANT
+## 7. External Commands & Dependencies 🟠 SHOULD
 
-Jangan duplikasi logika. Ekstrak ke modul bersama.
-
-### Aturan
-- Fungsi yang dipakai >1 tempat → pindah ke shared helper.
-- Buat `helpers/` di luar `src/fex` agar reusable lintas tool.
-- Untuk command eksternal, gunakan satu wrapper (`runExternal`, `runTmux`) dengan
-  error handling seragam, bukan panggilan `exec` tersebar.
-
-### Duplikasi yang harus diekstrak (temuan explore)
-- `clearLastLines` (ANSI cleanup) — diduplikasi di beberapa script TUI.
-- Fzf bindings builder: `buildFindModeBindings` vs `buildTreeModeBindings` (mirip).
-- Format/warna TUI diulang di `gh-blin` & `ocm`.
+- Cek dependency command eksternal sebelum dipakai.
+- Berikan pesan install/fallback yang jelas kalau dependency tidak tersedia.
+- Jangan menambah dependency besar tanpa alasan yang terukur.
+- Bungkus pemanggilan command eksternal di helper kalau dipakai berulang atau butuh behavior
+  error handling yang konsisten.
 
 ---
 
-## 7. Shell Scripting ISO 🔴 CRITICAL
+## 8. Naming & Formatting 🟢 MAY
 
-### Aturan
-- Script di `scripts/` & `bin/` yang berubah state → WAJIB `set -euo pipefail`.
-- Guard command destruktif (`rm -rf`, `git reset --hard`) dengan konfirmasi/cek.
-- Escape shell aman untuk argumen dinamis (`shEscape()`, `tmux split-window` dgn
-  `shell=escape`) agar tidak inject/break.
-- Usahakan POSIX-compliant bila memungkinkan; jika butuh Bash/Zsh, sebutkan eksplisit
-  (shebang + comment).
+Ikuti idiom bahasa masing-masing.
 
-### Status repo
-- 11/15 script sudah `set -euo pipefail` ✅
-- `src/fex/helpers/fzf-pick.sh`, `tmux-split.sh` sudah pakai escape aman ✅
+| Bahasa | Function/Variable | File | Catatan |
+|--------|-------------------|------|---------|
+| Go | `camelCase` / exported `PascalCase` | `snake_case.go` | Ikuti idiom Go |
+| JS | `camelCase` | `lowercase.js` | Nama harus jelas dan searchable |
+| Shell | `snake_case` | `snake_case.sh` | Cocok untuk function dan variable |
 
----
+Aturan umum:
 
-## 8. Language & Emoji Convention 🟢 RECOMMENDED
-
-- **Bahasa**: Indonesia untuk instruksi/prompt UI; English untuk term teknis
-  (session, workspace, agent, credential).
-- **Emoji**: gunakan konsisten. Tentukan set emoji per konteks (mode fzf 🔍/🌳,
-  file 📁, issue 🐙) dan jangan acak di tiap TUI.
-- Komentar: deskriptif, jelaskan "why" bukan "what".
-- Dokumentasikan perubahan di `CHANGELOG.md` bila berdampak ke user.
+- Nama harus menjelaskan maksud, bukan cuma tipe.
+- Hindari singkatan ambigu.
+- Komentar menjelaskan “why”, bukan mengulang “what”.
+- Konsisten dengan style file sekitar sebelum memperkenalkan style baru.
 
 ---
 
-## Pre-Commit Checklist
+## 9. CLI UX 🟠 SHOULD
 
-- [ ] Tidak ada mutasi objek existing (aturan #1)
-- [ ] File ≤ 800 baris, fungsi ≤ 50 baris (aturan #2)
-- [ ] Error tidak di-swallow, shell pakai `set -euo pipefail` (aturan #3, #7)
-- [ ] Input divalidasi di boundary (aturan #4)
-- [ ] Tidak ada duplikasi utilitas (aturan #6)
-- [ ] `bash scripts/doctor.sh` & `bash scripts/check_syntax.sh` hijau
+Goblin Vault berisi banyak CLI dan TUI, jadi UX terminal harus dijaga.
+
+- Output normal jangan terlalu noisy.
+- Error harus jelas, ramah, dan kasih next step bila memungkinkan.
+- Help text harus sesuai behavior aktual.
+- Prompt interaktif harus aman untuk dibatalkan.
+- Jangan membuat automation yang melakukan destructive action tanpa konfirmasi atau guard.
+- Emoji boleh dipakai untuk memperjelas konteks, tapi jangan sampai mengganggu parsing output.
 
 ---
 
-> *Dibuat oleh Goblin, dirawat oleh Goblin, untuk kedamaian terminal Goblin. 🍻👹*
+## 10. Documentation & Changelog 🟠 SHOULD
+
+- Update dokumentasi kalau behavior user-facing berubah.
+- Update `CHANGELOG.md` untuk perubahan yang berdampak ke pengguna tools.
+- Jangan menaruh audit report, backlog, atau status repo temporer di coding-style.
+- Catatan temuan spesifik sebaiknya masuk ke issue, `docs/history/`, atau dokumen planning
+  yang memang lifecycle-nya sementara.
+
+---
+
+## Pre-Change Checklist
+
+- [ ] Perubahan kecil dan fokus.
+- [ ] Input user/config tervalidasi.
+- [ ] Error handling eksplisit dan tidak silent swallow.
+- [ ] Shell script state-changing memakai `set -euo pipefail`.
+- [ ] Path dan argumen dinamis di-quote dengan aman.
+- [ ] Tidak ada secret/credential masuk repo.
+- [ ] Dokumentasi/changelog di-update bila behavior user-facing berubah.
+
+---
+
+> *Coding style harus jadi kompas, bukan museum snapshot repo. 🍻👹*

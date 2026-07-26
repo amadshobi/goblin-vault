@@ -24,6 +24,10 @@ goblin-vault/
 │   ├── bin/                # Wrapper executable (ocm, gh-blin)
 │   ├── src/                # Source code CLI
 │   │   ├── fex/            # File Explorer (Go) — binary fex
+│   │   │   ├── cmd/        # Command handlers (root.go, search_mode.go, tree_mode.go)
+│   │   │   ├── docs/       # Dokumentasi fex
+│   │   │   ├── helpers/    # Helper utilities (fzf-pick.sh, tmux-split.sh, dll)
+│   │   │   └── internal/   # Internal packages (config, fzf, session, tmux, tree, ui, util)
 │   │   ├── gh-blin/        # GitHub Assistant TUI (Node)
 │   │   ├── goblin-control/ # Control center core (Node)
 │   │   ├── notes/          # Notes utility (Node)
@@ -42,13 +46,11 @@ goblin-vault/
 ├── docs/                   # Rules, skills, update notes & history
 │   ├── history/            # Riwayat implementasi harian (YYYY-MM-DD_nama.md)
 │   ├── rules/              # Coding style & operational rules
-│   ├── skills/             # Skill definitions (golang-pro, js-mastery, shell-scripting)
 │   └── update/             # Catatan rilis fitur (fex v4, full-foundation draft)
 ├── .github/                # CI workflows + git hooks
 │   ├── workflows/          # GitHub Actions (ci.yml)
 │   └── hooks/              # pre-commit & pre-push hooks
 ├── AGENTS.md               # Panduan agent & kontributor
-├── kilo.jsonc              # Konfigurasi Kilo (instructions + skills path)
 ├── README.md               # Dokumentasi publik utama
 └── CHANGELOG.md            # Riwayat perubahan
 ```

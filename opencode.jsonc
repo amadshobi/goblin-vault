@@ -2,10 +2,5 @@
     "$schema": "https://opencode.ai/config.json",
     "instructions": [
         "./docs/rules/coding-style.md",
-    ],
-    "skills": {
-        "paths": [
-            "./docs/skills",
-        ],
-    }
+    ]
 }

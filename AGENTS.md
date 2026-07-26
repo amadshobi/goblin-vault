@@ -27,20 +27,26 @@ goblin-vault/
 ├── tools-cli/              # Pusat persenjataan CLI
 │   ├── bin/                # Executable binaries/wrappers siap pakai (fe, ocm, gh-blin)
 │   ├── src/                # Source code mentah aplikasi CLI
-│   │   ├── fex/            # File Explorer (fzf + tmux)
-│   │   ├── gh-blin/        # GitHub Assistant TUI
-│   │   ├── goblin-control/ # Control center core
-│   │   ├── notes/          # Notes utility
-│   │   └── ocm/            # OpenCode Configurator TUI
+│   │   ├── fex/            # File Explorer (Go) — fzf + tmux
+│   │   │   ├── cmd/        # Command handlers (root.go, search_mode.go, tree_mode.go)
+│   │   │   ├── docs/       # Dokumentasi fex
+│   │   │   ├── helpers/    # Helper utilities (fzf-pick.sh, tmux-split.sh, dll)
+│   │   │   └── internal/   # Internal packages (config, fzf, session, tmux, tree, ui, util)
+│   │   ├── gh-blin/        # GitHub Assistant TUI (Node.js)
+│   │   ├── goblin-control/ # Control center core (Node.js)
+│   │   ├── notes/          # Notes utility (Node.js)
+│   │   └── ocm/            # OpenCode Configurator TUI (Node.js)
 │   ├── tests/              # Laboratorium uji coba (scratchpad)
 │   └── docs/               # Dokumentasi dan manual
 ├── scripts/                # Utilities shell & js (doctor, install, worktree, dll)
 ├── configs/                # Konfigurasi editor & tooling (micro, nvim)
-├── docs/                   # Rules, skills, dan update notes
+├── docs/                   # Rules, skills, update notes & history
+│   ├── history/            # Riwayat implementasi harian (YYYY-MM-DD_nama.md)
 │   ├── rules/              # Aturan coding & operasional
-│   ├── skills/             # Skill definitions (terdaftar di kilo.jsonc)
-│   └── update/             # Catatan rilis fitur
-├── kilo.jsonc              # Konfigurasi Kilo (skills path -> ./docs/skills/)
+├── .github/                # CI workflows + git hooks
+│   ├── workflows/          # GitHub Actions (ci.yml)
+│   └── hooks/              # pre-commit & pre-push hooks
+├── AGENTS.md               # Panduan agent & kontributor
 ├── README.md               # Dokumentasi publik utama
 └── CHANGELOG.md            # Riwayat perubahan
 ```
