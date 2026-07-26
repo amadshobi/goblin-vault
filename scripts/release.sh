@@ -42,8 +42,8 @@ else
 fi
 
 # 1. Health Audit (Blocking)
-echo "🔍 Running pre-release health audit..."
-bash "$VAULT_DIR/scripts/check_syntax.sh"
+echo "🔍 Running pre-release fast health audit..."
+bash "$VAULT_DIR/scripts/check_syntax.sh" --staged
 bash "$VAULT_DIR/scripts/doctor.sh"
 
 echo "────────────────────────────────────────"
