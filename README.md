@@ -39,6 +39,7 @@ goblin-vault/
 │   ├── doctor.sh           # Health & dependency checker
 │   ├── install.sh          # Setup PATH & symlink config
 │   ├── install-hooks.sh    # Install git hooks (pre-commit/pre-push)
+│   ├── release.sh          # Modular SemVer release engine (vault & per-tool)
 │   └── worktree.sh         # Git worktree manager
 ├── configs/                # Konfigurasi editor & tooling
 │   ├── micro/              # Source-of-truth config micro editor

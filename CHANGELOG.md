@@ -3,6 +3,7 @@
 ## [v0.3.0] - 2026-07-26
 
 ### Added
+- `scripts/release.sh` — Modular SemVer release engine untuk Goblin Vault yang mendukung automated version bump, pre-release health audit, git tagging, dan per-tool release targets (`vault`, `fex`, `gn`, `zf`, `ocm`).
 - `gn pool` — Dynamic Account Pool Switching (`pool-manager.ts` & `gn.sh`) untuk isolation proxy & bypass SQLite DB via `OMP_AUTH_BROKER_ACCOUNT_POOL_FILE`.
 - `gn` Visual Engine Update — Header ASCII Art `GN PROXY` Unicode Shade Block, `gum style` double border, spinner loading `_gn_spin`, dan Goblin Roast Error handling.
 - `tools-cli/src/gn/` & `tools-cli/bin/gn` — Goblin Nexus CLI port dari `~/.shell/` untuk benchmark, model routing, dan agent model switcher.
