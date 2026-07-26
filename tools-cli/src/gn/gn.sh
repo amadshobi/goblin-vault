@@ -108,7 +108,7 @@ show_help() {
  ▄▀▀▀ █▀▀▄   █▀▀█ █▀▀7 █▀▀█ █  █ █  █
  █  █ █  █   █▀▀█ █▀▀  █  █ ▀▀▄█ ▀▀▄█
  ▀▀▀▀ ▀  ▀   █    ▀    ▀▀▀▀ ▀▀▀▀ ▀▀▀▀
- Goblin Nexus Proxy CLI v2.0 • Powered by OMP Engine
+ Goblin Nexus Proxy CLI v2.1.0 • Powered by OMP Engine
 
 USAGE
   $ gn <command> [options]
