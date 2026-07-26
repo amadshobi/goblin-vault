@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.3.5] - 2026-07-26
+
+### Added
+- `shield-interceptor.ts` Smart Fallback Array Chain — Dukungan `fallback_models` berbasis array candidates (`Primary -> Array[Fallback1, Fallback2]`) dengan multi-level sequential retry saat upstream mengembalikan status HTTP `410`, `429`, atau `5xx`.
+- Header Debug `X-Goblin-Shield-Fallback` — Menampilkan metadata jejak fallback model pada response headers yang dikirimkan ke client/OpenCode.
+- Fast Staged Linter — Flag `--staged` di `check_syntax.sh` untuk hanya memeriksa staged files dan optimasi `pre-commit` hook agar commit berjalan super kilat.
+- Dokumentasi Prosedur Release — Menambahkan panduan rilis otomatis `scripts/release.sh` ke `AGENTS.md` & `README.md`.
+
 ## [v0.3.0] - 2026-07-26
 
 ### Added
