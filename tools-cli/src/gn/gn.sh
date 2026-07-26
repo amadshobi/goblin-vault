@@ -108,7 +108,7 @@ show_help() {
  ▄▀▀▀ █▀▀▄   █▀▀█ █▀▀7 █▀▀█ █  █ █  █
  █  █ █  █   █▀▀█ █▀▀  █  █ ▀▀▄█ ▀▀▄█
  ▀▀▀▀ ▀  ▀   █    ▀    ▀▀▀▀ ▀▀▀▀ ▀▀▀▀
- Goblin Nexus Proxy CLI v2.1.0 • Powered by OMP Engine
+ Goblin Nexus Proxy CLI v2.2.0 • Powered by OMP Engine
 
 USAGE
   $ gn <command> [options]
@@ -117,6 +117,11 @@ CORE COMMANDS
   ping, p [target]       ⚡ Auto-discover & ping latency model AI (default: opencode.jsonc)
   bench, b [target]      📊 Latency & generation throughput benchmark (tok/s)
   status, s [provider]   📈 Cek sisa kuota & usage per-akun terdaftar di broker
+  burn, bu [flags]       🔥 Token & cost burn tracker (REST broker + sparkline history)
+    --history            Tampilkan sparkline usage history
+    --json               Output JSON mentah (untuk piping/scripting)
+    --days <int>         Window history (default: 7)
+    --provider <id>      Filter 1 provider (e.g. google-antigravity)
 
 ROUTING & POOL
   pool, po <provider>    🔁 Dynamic account pool generator & isolation proxy
@@ -155,6 +160,11 @@ EXAMPLES
   # 2. Account Quota & Status
   $ gn status                            Cek sisa kuota semua akun AI
   $ gn status google-antigravity         Cek kuota khusus provider Google Antigravity
+
+  # 2b. Token & Cost Burn
+  $ gn burn                              Token burn per client (REST broker)
+  $ gn burn --history --days 14          Dengan sparkline history 14 hari
+  $ gn burn --json                       Raw JSON untuk piping/scripting
 
   # 3. Dynamic Account Pool & Isolation
   $ gn pool google-antigravity           Bangun pool dari semua kredensial Antigravity
@@ -196,12 +206,28 @@ case "${1:-}" in
         run_with_optional_picker bench "$@"
         ;;
     status|s)
+        shift || true
         _gn_header "ACCOUNT QUOTA & USAGE"
         _gn_info "Fetching live usage limit across all authenticated accounts..."
         echo ""
-        if ! omp usage ${2:+"--provider=$2"}; then
+        # Pipe JSON output through the formatter for visual status dots,
+        # disabled-credentials warnings, and capacity summary.
+        if ! omp usage --json ${1:+"--provider=$1"} \
+                | bun "$GN_DIR/status-formatter.ts" ${1:+"--provider=$1"}; then
             _gn_roast_err "Gagal mengambil data kuota dari OMP broker!" "Pastikan service omp-broker aktif (`gn restart`)."
         fi
+        ;;
+    burn|bu)
+        shift
+        # In --json mode skip header so the output stays pipe-clean.
+        json_mode=false
+        for arg in "$@"; do
+            if [ "$arg" = "--json" ]; then json_mode=true; break; fi
+        done
+        if ! $json_mode; then
+            _gn_header "TOKEN & COST BURN TRACKER"
+        fi
+        bun "$GN_DIR/burn.ts" "$@"
         ;;
     import|i)
         _gn_header "CREDENTIAL IMPORTER"
