@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Launcher wrapper for fex (File Explorer) in Goblin Vault
+
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export GOBLIN_VAULT_ROOT="$(cd "$BIN_DIR/../.." && pwd)"
+
+FEX_BIN="$HOME/.local/bin/fex"
+
+if [ -x "$FEX_BIN" ]; then
+    exec "$FEX_BIN" "$@"
+else
+    # Fallback to local build if binary not found in ~/.local/bin
+    LOCAL_BUILD="$GOBLIN_VAULT_ROOT/tools-cli/src/fex/fex"
+    if [ -x "$LOCAL_BUILD" ]; then
+        exec "$LOCAL_BUILD" "$@"
+    else
+        echo "🔨 Building fex Go binary..."
+        (cd "$GOBLIN_VAULT_ROOT/tools-cli/src/fex" && go build -o "$FEX_BIN" ./cmd/fex/) 2>/dev/null
+        if [ -x "$FEX_BIN" ]; then
+            exec "$FEX_BIN" "$@"
+        else
+            echo "❌ Gagal menjalankan fex. Pastikan 'go' terinstall dan jalankan 'bash scripts/install.sh'"
+            exit 1
+        fi
+    fi
+fi

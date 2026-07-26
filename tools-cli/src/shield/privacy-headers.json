@@ -1,0 +1,10 @@
+{
+  "description": "Goblin Privacy Shield - Forced Outbound Zero-Data Retention & Opt-Out Headers",
+  "headers": {
+    "X-No-Log": "true",
+    "X-Data-Protection": "opt-out",
+    "X-Zero-Data-Retention": "1",
+    "Cache-Control": "no-store, no-cache",
+    "Pragma": "no-cache"
+  }
+}

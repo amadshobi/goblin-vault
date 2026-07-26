@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Added
+- `tools-cli/src/gn/` & `tools-cli/bin/gn` — Goblin Nexus CLI port dari `~/.shell/` untuk benchmark, model routing, dan agent model switcher.
+- `tools-cli/src/shield/` — Goblin Privacy Shield Interceptor (`Bun.serve` proxy proxy) untuk masking regex API keys/secrets.
+- `tools-cli/src/zf/` & `tools-cli/bin/zf` — Zoxide & Tmux Navigation Engine port dari `~/.shell/` yang kini bersatu di `tools-cli`.
+- `scripts/shell/ins.sh` — Universal interactive package searcher & installer (APT, NPM, Bun, PIP, dll).
+- `scripts/shell/sup.sh` — Smart parallel package updater dengan interactive multi-select.
+
+### Changed
+- `fex`: rename entrypoint Go module dari `cmd/fe` ke `cmd/fex` untuk konsistensi penamaan binary & launcher script `tools-cli/bin/fex`.
 - `docs/rules/coding-style.md` — panduan gaya kode wajib (immutability, file-size, error handling, input validation, naming, reusable utils, shell ISO, language/emoji)
 - `AGENTS.md` — diekspansi dari 12 baris buzzword menjadi panduan lengkap (struktur repo, guideline engineering, coding standards, agent responsibilities, konvensi, do/don't)
 - `README.md` — di-overhaul agar sync dengan struktur aktual (tambah `goblin-control`, `notes`, `configs/nvim`, `docs/skills`, `docs/rules`; perbaiki penjelasan `fex` sebagai Go binary & panduan build/PATH)

@@ -18,7 +18,7 @@ trap 'rm -rf "$BUILD_DIR"' EXIT
 BIN="$BUILD_DIR/fex"
 
 echo "🔨 goblin pre-push: building fex..."
-if ! (cd "$REPO_ROOT/tools-cli/src/fex" && go build -o "$BIN" ./cmd/fe); then
+if ! (cd "$REPO_ROOT/tools-cli/src/fex" && go build -o "$BIN" ./cmd/fex); then
   echo "❌ build fex gagal — push dibatalkan." >&2
   exit 1
 fi

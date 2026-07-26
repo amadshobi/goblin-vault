@@ -111,7 +111,7 @@ Usage:
 
 // ── Execute ───────────────────────────────────────────────────
 
-// Execute — entry point dipanggil dari cmd/fe/main.go
+// Execute — entry point dipanggil dari cmd/fex/main.go
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

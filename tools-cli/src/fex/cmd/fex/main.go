@@ -1,9 +1,9 @@
 // == CORE MISSION ==============================================
 // fex — File Explorer with fzf + tmux split (Hybrid Go + Bash)
-// Letak: cmd/fe/main.go
+// Letak: cmd/fex/main.go
 //
 // Entry point Go. Cobra-based CLI framework.
-// Panggil via: go run ./cmd/fe/ -- atau build + jalankan binary
+// Panggil via: go run ./cmd/fex/ -- atau build + jalankan binary
 // ==============================================================
 package main
 

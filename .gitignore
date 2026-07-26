@@ -13,13 +13,12 @@ node_modules/
 *.exe
 *.test
 *.out
-bin/
 vendor/
 go.work
 go.work.sum
 .build/
 
-# Go build artifact binaries (jangan di-commit, build via go build ./cmd/fe)
+# Go build artifact binaries
 tools-cli/src/fex/fex
 tools-cli/src/fex/fe
 
@@ -47,3 +46,4 @@ credentials.json
 *~
 *-build-temp
 *.tmp
+*.pid

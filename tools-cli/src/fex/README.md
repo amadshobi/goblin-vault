@@ -56,7 +56,7 @@ Born from the ashes of the original bash-only `fe` v1→v3. Migrated to Go becau
 ```bash
 # Build from source
 cd tools-cli/src/fex
-go build -o fex ./cmd/fe/
+go build -o fex ./cmd/fex/
 ./fex
 
 # Or just use the launcher
@@ -104,7 +104,7 @@ fex --help             # Full help
 ```
 bin/fex               → Shell launcher (detek PATH → exec / build from source)
 src/fex/
-├── cmd/fe/main.go    → Entry point
+├── cmd/fex/main.go    → Entry point
 ├── cmd/root.go       → Cobra CLI + 4 mode dispatcher
 ├── internal/
 │   ├── config/       → Viper YAML config loader

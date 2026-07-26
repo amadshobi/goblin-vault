@@ -122,6 +122,21 @@ Otak di balik orchestration harian goblin.
 Utility notes berbasis markdown (Node.js) — `create.js` + `storage.js` untuk
 manajemen catatan cepat dari terminal.
 
+### 6. 🧙‍♂️ `gn` (Goblin Nexus CLI) & 🛡️ `Privacy Shield`
+CLI manager terintegrasi untuk benchmarking, model routing, account status, dan interceptor privacy proxy filter (`Bun.serve`) untuk membersihkan data sensitif (API keys, PATs) sebelum dikirim ke AI provider.
+*Wrapper executable:* `tools-cli/bin/gn`.
+*Interceptor source:* `tools-cli/src/shield/`.
+
+### 7. 📂 `zf` (Zoxide & Tmux Navigation Engine)
+Alat navigasi direktori berbasis zoxide + fzf yang terintegrasi dengan Tmux & auto-launcher tools (`fex`, `gh-blin`, `lazygit`, `opencode`, `code`).
+*Wrapper executable:* `tools-cli/bin/zf`.
+*Source directory:* `tools-cli/src/zf/`.
+
+### 8. 🐚 Shell Custom Utilities (`ins`, `sup`)
+Fungsi scripting tingkat lanjut untuk daily terminal workflow:
+* `ins` (`scripts/shell/ins.sh`): Universal package installer dengan interactive live registry search (APT, NPM, Bun, PIP, dll).
+* `sup` (`scripts/shell/sup.sh`): Parallel smart updater dengan granular multi-select package updater.
+
 ---
 
 ## ⚙️ Setup & Integrasi

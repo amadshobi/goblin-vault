@@ -63,8 +63,10 @@ echo "────────────────────────�
 echo "🐹 Building fex (Go file explorer)..."
 FEX_SRC="$ROOT_DIR/tools-cli/src/fex"
 if command -v go &>/dev/null; then
-    cd "$FEX_SRC" && go build -o "$HOME/.local/bin/fex" ./cmd/fe/ 2>&1 && \
-        echo -e "  [${GREEN}OK${NC}] fex built & installed to ~/.local/bin/fex" || \
+    mkdir -p "$HOME/.local/bin" "$TOOLS_BIN"
+    cd "$FEX_SRC" && go build -o "$HOME/.local/bin/fex" ./cmd/fex/ 2>&1 && \
+        cp "$HOME/.local/bin/fex" "$TOOLS_BIN/fex" 2>/dev/null || true && \
+        echo -e "  [${GREEN}OK${NC}] fex built & installed to ~/.local/bin/fex & $TOOLS_BIN/fex" || \
         echo -e "  [${RED}ERR${NC}] fex build gagal!"
 else
     echo -e "  [${YELLOW}WARN${NC}] Go tidak ditemukan — fex tidak bisa di-build."
