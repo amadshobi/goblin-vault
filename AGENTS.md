@@ -144,6 +144,9 @@ Aturan delegasi: selalu sertakan Task, Konteks (file/struktur/constraint), dan R
 - **Branch/Worktree**: gunakan `scripts/worktree.sh` untuk isolasi pekerjaan.
 - **Git hooks & CI**: repo dilengkapi `scripts/install-hooks.sh` (pre-commit + pre-push
   blocking) dan GitHub Actions `.github/workflows/ci.yml` (lint + build otomatis).
+- **Prosedur Release**: gunakan `scripts/release.sh` untuk automated release (terintegrasi dengan health audit & git tagging).
+  - `./scripts/release.sh vault <patch|minor|major>` untuk rilis versi global repo.
+  - `./scripts/release.sh <tool_name> <patch|minor|major>` (e.g. `fex`, `gn`, `zf`, `ocm`) untuk rilis khusus per-tool.
 
 ---
 
