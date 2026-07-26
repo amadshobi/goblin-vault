@@ -13,55 +13,102 @@ echo "────────────────────────�
 
 errors=0
 
+STAGED_ONLY=false
+if [ "${1:-}" = "--staged" ] || [ "${1:-}" = "-s" ]; then
+    STAGED_ONLY=true
+fi
+
+echo "😈 Goblin Syntax Checker starting..."
+echo "────────────────────────────────────────"
+
+errors=0
+
+get_files_to_check() {
+    local ext_pattern="$1"
+    if $STAGED_ONLY; then
+        git diff --cached --name-only 2>/dev/null | grep -E "$ext_pattern" || true
+    else
+        find "$ROOT_DIR" -type f \( -name "*.$ext_pattern" \) -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null
+    fi
+}
+
 # 1. Check Bash/Shell files
 echo "🐚 Checking Bash files..."
-while IFS= read -r file; do
-    if [[ -f "$file" ]]; then
-        # Cek shebang
-        if head -n 1 "$file" | grep -qE '^#!.*(bash|sh)'; then
-            if ! bash -n "$file"; then
-                echo "❌ Bash syntax error: $file"
-                errors=$((errors + 1))
-            else
-                echo "   ✅ $file"
+shell_files=$(get_files_to_check "sh|bash")
+if [ -n "$shell_files" ]; then
+    while IFS= read -r file; do
+        if [[ -f "$file" ]]; then
+            if head -n 1 "$file" | grep -qE '^#!.*(bash|sh)'; then
+                if ! bash -n "$file"; then
+                    echo "❌ Bash syntax error: $file"
+                    errors=$((errors + 1))
+                else
+                    echo "   ✅ $file"
+                fi
             fi
         fi
-    fi
-done < <(find "$TOOLS_DIR" -type f \( -name "*.sh" -o -name "*.bash" \) 2>/dev/null)
+    done <<< "$shell_files"
+else
+    echo "   ℹ️  No shell files to check."
+fi
 
 echo "────────────────────────────────────────"
 
 # 1b. Check Go files
 echo "🐹 Checking Go files..."
-for dir in "$TOOLS_DIR"/src/*/; do
-    mod_file="${dir}go.mod"
-    if [[ -f "$mod_file" ]]; then
-        tool_name=$(basename "$dir")
-        if ! (cd "$dir" && go vet ./... 2>&1); then
-            echo "❌ Go vet error: $tool_name"
-            errors=$((errors + 1))
-        else
-            echo "   ✅ $tool_name (go vet passed)"
-        fi
+if $STAGED_ONLY; then
+    staged_go=$(git diff --cached --name-only 2>/dev/null | grep -E '\.go$' || true)
+    if [ -n "$staged_go" ]; then
+        for dir in "$TOOLS_DIR"/src/*/; do
+            mod_file="${dir}go.mod"
+            if [[ -f "$mod_file" ]]; then
+                tool_name=$(basename "$dir")
+                if ! (cd "$dir" && go vet ./... 2>&1); then
+                    echo "❌ Go vet error: $tool_name"
+                    errors=$((errors + 1))
+                else
+                    echo "   ✅ $tool_name (go vet passed)"
+                fi
+            fi
+        done
+    else
+        echo "   ℹ️  No Go files staged."
     fi
-done
+else
+    for dir in "$TOOLS_DIR"/src/*/; do
+        mod_file="${dir}go.mod"
+        if [[ -f "$mod_file" ]]; then
+            tool_name=$(basename "$dir")
+            if ! (cd "$dir" && go vet ./... 2>&1); then
+                echo "❌ Go vet error: $tool_name"
+                errors=$((errors + 1))
+            else
+                echo "   ✅ $tool_name (go vet passed)"
+            fi
+        fi
+    done
+fi
 
 echo "────────────────────────────────────────"
 
 # 2. Check Javascript files
 echo "📦 Checking JavaScript files..."
-while IFS= read -r file; do
-    if [[ -f "$file" ]]; then
-        if ! node --check "$file" &>/dev/null; then
-            echo "❌ JS syntax error: $file"
-            # Jalankan ulang tanpa redirect untuk memperlihatkan letak error-nya
-            node --check "$file" || true
-            errors=$((errors + 1))
-        else
-            echo "   ✅ $file"
+js_files=$(get_files_to_check "js")
+if [ -n "$js_files" ]; then
+    while IFS= read -r file; do
+        if [[ -f "$file" ]]; then
+            if ! node --check "$file" &>/dev/null; then
+                echo "❌ JS syntax error: $file"
+                node --check "$file" || true
+                errors=$((errors + 1))
+            else
+                echo "   ✅ $file"
+            fi
         fi
-    fi
-done < <(find "$TOOLS_DIR" -type f -name "*.js" -not -path "*/node_modules/*" 2>/dev/null)
+    done <<< "$js_files"
+else
+    echo "   ℹ️  No JS files to check."
+fi
 
 echo "────────────────────────────────────────"
 

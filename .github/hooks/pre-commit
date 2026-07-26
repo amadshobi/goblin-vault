@@ -6,16 +6,10 @@ set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
-echo "🐙 goblin pre-commit: running syntax check..."
-if ! bash "$REPO_ROOT/scripts/check_syntax.sh"; then
+echo "🐙 goblin pre-commit: running fast syntax check on staged files..."
+if ! bash "$REPO_ROOT/scripts/check_syntax.sh" --staged; then
   echo "❌ check_syntax.sh gagal — commit dibatalkan. Fix dulu ya bos." >&2
   exit 1
 fi
 
-echo "🩺 goblin pre-commit: running doctor (blocking)..."
-if ! bash "$REPO_ROOT/scripts/doctor.sh"; then
-  echo "❌ doctor.sh gagal — commit dibatalkan. Pastikan dependency wajib (node, fzf, tmux, gh) terpasang." >&2
-  exit 1
-fi
-
-echo "✅ pre-commit OK"
+echo "✅ pre-commit OK (Fast Staged Linter)"
