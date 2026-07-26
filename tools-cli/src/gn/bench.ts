@@ -117,17 +117,16 @@ function printSummaryLineup(available: AvailableModel[]) {
     console.log("⚠️  Tidak ada model yang 100% OK / Siap Pakai.");
     return;
   }
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log(`🎯 [LINEUP MODEL SIAP PAKAI] (${available.length} Model Ready)`);
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("  PROVIDER             | FULL MODEL ID                                   | SPEED / LATENCY");
-  console.log("  ─────────────────────┼─────────────────────────────────────────────────┼──────────────────");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("  FULL MODEL ID                                     | SPEED / LATENCY");
+  console.log("  ──────────────────────────────────────────────────┼─────────────────");
   for (const item of available) {
-    const provider = item.id.split("/")[0] || "unknown";
     const speedInfo = item.speed ? `${item.speed} tok/s` : `⚡ ${item.latency}ms`;
-    console.log(`  ${provider.padEnd(20)} | ${item.id.padEnd(47)} | ${speedInfo}`);
+    console.log(`  ${item.id.padEnd(48)} | ${speedInfo}`);
   }
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 }
 
 function writeSelectFile(available: AvailableModel[]) {
@@ -148,22 +147,22 @@ async function runPing(models: ModelItem[], act: string, tgt: string) {
   }
 
   console.log(`\n⚡ [Goblin Nexus Ping] Testing ${models.length} models...\n`);
-  console.log("  STATUS        | MODEL NAME                   | PROXY MODEL ID                             | LATENCY");
-  console.log("  ──────────────┼──────────────────────────────┼────────────────────────────────────────────┼──────────");
+  console.log("  STATUS        | MODEL ID                                         | LATENCY");
+  console.log("  ──────────────┼──────────────────────────────────────────────────┼──────────");
 
   const isTTY = process.stdout.isTTY;
   const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
   const available: AvailableModel[] = [];
   const logLines: string[] = [];
-  logLines.push("  STATUS        | MODEL NAME                   | PROXY MODEL ID                             | LATENCY");
-  logLines.push("  ──────────────┼──────────────────────────────┼────────────────────────────────────────────┼──────────");
+  logLines.push("  STATUS        | MODEL ID                                         | LATENCY");
+  logLines.push("  ──────────────┼──────────────────────────────────────────────────┼──────────");
 
   for (const m of models) {
     let i = 0;
     let timer: NodeJS.Timeout | undefined;
     if (isTTY) {
       timer = setInterval(() => {
-        process.stdout.write(`\r${frames[i++ % frames.length]} [PINGING] ${m.name} (${m.id})...`);
+        process.stdout.write(`\r${frames[i++ % frames.length]} [PINGING] ${m.id}...`);
       }, 80);
     }
 
@@ -188,16 +187,16 @@ async function runPing(models: ModelItem[], act: string, tgt: string) {
 
       let line = "";
       if (res.ok) {
-        line = `  ✅ [200 OK]      ${m.name.padEnd(28)} | ${m.id.padEnd(42)} | ⚡ ${elapsed}ms`;
+        line = `  ✅ [200 OK]      ${m.id.padEnd(48)} | ⚡ ${elapsed}ms`;
         available.push({ provider: m.id.split("/")[0], id: m.id, name: m.name, latency: elapsed });
       } else if (res.status === 410) {
-        line = `  ❌ [410 GONE]    ${m.name.padEnd(28)} | ${m.id.padEnd(42)} | 💀 Retired Upstream`;
+        line = `  ❌ [410 GONE]    ${m.id.padEnd(48)} | 💀 Retired Upstream`;
       } else if (res.status === 403) {
-        line = `  🔒 [403 PRO]     ${m.name.padEnd(28)} | ${m.id.padEnd(42)} | 💳 Requires Sub`;
+        line = `  🔒 [403 PRO]     ${m.id.padEnd(48)} | 💳 Requires Sub`;
       } else if (res.status === 429) {
-        line = `  ⚠️  [429 RATELIMIT] ${m.name.padEnd(24)} | ${m.id.padEnd(42)} | ⏳ Quota Depleted`;
+        line = `  ⚠️  [429 LIMIT]   ${m.id.padEnd(48)} | ⏳ Quota Depleted`;
       } else {
-        line = `  💥 [${res.status} FAIL]    ${m.name.padEnd(25)} | ${m.id.padEnd(42)} | 🛑 Error HTTP ${res.status}`;
+        line = `  💥 [${res.status} FAIL]    ${m.id.padEnd(48)} | 🛑 HTTP ${res.status}`;
       }
       console.log(line);
       logLines.push(line);
@@ -206,8 +205,8 @@ async function runPing(models: ModelItem[], act: string, tgt: string) {
       const elapsed = Date.now() - start;
       const isTimeout = e.name === "AbortError" || e.name === "TimeoutError";
       const line = isTimeout
-        ? `  ⏱️  [TIMEOUT]     ${m.name.padEnd(27)} | ${m.id.padEnd(42)} | 🐢 >${REQUEST_TIMEOUT_MS / 1000}s (gugur)`
-        : `  💥 [OFFLINE]     ${m.name.padEnd(27)} | ${m.id.padEnd(42)} | 🔌 Gateway Down`;
+        ? `  ⏱️  [TIMEOUT]     ${m.id.padEnd(48)} | 🐢 >${REQUEST_TIMEOUT_MS / 1000}s (gugur)`
+        : `  💥 [OFFLINE]     ${m.id.padEnd(48)} | 🔌 Gateway Down`;
       console.log(line);
       logLines.push(line);
     }
@@ -302,7 +301,8 @@ async function runBench(models: ModelItem[], act: string, tgt: string) {
 async function main() {
   const models = await getModels(target);
   if (models.length === 0) {
-    console.log(`⚠️  Tidak ada model ditemukan untuk target '${target}'.`);
+    console.log(`🔥 [Goblin Roast] Kagak ada model yang bisa ditemukan buat target '${target}', BOSS!`);
+    console.log(`💡 Hint: Pastikan gateway port 4000 aktif ('gn restart') atau config opencode.jsonc lo gak kosong.`);
     // Still write empty list so picker knows there's nothing
     writeSelectFile([]);
     process.exit(1);
