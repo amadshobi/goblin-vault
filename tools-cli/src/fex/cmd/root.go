@@ -50,8 +50,9 @@ Usage:
   fex --tree             Tree navigation (folder explorer)
   fex --bookmarks        Browse bookmarked files
   fex -h, --help         Show help`,
-	SilenceUsage:  true,
-	SilenceErrors: true,
+	SilenceUsage:   true,
+	SilenceErrors:  true,
+	Args:           cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// ── 1. Load config ──
 		cfg, err := config.Load()
