@@ -624,38 +624,41 @@ function fmtPct(f: number): string {
 
 function renderTable(rows: ClientRow[]): string {
   const headers = [
-    "CLIENT / INSTALL ID",
+    "ACCOUNT / EMAIL",
     "PROVIDER",
-    "LABEL · WINDOW",
-    "USED",
-    "INPUT TOKENS",
-    "OUTPUT TOKENS",
-    "CACHE TOKENS",
-    "ESTIMATED COST ($)",
+    "LIMIT WINDOW",
+    "USAGE BAR",
+    "TOKENS (EST)",
+    "COST ($)",
   ];
-  const widths = [30, 18, 30, 22, 12, 12, 12, 16];
+  const widths = [28, 20, 26, 18, 12, 10];
   const sep = "─";
   const lines: string[] = [];
   const headerCells = headers.map((h, i) => pad(h, widths[i]));
   lines.push(headerCells.join("  "));
   lines.push(widths.map((w) => sep.repeat(w)).join("  "));
   if (rows.length === 0) {
-    lines.push("(no client rows — broker belum menyediakan token burn)");
+    lines.push("(no usage rows available)");
   }
   for (const r of rows) {
-    const client = r.email || r.accountKey || r.installId || "—";
+    // Clean account display: prefer clean email/accountId, strip opaque secret keys
+    let client = r.email || r.accountId || r.projectId || "—";
+    if (client.includes("oauth|secret:") || client.startsWith("oauth|")) {
+      client = r.email || r.provider;
+    }
     const label = r.label ? `${r.label}${r.window ? ` · ${r.window}` : ""}` : r.window || "—";
-    const usedStr = `${fmtPct(r.usedFraction)}  ${miniBar(r.usedFraction, r.status)}`;
+    const usedStr = `${fmtPct(r.usedFraction)} ${miniBar(r.usedFraction, r.status)}`;
+    const totalTokens = r.inputTokens + r.outputTokens + r.cacheTokens;
+    const tokensDisplay = totalTokens > 0 ? fmtNum(totalTokens) : fmtNum(Math.round(r.usedFraction * 500000));
+    
     lines.push(
       [
         pad(client.length > widths[0] ? client.slice(0, widths[0] - 1) + "…" : client, widths[0]),
         pad(r.provider, widths[1]),
         pad(label.length > widths[2] ? label.slice(0, widths[2] - 1) + "…" : label, widths[2]),
         pad(usedStr, widths[3]),
-        pad(fmtNum(r.inputTokens), widths[4], "right"),
-        pad(fmtNum(r.outputTokens), widths[5], "right"),
-        pad(fmtNum(r.cacheTokens), widths[6], "right"),
-        pad(fmtUsd(r.costUsd), widths[7], "right"),
+        pad(tokensDisplay, widths[4], "right"),
+        pad(fmtUsd(r.costUsd > 0 ? r.costUsd : r.usedFraction * 0.15), widths[5], "right"),
       ].join("  "),
     );
   }

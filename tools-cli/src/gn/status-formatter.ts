@@ -213,15 +213,15 @@ function renderLimitRow(metadata: AnyRecord, limit: LimitRow): string[] {
   const bar = renderProgressBar(limit.usedFraction, limit.status);
   const dot = dotFor(limit.status, limit.usedFraction);
   const pct = fmtPct(limit.usedFraction);
-  const label = limit.label || limit.windowLabel || "—";
+  const label = (limit.label || limit.windowLabel || "—").padEnd(20);
   const resetPart = limit.resetsAt && Number.isFinite(limit.resetsAt)
-    ? `${paint("·", "dim")} resets in ${paint(countdownTo(limit.resetsAt), "dim")}`
-    : "";
+    ? `${paint("·", "dim")} resets in ${paint(countdownTo(limit.resetsAt).padEnd(10), "dim")}`
+    : "".padEnd(24);
   const statusTag = limit.status && limit.status !== "ok"
     ? ` ${paint(`(${limit.status})`, dot.color)}`
     : "";
   return [
-    `    ${paint(dot.glyph, dot.color)} ${paint(label, "bold").padEnd(22)} ${bar}  ${paint(pct.padStart(5), dot.color)} used ${resetPart}${statusTag}`,
+    `    ${paint(dot.glyph, dot.color)} ${paint(label, "bold")} ${bar}  ${paint(pct.padStart(6), dot.color)} used ${resetPart}${statusTag}`,
   ];
 }
 
