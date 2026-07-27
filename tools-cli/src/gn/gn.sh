@@ -132,7 +132,7 @@ show_help() {
  ▄▀▀▀ █▀▀▄   █▀▀█ █▀▀7 █▀▀█ █  █ █  █
  █  █ █  █   █▀▀█ █▀▀  █  █ ▀▀▄█ ▀▀▄█
  ▀▀▀▀ ▀  ▀   █    ▀    ▀▀▀▀ ▀▀▀▀ ▀▀▀▀
- Goblin Nexus Proxy CLI v2.6.1 • Powered by OMP Engine
+ Goblin Nexus Proxy CLI v2.6.2 • Powered by OMP Engine
 
 USAGE
   $ gn <command> [subcommand_or_flags]
@@ -359,7 +359,9 @@ case "${1:-}" in
             bun "$GN_DIR/pool-manager.ts" "${pm_args[@]}"
 
         if ! $serve_mode; then
-            echo "ℹ️  pool ready but gateway NOT started. Use --serve to launch it."
+            systemctl --user set-environment OMP_AUTH_BROKER_ACCOUNT_POOL_FILE="$POOL_FILE" 2>/dev/null || true
+            systemctl --user restart omp-gateway.service 2>/dev/null || true
+            _gn_success "Account pool active & background gateway service restarted with isolated account(s)!"
             exit 0
         fi
 
