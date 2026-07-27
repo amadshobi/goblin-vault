@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.3.11] - 2026-07-27
+
+### Added
+- **`gn` Dual-Level Help System**:
+  - Subcommand Deep Help Manual (`help-formatter.sh`) untuk `ping`, `bench`, `status`, `burn`, `pool`, `shield`, `agent`.
+  - Konsistensi akses help via `gn <command> --help`, `gn <command> -h`, atau `gn help <command>`.
+  - Tampilan help estetik dengan visual header, deskripsi target, detail flag, dan contoh penggunaan praktis.
+
 ## [v0.3.10] - 2026-07-27
 
 ### Added
