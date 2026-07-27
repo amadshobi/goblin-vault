@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- `gn status` Visual Upgrade (`status-formatter.ts`) — Progress bar 28-karakter (`█`/`░`) berwarna ANSI per window akun dengan format `● <label>  <bar>  <pct>% used · resets in <countdown>`. Threshold warna: red `●` ≥ 95% atau `exhausted/expired`, yellow `●` ≥ 70%, green `●` < 70%, gray `○` untuk no-data, red `✗` untuk `disabled`. Render per-akun dengan account header `▸ email@…` lalu baris-baris window di bawahnya, capacity footer tetap di bawah. Normalisasi `usedFraction`/`windowLabel`/`resetsAt` dari shape OMP v17.1.4.
+
+### Added
+- `gn burn` (`burn.ts`) Data Enrichment — Saat `/v1/usage/clients` kosong, otomatis aggregate dari `/v1/usage/history` + `/v1/usage` snapshot broker + fallback `omp usage --json`. Tabel kini berisi baris-baris real (email, provider, label, window, usedFraction, mini-bar 12-char). Dedup berlapis: exact-key (provider+identity+label), lalu `consolidateOpaqueIdentities` untuk merge snapshot/history dengan identity opaque berbeda (mis. github-copilot: snapshot email="goblin-vault" vs history accountKey="oauth|secret:..."). Note jujur "broker v17.1.4 belum expose /v1/usage/clients — data di-enrich dari history + snapshot". Counter `sources contributed` & `contributed` JSON field menampilkan raw contributions per source.
+
 ## [v0.3.6] - 2026-07-26
 
 ### Added

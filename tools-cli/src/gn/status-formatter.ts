@@ -33,6 +33,7 @@ interface LimitRow {
   usedFraction: number;
   status: string;
   window?: AnyRecord;
+  resetsAt?: number | null;
 }
 
 interface ReportRow {
@@ -84,6 +85,7 @@ function normalizeLimit(raw: AnyRecord): LimitRow {
     const limit = Number(amount.limit ?? 0);
     usedFraction = limit > 0 ? used / limit : 0;
   }
+  const resetsAt = Number(window.resetsAt ?? raw.resetsAt ?? NaN);
   return {
     id: (raw.id as string) ?? "unknown",
     label: (raw.label as string) ?? "—",
@@ -91,6 +93,7 @@ function normalizeLimit(raw: AnyRecord): LimitRow {
     usedFraction,
     status: (raw.status as string) ?? "unknown",
     window,
+    resetsAt: Number.isFinite(resetsAt) ? resetsAt : null,
   };
 }
 
@@ -114,13 +117,40 @@ function paint(s: string, color: keyof typeof C): string {
 
 // ─── Status dot ───────────────────────────────────────────────
 
-function dotFor(status: string): { glyph: string; color: keyof typeof C } {
+const BAR_WIDTH = 28;
+
+function colorForFraction(fraction: number, status?: string): keyof typeof C {
+  const s = (status ?? "").toLowerCase();
+  if (s === "exhausted" || s === "blocked" || s === "expired") return "red";
+  if (s === "disabled") return "red";
+  if (!Number.isFinite(fraction)) return "gray";
+  if (fraction >= 0.95) return "red";
+  if (fraction >= 0.7) return "yellow";
+  if (fraction >= 0.01) return "green";
+  return "gray";
+}
+
+function dotFor(status: string, fraction: number = 0): { glyph: string; color: keyof typeof C } {
+  const color = colorForFraction(fraction, status);
   const s = status.toLowerCase();
-  if (s === "exhausted" || s === "blocked" || s === "expired") return { glyph: "✗", color: "red" };
-  if (s === "warning" || s === "degraded" || s === "throttled") return { glyph: "○", color: "yellow" };
-  if (s === "ok" || s === "active" || s === "healthy") return { glyph: "●", color: "green" };
-  if (s === "unknown") return { glyph: "○", color: "gray" };
-  return { glyph: "●", color: "cyan" };
+  if (s === "exhausted" || s === "blocked" || s === "expired" || s === "disabled") {
+    return { glyph: "✗", color: "red" };
+  }
+  if (color === "gray") return { glyph: "○", color: "gray" };
+  if (color === "yellow") return { glyph: "●", color: "yellow" };
+  if (color === "red") return { glyph: "●", color: "red" };
+  return { glyph: "●", color: "green" };
+}
+
+function renderProgressBar(fraction: number, status: string): string {
+  const color = colorForFraction(fraction, status);
+  const f = Number.isFinite(fraction) ? Math.max(0, Math.min(1, fraction)) : 0;
+  const filled = Math.round(f * BAR_WIDTH);
+  const empty = BAR_WIDTH - filled;
+  const filledStr = "█".repeat(filled);
+  const emptyStr = "░".repeat(empty);
+  // Split so empty portion renders dim and filled renders in status color.
+  return `${paint(filledStr, color)}${paint(emptyStr, "dim")}`;
 }
 
 // ─── Time helper ──────────────────────────────────────────────
@@ -138,6 +168,19 @@ function ago(ms: number): string {
   return `${Math.floor(d / 30)}mo ago`;
 }
 
+function countdownTo(ms: number): string {
+  const diff = ms - Date.now();
+  if (!Number.isFinite(diff) || diff <= 0) return "resetting…";
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ${m % 60}m`;
+  const d = Math.floor(h / 24);
+  return `${d}d ${h % 24}h`;
+}
+
 // ─── Renderers ────────────────────────────────────────────────
 
 function fmtPct(f: number): string {
@@ -146,25 +189,40 @@ function fmtPct(f: number): string {
 }
 
 function renderProviderHeader(provider: string, accountCount: number, hasError: boolean, hasDisabled: boolean): string[] {
-  const dot = hasError ? dotFor("blocked") : hasDisabled ? dotFor("warning") : dotFor("ok");
+  const color = hasError ? "red" : hasDisabled ? "yellow" : "green";
+  const glyph = hasError ? "✗" : hasDisabled ? "○" : "●";
   const lines: string[] = [];
-  const accent = `${dot.glyph} ${provider}`;
+  const accent = `${glyph} ${provider}`;
   const accountTag = accountCount > 0 ? `  ${accountCount} account${accountCount > 1 ? "s" : ""}` : "";
-  lines.push(`${paint(accent, dot.color)}${paint(accountTag, "dim")}`);
+  lines.push(`${paint(accent, color)}${paint(accountTag, "dim")}`);
   return lines;
 }
 
-function renderLimitRow(metadata: AnyRecord, limit: LimitRow): string {
+function renderAccountHeader(metadata: AnyRecord): string {
   const email =
     (metadata.email as string | undefined) ??
     (metadata.accountId as string | undefined) ??
     (metadata.projectId as string | undefined) ??
     "—";
-  const d = dotFor(limit.status);
+  const plan = (metadata.plan as string | undefined) ?? (metadata.planType as string | undefined);
+  const tag = plan ? ` ${paint(`[${plan}]`, "dim")}` : "";
+  return `  ${paint("▸", "dim")} ${paint(email, "bold")}${tag}`;
+}
+
+function renderLimitRow(metadata: AnyRecord, limit: LimitRow): string[] {
+  const bar = renderProgressBar(limit.usedFraction, limit.status);
+  const dot = dotFor(limit.status, limit.usedFraction);
   const pct = fmtPct(limit.usedFraction);
-  const windowLabel = limit.windowLabel || (limit.window?.label as string | undefined) || "—";
-  const tail = `(${windowLabel})`;
-  return `  ${paint("▸", "dim")} ${padRight(email, 32)} ${paint(d.glyph, d.color)}  ${pct.padStart(5)} used ${paint(tail, "dim")}`;
+  const label = limit.label || limit.windowLabel || "—";
+  const resetPart = limit.resetsAt && Number.isFinite(limit.resetsAt)
+    ? `${paint("·", "dim")} resets in ${paint(countdownTo(limit.resetsAt), "dim")}`
+    : "";
+  const statusTag = limit.status && limit.status !== "ok"
+    ? ` ${paint(`(${limit.status})`, dot.color)}`
+    : "";
+  return [
+    `    ${paint(dot.glyph, dot.color)} ${paint(label, "bold").padEnd(22)} ${bar}  ${paint(pct.padStart(5), dot.color)} used ${resetPart}${statusTag}`,
+  ];
 }
 
 function renderDisabled(d: DisabledRow): string {
@@ -255,44 +313,53 @@ async function main(): Promise<void> {
     exit(2);
   }
 
-  // Group reports by provider
-  const grouped = new Map<string, ReportRow[]>();
+// Group reports by provider. Each Report is one account (identified by
+  // metadata.email/accountId/projectId). We keep ALL reports per provider
+  // so we can render per-account progress bars; OMP emits many duplicate
+  // snapshots for the same account, so we dedupe by picking the freshest
+  // per (provider, identityKey).
+  const latestPerAccount = new Map<string, ReportRow>();
   for (const r of payload.reports ?? []) {
     if (providerFilter && r.provider !== providerFilter) continue;
-    const arr = grouped.get(r.provider) ?? [];
+    const meta = (r.metadata as AnyRecord) ?? {};
+    const idKey =
+      (meta.email as string | undefined) ??
+      (meta.accountId as string | undefined) ??
+      (meta.projectId as string | undefined) ??
+      `${r.provider}::${r.fetchedAt}`;
+    const key = `${r.provider}::${idKey}`;
+    const existing = latestPerAccount.get(key);
+    if (!existing || (r.fetchedAt ?? 0) > (existing.fetchedAt ?? 0)) {
+      latestPerAccount.set(key, r);
+    }
+  }
+
+  // Group by provider for header rendering
+  const accountsByProvider = new Map<string, ReportRow[]>();
+  for (const [key, r] of latestPerAccount) {
+    const prov = r.provider;
+    const arr = accountsByProvider.get(prov) ?? [];
     arr.push(r);
-    grouped.set(r.provider, arr);
+    accountsByProvider.set(prov, arr);
+  }
+
+  for (const r of latestPerAccount.values()) {
+    r.limits = (r.limits ?? []).map((l) => normalizeLimit(l));
   }
 
   const blocks: string[] = [];
 
-  // Per-provider sections.
-  // OMP emits one Report per (provider, fetchedAt) snapshot. Multiple
-  // snapshots for the same provider can appear in `reports`. We dedupe
-  // by picking the freshest report per provider, then render its limits
-  // (de-duped by limit.id since a single snapshot shouldn't have dupes).
-  const latestPerProvider = new Map<string, ReportRow>();
-  for (const r of payload.reports ?? []) {
-    if (providerFilter && r.provider !== providerFilter) continue;
-    const existing = latestPerProvider.get(r.provider);
-    if (!existing || (r.fetchedAt ?? 0) > (existing.fetchedAt ?? 0)) {
-      latestPerProvider.set(r.provider, r);
-    }
-  }
-
-  // Normalize each freshest report: derive windowLabel + usedFraction when missing
-  for (const r of latestPerProvider.values()) {
-    r.limits = (r.limits ?? []).map((l) => normalizeLimit(l));
-  }
-
-  for (const [provider, r] of latestPerProvider) {
+  for (const [provider, accounts] of accountsByProvider) {
     const providerDisabled = (payload.disabledCredentials ?? []).filter((d) => d.provider === provider);
-    const anyError = Boolean((r as AnyRecord).error);
-    const headerLines = renderProviderHeader(provider, 1, anyError, providerDisabled.length > 0);
+    const anyError = accounts.some((r) => Boolean((r as AnyRecord).error));
+    const headerLines = renderProviderHeader(provider, accounts.length, anyError, providerDisabled.length > 0);
 
     const lines: string[] = [...headerLines];
-    for (const l of r.limits ?? []) {
-      lines.push(renderLimitRow(r.metadata ?? {}, l));
+    for (const account of accounts) {
+      lines.push(renderAccountHeader(account.metadata ?? {}));
+      for (const l of account.limits ?? []) {
+        lines.push(...renderLimitRow(account.metadata ?? {}, l));
+      }
     }
     for (const d of providerDisabled) {
       lines.push(renderDisabled(d));
@@ -305,9 +372,9 @@ async function main(): Promise<void> {
     blocks.push(lines.join("\n"));
   }
 
-  // Disabled summary across all providers
+  // Disabled summary across all providers (only when no per-provider blocks)
   const allDisabled = (payload.disabledCredentials ?? []).filter((d) => !providerFilter || d.provider === providerFilter);
-  if (allDisabled.length > 0 && grouped.size === 0) {
+  if (allDisabled.length > 0 && accountsByProvider.size === 0) {
     const lines = [paint("✗ Disabled Credentials", "red")];
     for (const d of allDisabled) lines.push(renderDisabled(d));
     blocks.push(lines.join("\n"));
