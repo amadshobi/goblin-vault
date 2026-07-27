@@ -1,71 +1,65 @@
 #!/usr/bin/env bun
 // ─────────────────────────────────────────────────────────────
-// Goblin Nexus Benchmark & Health Ping Engine
-// Modular script — supports --select for model picker integration
+// Goblin Nexus Benchmark & Health Ping Engine v2.5.0
+// Dynamic Spinner UX, Hybrid Scoring, & Agent Analytics Output.md
 // ─────────────────────────────────────────────────────────────
 
 import fs from "fs";
 import path from "path";
+import { getRole, calculateHybridScore, type BenchRole } from "./bench-roles";
+import { saveBenchRun, resetOutputMd, appendOutputMd, type BenchRecord } from "./bench-storage";
 
 const args = process.argv.slice(2);
 const action = args[0] || "ping";
+
 let target = "config";
 let forceRefresh = false;
 let selectMode = false;
+let filterProvider: string | null = null;
+let vsModels: string[] | null = null;
+let selectedRole: BenchRole = getRole("coder");
+let customTimeoutSec: number | null = null;
 
 for (let i = 1; i < args.length; i++) {
-  if (args[i] === "--force" || args[i] === "-f") {
+  const arg = args[i];
+  if (arg === "--force" || arg === "-f") {
     forceRefresh = true;
-  } else if (args[i] === "--select" || args[i] === "-s") {
+  } else if (arg === "--select" || arg === "-s") {
     selectMode = true;
-  } else if (!args[i].startsWith("-")) {
-    target = args[i];
+  } else if (arg.startsWith("--timeout=")) {
+    customTimeoutSec = parseInt(arg.split("=")[1], 10);
+  } else if (arg === "--timeout" && i + 1 < args.length) {
+    customTimeoutSec = parseInt(args[++i], 10);
+  } else if (arg.startsWith("--provider=")) {
+    filterProvider = arg.split("=")[1];
+  } else if (arg === "--provider" && i + 1 < args.length) {
+    filterProvider = args[++i];
+  } else if (arg.startsWith("--role=")) {
+    selectedRole = getRole(arg.split("=")[1]);
+  } else if (arg === "--role" && i + 1 < args.length) {
+    selectedRole = getRole(args[++i]);
+  } else if (arg.startsWith("--vs=")) {
+    vsModels = arg.split("=")[1].split(",").map((s) => s.trim());
+  } else if (arg === "--vs") {
+    if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+      vsModels = args[++i].split(",").map((s) => s.trim());
+    } else {
+      vsModels = [];
+    }
+  } else if (!arg.startsWith("-")) {
+    target = arg;
   }
 }
 
 const CACHE_DIR = `${process.env.HOME}/.cache/goblin-nexus`;
-const CACHE_TTL_MS = 5 * 24 * 60 * 60 * 1000; // 5 hari
-const REQUEST_TIMEOUT_MS = 10_000; // 10s — pasukan yang lebih dari ini dianggap gugur
-
-interface CacheData {
-  timestamp: number;
-  results: {
-    logLines: string[];
-    available: AvailableModel[];
-  };
-}
-
-function getCacheFilePath(act: string, tgt: string): string {
-  const cleanTgt = tgt.replace(/[^a-zA-Z0-9_-]/g, "_");
-  return path.join(CACHE_DIR, `gn-${act}-${cleanTgt}.json`);
-}
-
-function loadCache(act: string, tgt: string): CacheData | null {
-  if (forceRefresh) return null;
-  const cacheFile = getCacheFilePath(act, tgt);
-  if (!fs.existsSync(cacheFile)) return null;
-  try {
-    const raw = fs.readFileSync(cacheFile, "utf8");
-    const data: CacheData = JSON.parse(raw);
-    const age = Date.now() - data.timestamp;
-    if (age < CACHE_TTL_MS) return data;
-  } catch (_) { /* ignore */ }
-  return null;
-}
-
-function saveCache(act: string, tgt: string, logLines: string[], available: AvailableModel[]) {
-  if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
-  const cacheFile = getCacheFilePath(act, tgt);
-  const payload: CacheData = {
-    timestamp: Date.now(),
-    results: { logLines, available },
-  };
-  fs.writeFileSync(cacheFile, JSON.stringify(payload, null, 2));
-}
+const CACHE_TTL_MS = 5 * 24 * 60 * 60 * 1000;
+const PING_TIMEOUT_MS = customTimeoutSec ? customTimeoutSec * 1000 : 10_000; // 10s default ping
+const BENCH_TIMEOUT_MS = customTimeoutSec ? customTimeoutSec * 1000 : 60_000; // 60s default bench
 
 interface ModelItem {
   name: string;
   id: string;
+  provider: string;
 }
 
 interface AvailableModel {
@@ -74,42 +68,90 @@ interface AvailableModel {
   name: string;
   latency: number;
   speed?: string;
+  quality?: number;
+}
+
+function loadCache(act: string, tgt: string): any | null {
+  if (forceRefresh) return null;
+  const cacheFile = path.join(CACHE_DIR, `gn-${act}-${tgt.replace(/[^a-zA-Z0-9_-]/g, "_")}.json`);
+  if (!fs.existsSync(cacheFile)) return null;
+  try {
+    const raw = fs.readFileSync(cacheFile, "utf8");
+    const data = JSON.parse(raw);
+    if (Date.now() - data.timestamp < CACHE_TTL_MS) return data;
+  } catch (_) {}
+  return null;
+}
+
+function saveCache(act: string, tgt: string, available: AvailableModel[]) {
+  if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+  const cacheFile = path.join(CACHE_DIR, `gn-${act}-${tgt.replace(/[^a-zA-Z0-9_-]/g, "_")}.json`);
+  fs.writeFileSync(cacheFile, JSON.stringify({ timestamp: Date.now(), results: { available } }, null, 2));
 }
 
 async function getModels(targetFilter: string): Promise<ModelItem[]> {
+  let allModels: ModelItem[] = [];
+
   if (targetFilter === "config" || targetFilter === "cfg") {
     const configPath = `${process.env.HOME}/.config/opencode/opencode.jsonc`;
-    if (!fs.existsSync(configPath)) {
-      console.log(`❌ Config file not found: ${configPath}`);
-      return [];
+    if (fs.existsSync(configPath)) {
+      const raw = fs.readFileSync(configPath, "utf8").replace(/^\s*\/\/.*/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+      const json = JSON.parse(raw);
+      const modelsObj = json.provider?.["goblin-nexus"]?.models || {};
+      allModels = Object.entries(modelsObj).map(([key, val]: [string, any]) => ({
+        name: val.name || key,
+        id: val.id,
+        provider: val.id.split("/")[0] || "goblin-nexus",
+      }));
     }
-    const raw = fs
-      .readFileSync(configPath, "utf8")
-      .replace(/^\s*\/\/.*/gm, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
-    const json = JSON.parse(raw);
-    const modelsObj = json.provider?.["goblin-nexus"]?.models || {};
-    return Object.entries(modelsObj).map(([key, val]: [string, any]) => ({
-      name: val.name || key,
-      id: val.id,
-    }));
+  } else {
+    try {
+      const res = await fetch("http://127.0.0.1:4000/v1/models");
+      if (res.ok) {
+        const data = (await res.json()) as { data?: Array<{ id: string }> };
+        allModels = (data.data || []).map((m) => ({
+          name: m.id.split("/").pop() || m.id,
+          id: m.id,
+          provider: m.id.split("/")[0] || "gateway",
+        }));
+      }
+    } catch (e: any) {
+      console.log(`❌ Failed to connect to Gateway proxy (http://127.0.0.1:4000/v1): ${e.message}`);
+    }
   }
 
-  try {
-    const res = await fetch("http://127.0.0.1:4000/v1/models");
-    if (!res.ok) throw new Error(`Gateway returned HTTP ${res.status}`);
-    const data = (await res.json()) as { data?: Array<{ id: string }> };
-    let allModels = (data.data || []).map((m) => m.id);
-    if (targetFilter !== "all") {
-      allModels = allModels.filter((id) =>
-        id.toLowerCase().includes(targetFilter.toLowerCase())
-      );
-    }
-    return allModels.map((id) => ({ name: id.split("/").pop() || id, id }));
-  } catch (e: any) {
-    console.log(`❌ Gagal mengontak Gateway proxy (http://127.0.0.1:4000/v1): ${e.message}`);
-    return [];
+  if (filterProvider) {
+    allModels = allModels.filter(
+      (m) => m.provider.toLowerCase() === filterProvider!.toLowerCase() || m.id.toLowerCase().includes(filterProvider!.toLowerCase())
+    );
   }
+
+  if (vsModels !== null) {
+    if (vsModels.length > 0) {
+      allModels = allModels.filter((m) => vsModels!.some((v) => m.id.toLowerCase().includes(v.toLowerCase())));
+    } else {
+      const providerMap = new Map<string, ModelItem>();
+      for (const m of allModels) {
+        if (!providerMap.has(m.provider)) {
+          providerMap.set(m.provider, m);
+        }
+      }
+      allModels = Array.from(providerMap.values());
+    }
+  }
+
+  return allModels;
+}
+
+function miniBar(latencyMs: number, maxMs = 2000): string {
+  const width = 12;
+  const ratio = Math.min(latencyMs / maxMs, 1);
+  const filled = Math.round(ratio * width);
+  const empty = width - filled;
+  const barStr = "█".repeat(filled) + "░".repeat(empty);
+  if (latencyMs < 500) return `\x1b[32m${barStr}\x1b[0m`;
+  if (latencyMs < 1200) return `\x1b[33m${barStr}\x1b[0m`;
+  return `\x1b[31m${barStr}\x1b[0m`;
 }
 
 function printSummaryLineup(available: AvailableModel[]) {
@@ -117,16 +159,15 @@ function printSummaryLineup(available: AvailableModel[]) {
     console.log("⚠️  Tidak ada model yang 100% OK / Siap Pakai.");
     return;
   }
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("─".repeat(70));
   console.log(`🎯 [LINEUP MODEL SIAP PAKAI] (${available.length} Model Ready)`);
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("  FULL MODEL ID                                     | SPEED / LATENCY");
-  console.log("  ──────────────────────────────────────────────────┼─────────────────");
+  console.log("─".repeat(70));
   for (const item of available) {
     const speedInfo = item.speed ? `${item.speed} tok/s` : `⚡ ${item.latency}ms`;
-    console.log(`  ${item.id.padEnd(48)} | ${speedInfo}`);
+    const qualityInfo = item.quality !== undefined ? ` | ⭐ ${Math.round(item.quality * 100)}%` : "";
+    console.log(`  ${item.id.padEnd(42)} | ${speedInfo}${qualityInfo}`);
   }
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+  console.log("─".repeat(70) + "\n");
 }
 
 function writeSelectFile(available: AvailableModel[]) {
@@ -139,37 +180,33 @@ function writeSelectFile(available: AvailableModel[]) {
 async function runPing(models: ModelItem[], act: string, tgt: string) {
   const cached = loadCache(act, tgt);
   if (cached) {
-    const ageDays = ((Date.now() - cached.timestamp) / (1000 * 60 * 60 * 24)).toFixed(1);
-    console.log(`\n⚡ [Goblin Nexus Ping] CACHED (${ageDays}d lalu) — gunakan --force untuk re-test\n`);
+    console.log(`\n⚡ [Goblin Nexus Ping] CACHED — gunakan --force untuk re-test\n`);
     printSummaryLineup(cached.results.available);
     writeSelectFile(cached.results.available);
     return;
   }
 
-  console.log(`\n⚡ [Goblin Nexus Ping] Testing ${models.length} models...\n`);
-  console.log("  STATUS        | MODEL ID                                         | LATENCY");
-  console.log("  ──────────────┼──────────────────────────────────────────────────┼──────────");
+  console.log(`\n⚡ [Goblin Nexus Ping] Testing ${models.length} model(s)...\n`);
+  console.log("  STATUS        MODEL ID                                   LATENCY BAR   TIME");
+  console.log("  ───────────   ─────────────────────────────────────────  ────────────  ───────");
 
   const isTTY = process.stdout.isTTY;
   const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
   const available: AvailableModel[] = [];
-  const logLines: string[] = [];
-  logLines.push("  STATUS        | MODEL ID                                         | LATENCY");
-  logLines.push("  ──────────────┼──────────────────────────────────────────────────┼──────────");
 
   for (const m of models) {
     let i = 0;
     let timer: NodeJS.Timeout | undefined;
     if (isTTY) {
       timer = setInterval(() => {
-        process.stdout.write(`\r${frames[i++ % frames.length]} [PINGING] ${m.id}...`);
+        process.stdout.write(`\r  ${frames[i++ % frames.length]} [PING]    ${m.id.padEnd(41)}  testing...`);
       }, 80);
     }
 
     const start = Date.now();
     try {
       const ctrl = new AbortController();
-      const timeoutId = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+      const timeoutId = setTimeout(() => ctrl.abort(), PING_TIMEOUT_MS);
       const res = await fetch("http://127.0.0.1:4000/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer dummy" },
@@ -178,132 +215,147 @@ async function runPing(models: ModelItem[], act: string, tgt: string) {
           model: m.id,
           messages: [{ role: "user", content: "ping" }],
           max_tokens: 5,
-          reasoning_effort: m.id.includes("pro") ? "low" : undefined,
         }),
       });
       clearTimeout(timeoutId);
       const elapsed = Date.now() - start;
       if (isTTY && timer) { clearInterval(timer); process.stdout.write("\r\x1b[K"); }
 
-      let line = "";
       if (res.ok) {
-        line = `  ✅ [200 OK]      ${m.id.padEnd(48)} | ⚡ ${elapsed}ms`;
-        available.push({ provider: m.id.split("/")[0], id: m.id, name: m.name, latency: elapsed });
-      } else if (res.status === 410) {
-        line = `  ❌ [410 GONE]    ${m.id.padEnd(48)} | 💀 Retired Upstream`;
-      } else if (res.status === 403) {
-        line = `  🔒 [403 PRO]     ${m.id.padEnd(48)} | 💳 Requires Sub`;
+        console.log(`  ✅ [200 OK]   ${m.id.padEnd(41)}  ${miniBar(elapsed)}  ${elapsed}ms`);
+        available.push({ provider: m.provider, id: m.id, name: m.name, latency: elapsed });
       } else if (res.status === 429) {
-        line = `  ⚠️  [429 LIMIT]   ${m.id.padEnd(48)} | ⏳ Quota Depleted`;
+        console.log(`  ⚠️  [429 LIMIT] ${m.id.padEnd(41)}  ░░░░░░░░░░░░  Quota Depleted`);
       } else {
-        line = `  💥 [${res.status} FAIL]    ${m.id.padEnd(48)} | 🛑 HTTP ${res.status}`;
+        console.log(`  💥 [${res.status} FAIL]  ${m.id.padEnd(41)}  ░░░░░░░░░░░░  HTTP ${res.status}`);
       }
-      console.log(line);
-      logLines.push(line);
     } catch (e: any) {
       if (isTTY && timer) { clearInterval(timer); process.stdout.write("\r\x1b[K"); }
       const elapsed = Date.now() - start;
       const isTimeout = e.name === "AbortError" || e.name === "TimeoutError";
-      const line = isTimeout
-        ? `  ⏱️  [TIMEOUT]     ${m.id.padEnd(48)} | 🐢 >${REQUEST_TIMEOUT_MS / 1000}s (gugur)`
-        : `  💥 [OFFLINE]     ${m.id.padEnd(48)} | 🔌 Gateway Down`;
-      console.log(line);
-      logLines.push(line);
+      if (isTimeout) {
+        console.log(`  ⏱️  [TIMEOUT]  ${m.id.padEnd(41)}  ░░░░░░░░░░░░  >${PING_TIMEOUT_MS / 1000}s`);
+      } else {
+        console.log(`  💥 [OFFLINE]  ${m.id.padEnd(41)}  ░░░░░░░░░░░░  Gateway Down`);
+      }
     }
   }
   console.log("");
   printSummaryLineup(available);
-  saveCache(act, tgt, logLines.slice(2), available);
+  saveCache(act, tgt, available);
   writeSelectFile(available);
 }
 
 async function runBench(models: ModelItem[], act: string, tgt: string) {
   const cached = loadCache(act, tgt);
   if (cached) {
-    const ageDays = ((Date.now() - cached.timestamp) / (1000 * 60 * 60 * 24)).toFixed(1);
-    console.log(`\n📊 [Goblin Nexus Bench] CACHED (${ageDays}d lalu) — gunakan --force untuk re-bench\n`);
+    console.log(`\n📊 [Goblin Nexus Bench] CACHED — gunakan --force untuk re-bench\n`);
     printSummaryLineup(cached.results.available);
     writeSelectFile(cached.results.available);
     return;
   }
 
-  console.log(`\n📊 [Goblin Nexus Bench] Benchmarking ${models.length} models...\n`);
-  console.log("  STATUS        | MODEL NAME                   | LATENCY  | SPEED       | TOKENS");
-  console.log("  ──────────────┼──────────────────────────────┼──────────┼─────────────┼────────");
+  // Reset output.md for fresh agent evaluation
+  resetOutputMd(selectedRole.name, selectedRole.dataset.id);
+
+  console.log(`\n📊 [Goblin Nexus Bench] Target: ${models.length} model(s) | Role: ${selectedRole.emoji} ${selectedRole.name}\n`);
+  console.log("  MODEL ID                                   ROLE       LATENCY   TOKENS (TOK/S)   QUALITY");
+  console.log("  ─────────────────────────────────────────  ─────────  ────────  ───────────────  ───────");
 
   const isTTY = process.stdout.isTTY;
-  const frames = ["🐒", "🙈", "🙉", "🙊"];
+  const frames = ["⚡", "🔥", "✨", "🚀"];
   const available: AvailableModel[] = [];
-  const logLines: string[] = [];
-  logLines.push("  STATUS        | MODEL NAME                   | LATENCY  | SPEED       | TOKENS");
-  logLines.push("  ──────────────┼──────────────────────────────┼──────────┼─────────────┼────────");
+  const recordsToSave: BenchRecord[] = [];
 
   for (const m of models) {
     let i = 0;
     let timer: NodeJS.Timeout | undefined;
     if (isTTY) {
       timer = setInterval(() => {
-        process.stdout.write(`\r${frames[i++ % frames.length]} [BENCHMARKING] ${m.name} (${m.id})...`);
+        process.stdout.write(`\r  ${frames[i++ % frames.length]} [BENCH] ${m.id.padEnd(38)} ${selectedRole.id.padEnd(9)} inferencing...`);
       }, 120);
     }
+
     const start = Date.now();
     try {
       const ctrl = new AbortController();
-      const timeoutId = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+      const timeoutId = setTimeout(() => ctrl.abort(), BENCH_TIMEOUT_MS);
       const res = await fetch("http://127.0.0.1:4000/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer dummy" },
         signal: ctrl.signal,
         body: JSON.stringify({
           model: m.id,
-          messages: [{ role: "user", content: "Write a 2-sentence summary of Quantum Computing." }],
-          max_tokens: 60,
-          reasoning_effort: m.id.includes("pro") ? "low" : undefined,
+          messages: [
+            { role: "system", content: selectedRole.systemPrompt },
+            { role: "user", content: selectedRole.dataset.prompt },
+          ],
+          max_tokens: 250,
         }),
       });
       clearTimeout(timeoutId);
       const elapsed = Date.now() - start;
       if (isTTY && timer) { clearInterval(timer); process.stdout.write("\r\x1b[K"); }
 
-      let line = "";
       if (res.ok) {
         const data = (await res.json()) as any;
-        const completionTokens = data.usage?.completion_tokens || 0;
-        const tokPerSec = completionTokens > 0 ? ((completionTokens / elapsed) * 1000).toFixed(1) : "N/A";
-        line = `  ✅ [200 OK]      ${m.name.padEnd(28)} | ⏱️  ${String(elapsed).padStart(5)}ms | 🚀 ${String(tokPerSec).padStart(5)} tok/s | 📝 ${completionTokens} tokens`;
-        available.push({ provider: m.id.split("/")[0], id: m.id, name: m.name, latency: elapsed, speed: tokPerSec });
-      } else if (res.status === 410) {
-        line = `  ❌ [410 GONE]    ${m.name.padEnd(28)} | 💀 Retired Upstream`;
-      } else if (res.status === 403) {
-        line = `  🔒 [403 PRO]     ${m.name.padEnd(28)} | 💳 Requires Subscription`;
+        const text = data.choices?.[0]?.message?.content || "";
+        const promptTok = data.usage?.prompt_tokens || 30;
+        const compTok = data.usage?.completion_tokens || Math.round(text.length / 4);
+        const totalTok = promptTok + compTok;
+        const tokPerSec = compTok > 0 ? parseFloat(((compTok / elapsed) * 1000).toFixed(1)) : 0;
+        
+        // Compute Hybrid Score (Deterministic + Keyword Rubric)
+        const quality = calculateHybridScore(text, selectedRole.dataset);
+
+        // Append output to output.md for agent analytics
+        appendOutputMd(m.id, selectedRole.dataset.prompt, text, quality);
+
+        const tokStr = `${totalTok} tok (${tokPerSec} t/s)`;
+        const qualityStr = `⭐ ${Math.round(quality * 100)}%`;
+
+        console.log(
+          `  ${m.id.padEnd(41)}  ${selectedRole.id.padEnd(9)}  ${String(elapsed).padStart(5)}ms  ${tokStr.padEnd(15)}  ${qualityStr}`
+        );
+
+        available.push({
+          provider: m.provider,
+          id: m.id,
+          name: m.name,
+          latency: elapsed,
+          speed: String(tokPerSec),
+          quality,
+        });
+
+        recordsToSave.push({
+          model: m.id,
+          role: selectedRole.id,
+          latencyMs: elapsed,
+          tokens: { prompt: promptTok, completion: compTok, total: totalTok, tokPerSec },
+          qualityScore: quality,
+          timestamp: new Date().toISOString(),
+        });
       } else {
-        line = `  💥 [${res.status} FAIL]    ${m.name.padEnd(25)} | 🛑 Error HTTP ${res.status}`;
+        console.log(`  ${m.id.padEnd(41)}  ${selectedRole.id.padEnd(9)}  ❌ FAIL ${res.status}  ░░░░░░░░░░░░░░   0%`);
       }
-      console.log(line);
-      logLines.push(line);
     } catch (e: any) {
       if (isTTY && timer) { clearInterval(timer); process.stdout.write("\r\x1b[K"); }
-      const elapsed = Date.now() - start;
-      const isTimeout = e.name === "AbortError" || e.name === "TimeoutError";
-      const line = isTimeout
-        ? `  ⏱️  [TIMEOUT]     ${m.name.padEnd(27)} | 🐢 >${REQUEST_TIMEOUT_MS / 1000}s (gugur)`
-        : `  💥 [OFFLINE]     ${m.name.padEnd(27)} | 🔌 Proxy Unavailable`;
-      console.log(line);
-      logLines.push(line);
+      console.log(`  ${m.id.padEnd(41)}  ${selectedRole.id.padEnd(9)}  ⏱️ TIMEOUT ${BENCH_TIMEOUT_MS / 1000}s ░░░░░░░░░░░░░░   0%`);
     }
   }
+
   console.log("");
   printSummaryLineup(available);
-  saveCache(act, tgt, logLines.slice(2), available);
+  if (recordsToSave.length > 0) saveBenchRun(recordsToSave);
+  saveCache(act, tgt, available);
   writeSelectFile(available);
 }
 
 async function main() {
   const models = await getModels(target);
   if (models.length === 0) {
-    console.log(`🔥 [Goblin Roast] Kagak ada model yang bisa ditemukan buat target '${target}', BOSS!`);
-    console.log(`💡 Hint: Pastikan gateway port 4000 aktif ('gn restart') atau config opencode.jsonc lo gak kosong.`);
-    // Still write empty list so picker knows there's nothing
+    console.log(`🔥 [Goblin Roast] Kagak ada model yang cocok untuk target '${target}', BOSS!`);
+    console.log(`💡 Hint: Pastikan gateway port 4000 aktif ('gn restart') atau provider ID benar.`);
     writeSelectFile([]);
     process.exit(1);
   }

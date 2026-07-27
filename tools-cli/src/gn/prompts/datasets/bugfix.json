@@ -1,0 +1,8 @@
+[
+  {
+    "id": "async_race_condition",
+    "prompt": "Analyze this snippet for race conditions and memory leaks, then provide a fix:\nasync function processQueue(items) {\n  let results = [];\n  items.forEach(async (item) => {\n    let res = await fetchItem(item);\n    results.push(res);\n  });\n  return results;\n}",
+    "must_include": ["Promise.all", "race", "fix"],
+    "code_required": true
+  }
+]

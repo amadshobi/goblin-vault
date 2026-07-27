@@ -47,3 +47,8 @@ credentials.json
 *-build-temp
 *.tmp
 *.pid
+
+# Benchmark Storage & History
+tools-cli/src/gn/storage/*.json
+tools-cli/src/gn/storage/*.md
+!tools-cli/src/gn/storage/.gitkeep

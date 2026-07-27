@@ -1,0 +1,8 @@
+[
+  {
+    "id": "realtime_notification_arch",
+    "prompt": "Design a scalable real-time notification system capable of handling 100k events/sec. Outline architecture components, message broker choice, database schema, and failure recovery.",
+    "must_include": ["architecture", "broker", "database", "scaling"],
+    "code_required": false
+  }
+]
