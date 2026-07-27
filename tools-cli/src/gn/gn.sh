@@ -79,10 +79,34 @@ POOL_FILE="${GN_POOL_FILE:-/tmp/goblin-pool.json}"
 GATEWAY_PORT="${GN_GATEWAY_PORT:-4000}"
 mkdir -p "$ANTIGRAVITY_DIR" "$OLLAMA_DIR"
 
+# Source Level 2 Contextual Help Formatter
+source "$GN_DIR/help-formatter.sh"
+
+_is_help_requested() {
+    for arg in "$@"; do
+        if [ "$arg" = "--help" ] || [ "$arg" = "-h" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 run_with_optional_picker() {
     local action="$1"
     shift
     local available_file="${TMPDIR:-/tmp}/gn-last-available.json"
+
+    if _is_help_requested "$@"; then
+        _gn_header "HELP MANUAL: GN ${action^^}"
+        _show_subcommand_help "$action"
+        return 0
+    fi
+
+    if [ "$action" = "ping" ]; then
+        _gn_header "MODEL PING ENGINE"
+    elif [ "$action" = "bench" ]; then
+        _gn_header "MODEL BENCHMARK ENGINE"
+    fi
 
     local select_mode=false
     for arg in "$@"; do
@@ -108,114 +132,60 @@ show_help() {
  ▄▀▀▀ █▀▀▄   █▀▀█ █▀▀7 █▀▀█ █  █ █  █
  █  █ █  █   █▀▀█ █▀▀  █  █ ▀▀▄█ ▀▀▄█
  ▀▀▀▀ ▀  ▀   █    ▀    ▀▀▀▀ ▀▀▀▀ ▀▀▀▀
- Goblin Nexus Proxy CLI v2.5.0 • Powered by OMP Engine
+ Goblin Nexus Proxy CLI v2.6.0 • Powered by OMP Engine
 
 USAGE
-  $ gn <command> [options]
+  $ gn <command> [subcommand_or_flags]
+  $ gn <command> --help                     💡 Tampilkan panduan mendalam per-command!
 
-CORE COMMANDS
-  ping, p [target]       ⚡ Auto-discover & ping latency model AI (default: opencode.jsonc)
+CORE DIAGNOSTICS & BENCHMARK
+  ping, p [target]       ⚡ Health check & latensi model AI (default: opencode.jsonc)
   bench, b [target]      📊 Dynamic Multi-Role benchmark & Adu Banteng (Cross-Provider)
-    --role <id>          Set specialization (coder, bugfix, planning, codereview)
-    --provider <id>      Filter 1 provider (e.g. google-antigravity)
-    --vs [m1,m2]         Adu Banteng cross-provider duel mode
-  status, s [provider]   📈 Cek sisa kuota & usage per-akun terdaftar di broker
+
+ACCOUNT QUOTA & COST TRACKING
+  status, s [provider]   📈 Live check sisa kuota & usage per-akun terdaftar di broker
   burn, bu [flags]       🔥 Token & cost burn tracker (REST broker + sparkline history)
-    --history            Tampilkan sparkline usage history
-    --json               Output JSON mentah (untuk piping/scripting)
-    --days <int>         Window history (default: 7)
-    --provider <id>      Filter 1 provider (e.g. google-antigravity)
 
-ROUTING & POOL
-  pool, po <provider>    🔁 Dynamic account pool generator & isolation proxy
-    -l, --list           Lihat isi file pool aktif (/tmp/goblin-pool.json)
-    -s, --serve          Generate pool & start isolated auth-gateway foreground
-    -o, --only <key>     Filter identity key tertentu (dapat diulang)
-    --port <port>        Set custom port untuk gateway (default: 4000)
+ROUTING, POOL & PRIVACY
+  pool, po <provider>    🔁 Dynamic account pool generator & isolated proxy daemon
   agent, a [name]        🤖 Ganti model agent OpenCode via interactive TUI
-  shield, sh [command]   🛡️ Privacy Shield proxy daemon (regex masking filter)
-    enable / disable     Aktifkan/matikan shield & switch port opencode.jsonc
-    start / stop         Control interceptor daemon tanpa ganti config
-    status / logs        Cek status keaktifan & stream live log sanitization
+  shield, sh [cmd]       🛡️ Privacy Shield proxy daemon (regex masking & auto-fallback)
 
-CREDENTIAL MANAGEMENT
-  import, i              📥 Import credential JSON dari ~/.shell/secret/ ke broker DB
-  export, e              📤 Export active credentials dari SQLite DB ke JSON vault
-  login, l [provider]    🔑 Login akun OAuth / API key provider baru via browser
-  sync, sy               🔄 Sync API key dari environment variables ke broker
-
-SERVICE CONTROL
-  restart, r             🔄 Restart systemd user services (omp-broker & omp-gateway)
-  logs, lg               📋 Live stream log proxy omp-gateway via journalctl
-  help, h                📜 Tampilkan panduan penggunaan ini
-
-OPTIONS
-  -f, --force            Skip cache & paksa ping/bench ulang
-  -s, --select           Pilih model hasil ping/bench untuk update opencode.jsonc
+CREDENTIAL VAULT & SERVICES
+  import, i / export, e  📥 📤 Import & Export kredensial JSON dari secret vault
+  login, l / sync, sy    🔑 Login OAuth baru / Sync API key env vars ke broker DB
+  restart, r / logs, lg  🔄 Restart systemd user services / Live stream proxy logs
+  help, h [command]      📜 Tampilkan panduan ini atau panduan mendalam subcommand
 
 EXAMPLES
-  # 1. Core Model Diagnostics & Dynamic Benchmark
-  $ gn ping                              Ping semua model di opencode.jsonc
-  $ gn ping all --force                  Ping seluruh model gateway tanpa cache
+  $ gn ping --help                       💡 Lihat opsi & manual mendalam gn ping
   $ gn bench --role bugfix               Benchmark khusus role debugging specialist
   $ gn bench --vs                        Adu Banteng model antar-provider
-  $ gn bench all -s                      Benchmark semua model lalu pilih model di TUI
-
-  # 2. Account Quota & Status
-  $ gn status                            Cek sisa kuota semua akun AI
   $ gn status google-antigravity         Cek kuota khusus provider Google Antigravity
-
-  # 2b. Token & Cost Burn
-  $ gn burn                              Token burn per client (REST broker)
-  $ gn burn --history --days 14          Dengan sparkline history 14 hari
-  $ gn burn --json                       Raw JSON untuk piping/scripting
-
-  # 3. Dynamic Account Pool & Isolation
-  $ gn pool google-antigravity           Bangun pool dari semua kredensial Antigravity
-  $ gn pool google-antigravity --only user@gmail.com   Pool hanya untuk 1 akun
-  $ gn pool --list                       Lihat isi pool file yang sedang aktif
-  $ gn pool google-antigravity --serve --port 4005     Launch isolated gateway di port 4005
-
-  # 4. Privacy Shield Proxy
-  $ gn shield status                     Cek status Privacy Shield daemon
-  $ gn shield enable                     Aktifkan Privacy Shield & auto-routing
-  $ gn shield disable                    Matikan Privacy Shield (direct mode)
-  $ gn shield logs                       Lihat stream live log sanitization
-
-  # 5. Agent Model Switcher
-  $ gn agent                             Pilih agent & ganti model via TUI
-  $ gn agent code                        Ganti model khusus untuk agent 'code'
-
-  # 6. Credential Vault Management
-  $ gn import                            Import file JSON dari ~/.shell/secret/
-  $ gn export                            Export kredensial dari DB ke file JSON
-  $ gn login google-antigravity          Login OAuth akun Antigravity baru
-  $ gn sync                              Sync API Key dari env vars ke broker
-
-  # 7. Service Control
-  $ gn restart                           Restart background service omp-broker & gateway
-  $ gn logs                              Lihat live logs dari proxy omp-gateway
+  $ gn burn --history --days 14          Token burn dengan sparkline history 14 hari
+  $ gn pool google-antigravity --serve   Launch isolated gateway di port 4000
 HELP
 }
 
 case "${1:-}" in
     ping|p)
         shift
-        _gn_header "MODEL PING ENGINE"
         run_with_optional_picker ping "$@"
         ;;
     bench|b)
         shift
-        _gn_header "MODEL BENCHMARK ENGINE"
         run_with_optional_picker bench "$@"
         ;;
     status|s)
         shift || true
+        if _is_help_requested "$@"; then
+            _gn_header "HELP MANUAL: GN STATUS"
+            _show_subcommand_help "status"
+            exit 0
+        fi
         _gn_header "ACCOUNT QUOTA & USAGE"
         _gn_info "Fetching live usage limit across all authenticated accounts..."
         echo ""
-        # Pipe JSON output through the formatter for visual status dots,
-        # disabled-credentials warnings, and capacity summary.
         if ! omp usage --json ${1:+"--provider=$1"} \
                 | bun "$GN_DIR/status-formatter.ts" ${1:+"--provider=$1"}; then
             _gn_roast_err "Gagal mengambil data kuota dari OMP broker!" "Pastikan service omp-broker aktif (`gn restart`)."
@@ -223,7 +193,11 @@ case "${1:-}" in
         ;;
     burn|bu)
         shift
-        # In --json mode skip header so the output stays pipe-clean.
+        if _is_help_requested "$@"; then
+            _gn_header "HELP MANUAL: GN BURN"
+            _show_subcommand_help "burn"
+            exit 0
+        fi
         json_mode=false
         for arg in "$@"; do
             if [ "$arg" = "--json" ]; then json_mode=true; break; fi
@@ -285,14 +259,29 @@ case "${1:-}" in
         ;;
     shield|sh)
         shift
+        if _is_help_requested "$@"; then
+            _gn_header "HELP MANUAL: GN SHIELD"
+            _show_subcommand_help "shield"
+            exit 0
+        fi
         bash "$GN_DIR/shield.sh" "$@"
         ;;
     agent|a)
         shift
+        if _is_help_requested "$@"; then
+            _gn_header "HELP MANUAL: GN AGENT"
+            _show_subcommand_help "agent"
+            exit 0
+        fi
         bash "$GN_DIR/agent.sh" "$@"
         ;;
     pool|po)
         shift
+        if _is_help_requested "$@"; then
+            _gn_header "HELP MANUAL: GN POOL"
+            _show_subcommand_help "pool"
+            exit 0
+        fi
         # Modes:
         #   gn pool --list
         #   gn pool <provider> [--only <key> ...] [--serve] [--port <port>]
@@ -410,7 +399,16 @@ case "${1:-}" in
     logs|lg)
         journalctl --user -u omp-gateway.service -f
         ;;
-    help|h|--help|-h|*)
+    help|h|--help|-h)
+        subcmd="${2:-}"
+        if [ -n "$subcmd" ]; then
+            _gn_header "HELP MANUAL: GN ${subcmd^^}"
+            _show_subcommand_help "$subcmd"
+        else
+            show_help
+        fi
+        ;;
+    *)
         show_help
         ;;
 esac
