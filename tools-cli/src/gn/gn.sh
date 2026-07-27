@@ -108,14 +108,17 @@ show_help() {
  ▄▀▀▀ █▀▀▄   █▀▀█ █▀▀7 █▀▀█ █  █ █  █
  █  █ █  █   █▀▀█ █▀▀  █  █ ▀▀▄█ ▀▀▄█
  ▀▀▀▀ ▀  ▀   █    ▀    ▀▀▀▀ ▀▀▀▀ ▀▀▀▀
- Goblin Nexus Proxy CLI v2.4.0 • Powered by OMP Engine
+ Goblin Nexus Proxy CLI v2.5.0 • Powered by OMP Engine
 
 USAGE
   $ gn <command> [options]
 
 CORE COMMANDS
   ping, p [target]       ⚡ Auto-discover & ping latency model AI (default: opencode.jsonc)
-  bench, b [target]      📊 Latency & generation throughput benchmark (tok/s)
+  bench, b [target]      📊 Dynamic Multi-Role benchmark & Adu Banteng (Cross-Provider)
+    --role <id>          Set specialization (coder, bugfix, planning, codereview)
+    --provider <id>      Filter 1 provider (e.g. google-antigravity)
+    --vs [m1,m2]         Adu Banteng cross-provider duel mode
   status, s [provider]   📈 Cek sisa kuota & usage per-akun terdaftar di broker
   burn, bu [flags]       🔥 Token & cost burn tracker (REST broker + sparkline history)
     --history            Tampilkan sparkline usage history
@@ -151,11 +154,12 @@ OPTIONS
   -s, --select           Pilih model hasil ping/bench untuk update opencode.jsonc
 
 EXAMPLES
-  # 1. Core Model Diagnostics
+  # 1. Core Model Diagnostics & Dynamic Benchmark
   $ gn ping                              Ping semua model di opencode.jsonc
   $ gn ping all --force                  Ping seluruh model gateway tanpa cache
-  $ gn ping --select                     Ping lalu pilih model untuk diaktifkan
-  $ gn bench all -s                      Benchmark semua model lalu pilih
+  $ gn bench --role bugfix               Benchmark khusus role debugging specialist
+  $ gn bench --vs                        Adu Banteng model antar-provider
+  $ gn bench all -s                      Benchmark semua model lalu pilih model di TUI
 
   # 2. Account Quota & Status
   $ gn status                            Cek sisa kuota semua akun AI
