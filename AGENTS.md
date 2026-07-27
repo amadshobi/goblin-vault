@@ -105,6 +105,15 @@ MANY SMALL FILES > FEW LARGE FILES:
 - Fail fast dengan pesan error yang jelas
 - JANGAN percaya data eksternal (API response, user input, file content)
 
+### CLI UX & Dual-Level Help Standard 🔴 MUST
+
+Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
+- **Dual-Level Help System**:
+  - **Level 1 Help (`<tool> --help`)**: Menyajikan daftar command utama secara makro, ringkas, dan menyertakan hint petunjuk Level 2.
+  - **Level 2 Help (`<tool> <command> --help` atau `<tool> help <command>`)**: Menyajikan manual mendalam kontekstual per-subcommand (memuat deskripsi target, opsi flag, visual indicators, scoring/analytics, dan contoh perintah praktis).
+- **Clean Output & Dynamic Spinners**: Gunakan visual status badges (`✅`, `⚠️`, `❌`), progress bar, dan spinner interaktif yang ramah terminal. Prompt interaktif harus dapat dibatalkan dengan aman.
+- **Fail-Fast with Actionable Hints**: Jika terjadi error (misal gateway down/auth failed), tampilkan pesan error yang ramah beserta *Goblin Roast Hint* perbaikan.
+
 ### Shell & Scripting
 
 - Script di `scripts/` dan `bin/` harus POSIX-compliant bila memungkinkan, atau
