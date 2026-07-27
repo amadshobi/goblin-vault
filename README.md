@@ -45,9 +45,7 @@ goblin-vault/
 │   ├── micro/              # Source-of-truth config micro editor
 │   └── nvim/               # LazyVim setup (init.lua, lua/, stylua.toml)
 ├── docs/                   # Rules, skills, update notes & history
-│   ├── history/            # Riwayat implementasi harian (YYYY-MM-DD_nama.md)
 │   ├── rules/              # Coding style & operational rules
-│   └── update/             # Catatan rilis fitur (fex v4, full-foundation draft)
 ├── .github/                # CI workflows + git hooks
 │   ├── workflows/          # GitHub Actions (ci.yml)
 │   └── hooks/              # pre-commit & pre-push hooks
