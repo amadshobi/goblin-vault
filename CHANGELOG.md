@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.3.10] - 2026-07-27
+
+### Added
+- **`scripts/check_syntax.sh` TypeScript Support & Fast Staged Fix**:
+  - Menambahkan pengecekan sintaksis & AST TypeScript (`.ts`/`.tsx`) via Bun (`bun build --no-save`).
+  - Memperbaiki mode `--staged`: Hanya memproses file yang sedang di-stage (`git diff --cached`), menghilangkan noise/scan file non-staged di pre-commit hook.
+  - Updating `pre-push` hook untuk menjalankan full syntax check (Bash, Go, JS, TS) secara menyeluruh sebelum push.
+
 ## [v0.3.9] - 2026-07-27
 
 ### Added

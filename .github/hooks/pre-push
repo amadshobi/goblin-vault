@@ -23,8 +23,8 @@ if ! (cd "$REPO_ROOT/tools-cli/src/fex" && go build -o "$BIN" ./cmd/fex); then
   exit 1
 fi
 
-echo "🐙 goblin pre-push: running fast syntax check..."
-if ! bash "$REPO_ROOT/scripts/check_syntax.sh" --staged; then
+echo "🐙 goblin pre-push: running full syntax check..."
+if ! bash "$REPO_ROOT/scripts/check_syntax.sh"; then
   echo "❌ check_syntax.sh gagal — push dibatalkan." >&2
   exit 1
 fi
