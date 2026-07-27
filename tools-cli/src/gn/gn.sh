@@ -132,7 +132,7 @@ show_help() {
  ▄▀▀▀ █▀▀▄   █▀▀█ █▀▀7 █▀▀█ █  █ █  █
  █  █ █  █   █▀▀█ █▀▀  █  █ ▀▀▄█ ▀▀▄█
  ▀▀▀▀ ▀  ▀   █    ▀    ▀▀▀▀ ▀▀▀▀ ▀▀▀▀
- Goblin Nexus Proxy CLI v2.6.0 • Powered by OMP Engine
+ Goblin Nexus Proxy CLI v2.6.1 • Powered by OMP Engine
 
 USAGE
   $ gn <command> [subcommand_or_flags]
