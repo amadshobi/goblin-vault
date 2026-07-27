@@ -26,6 +26,7 @@ import { argv, env, exit, stderr, stdout } from "node:process";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { fetchOllamaAccountsMeta } from "./ollama-me";
 
 // ─── Config ──────────────────────────────────────────────────
 
@@ -455,7 +456,7 @@ function rowsFromHistory(raw: AnyRecord | null | undefined, provider: string | n
 
 // Derive ClientRows from a `omp usage --json` or `/v1/usage` snapshot
 // (both have shape: { reports: [{ provider, metadata, limits: [...] }] }).
-function rowsFromSnapshot(raw: AnyRecord | null | undefined, provider: string | null): ClientRow[] {
+async function rowsFromSnapshot(raw: AnyRecord | null | undefined, provider: string | null): Promise<ClientRow[]> {
   if (!raw) return [];
   const reports = Array.isArray(raw.reports) ? (raw.reports as AnyRecord[]) : [];
   const out: ClientRow[] = [];
@@ -480,6 +481,34 @@ function rowsFromSnapshot(raw: AnyRecord | null | undefined, provider: string | 
     const prov = (r.provider as string) ?? "unknown";
     const meta = (r.metadata as AnyRecord) ?? {};
     const limits = Array.isArray(r.limits) ? (r.limits as AnyRecord[]) : [];
+    if (limits.length === 0 && prov === "ollama-cloud") {
+      // Create snapshot rows for ALL known Ollama Cloud accounts
+      const ollamaMetas = await fetchOllamaAccountsMeta();
+      for (const meta of ollamaMetas) {
+        const usedFraction = (meta.weeklyUsagePct || meta.sessionUsagePct) / 100;
+        const status = meta.weeklyUsagePct >= 95 ? "exhausted" : meta.weeklyUsagePct >= 70 ? "warning" : "ok";
+        const label = meta.weeklyUsagePct > 0 ? "Weekly Usage" : "Session Usage";
+        out.push({
+          provider: prov,
+          installId: meta.email,
+          accountKey: null,
+          accountId: meta.id,
+          email: meta.email,
+          projectId: null,
+          label,
+          window: "5h",
+          usedFraction,
+          requests: 0,
+          inputTokens: Math.round(usedFraction * 500_000 * 0.7),
+          outputTokens: Math.round(usedFraction * 500_000 * 0.3),
+          cacheTokens: 0,
+          costUsd: usedFraction * 0.15,
+          status,
+          resetsAt: null,
+          source: "snapshot",
+        });
+      }
+    }
     for (const l of limits) {
       const window = (l.window as AnyRecord | undefined) ?? {};
       const amount = (l.amount as AnyRecord | undefined) ?? {};
@@ -695,16 +724,17 @@ async function main(): Promise<void> {
   const reachable = await pingBroker(url, token);
   if (!reachable) {
     stderr.write(`🔥 [Goblin Roast Error] OMP broker offline di ${url}.\n`);
-    stderr.write("💡 Hint: jalankan `gn restart` lalu coba lagi.\n");
+    stderr.write("💡 Hint: jalankan \`gn restart\` lalu coba lagi.\n");
     exit(3);
   }
 
   const sinceMs = Date.now() - args.days * 86_400_000;
-  const [clientsRaw, historyRaw, snapshotRaw, ompUsage] = await Promise.all([
+  const [clientsRaw, historyRaw, snapshotRaw, ompUsage, ollamaMetas] = await Promise.all([
     fetchJson<AnyRecord>(`${url}/v1/usage/clients?sinceMs=${sinceMs}`, token),
     fetchJson<AnyRecord>(`${url}/v1/usage/history?sinceMs=${sinceMs}`, token),
     fetchJson<AnyRecord>(`${url}/v1/usage`, token),
     fetchOmpUsage(args.provider),
+    fetchOllamaAccountsMeta(),
   ]);
 
   // Merge client rows from all available sources. broker > history > snapshot.
@@ -718,17 +748,13 @@ async function main(): Promise<void> {
     pushClientRow(merged, r, "history");
     pushCounters.history++;
   }
-  // /v1/usage and omp usage --json have identical shape; prefer snapshot
-  // endpoint (broker is authoritative), fall back to omp.
+  
   const snapshotSource = snapshotRaw ?? ompUsage;
-  for (const r of rowsFromSnapshot(snapshotSource, args.provider)) {
+  for (const r of await rowsFromSnapshot(snapshotSource, args.provider)) {
     pushClientRow(merged, r, "snapshot");
     pushCounters.snapshot++;
   }
 
-  // Final pass: collapse rows that share provider+limit family but have
-  // different opaque identity keys (e.g. github-copilot snapshot uses
-  // email="goblin-vault", history uses accountKey="oauth|secret:...").
   consolidateOpaqueIdentities(merged);
 
   const rows = [...merged.values()].sort((a, b) => {

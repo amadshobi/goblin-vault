@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Ollama Cloud Real-time Scraper & Metadata Fetcher (`ollama-me.ts`)**:
+  - Penarikan metadata akun Ollama Cloud resmi via `POST https://ollama.com/api/me` (Email, Plan, ID, Suspended Status) dengan auto-discovery dari SQLite DB `~/.omp/agent/agent.db` dan Secret Vault.
+  - HTML Web Scraper untuk dashboard `https://ollama.com/settings` (ekstraksi persentase pemakaian persis 1:1 dari `session_usage_pct` & `weekly_usage_pct`).
+  - Cache TTL 15 menit di `~/.cache/goblin-nexus/ollama-me-cache.json` untuk performa kilat.
+  - Integration di `gn status`: Render diagram bar visual 28-karakter presisi 1-desimal per-akun Ollama Cloud.
+  - Integration di `gn burn`: Menampilkan baris `Weekly Usage` & `Session Usage` lengkap dengan estimasi token (`17.00k tokens`) dan cost ($).
+
 ## [v0.3.11] - 2026-07-27
 
 ### Added

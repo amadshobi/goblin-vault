@@ -23,6 +23,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { argv, env, exit, stdin, stdout, stderr } from "node:process";
+import { fetchOllamaAccountsMeta } from "./ollama-me";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -185,7 +186,10 @@ function countdownTo(ms: number): string {
 
 function fmtPct(f: number): string {
   if (!Number.isFinite(f)) return "0%";
-  return `${(f * 100).toFixed(f >= 0.1 ? 0 : 1)}%`;
+  const val = f * 100;
+  if (val === 0) return "0.0%";
+  if (val % 1 !== 0 || val < 10) return `${val.toFixed(1)}%`;
+  return `${val.toFixed(0)}%`;
 }
 
 function renderProviderHeader(provider: string, accountCount: number, hasError: boolean, hasDisabled: boolean): string[] {
@@ -343,6 +347,35 @@ async function main(): Promise<void> {
     const arr = accountsByProvider.get(prov) ?? [];
     arr.push(r);
     accountsByProvider.set(prov, arr);
+  }
+
+  // Enrich Ollama Cloud metadata & limit rows before rendering
+  if (accountsByProvider.has("ollama-cloud")) {
+    const ollamaAccounts = accountsByProvider.get("ollama-cloud")!;
+    const ollamaMetas = await fetchOllamaAccountsMeta();
+    ollamaAccounts.forEach((acc, idx) => {
+      const meta = ollamaMetas[idx];
+      if (meta) {
+        acc.metadata = {
+          ...(acc.metadata ?? {}),
+          email: meta.email,
+          planType: meta.plan,
+          accountId: meta.id,
+        };
+        const pctFraction = meta.sessionUsagePct / 100;
+        const status = meta.suspended ? "exhausted" : meta.sessionUsagePct >= 95 ? "exhausted" : meta.sessionUsagePct >= 70 ? "warning" : "ok";
+        acc.limits = [
+          {
+            id: `ollama:session:${meta.id}`,
+            label: "Session Usage (5h)",
+            scope: { provider: "ollama-cloud", accountId: meta.id, windowId: "5h" },
+            window: { id: "5h", label: "5h", resetsAt: meta.sessionResetsAt ? new Date(meta.sessionResetsAt).getTime() : Date.now() + 5 * 3600 * 1000 },
+            amount: { used: meta.sessionUsagePct, limit: 100, remaining: 100 - meta.sessionUsagePct, usedFraction: pctFraction, remainingFraction: 1 - pctFraction, unit: "percent" },
+            status,
+          },
+        ];
+      }
+    });
   }
 
   for (const r of latestPerAccount.values()) {

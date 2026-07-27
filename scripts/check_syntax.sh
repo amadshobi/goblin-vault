@@ -99,9 +99,9 @@ if [ -n "$ts_files" ]; then
     while IFS= read -r file; do
         if [[ -f "$file" ]]; then
             if command -v bun >/dev/null 2>&1; then
-                if ! bun build --no-save "$file" &>/dev/null; then
+                if ! bun build --target=bun --no-save "$file" &>/dev/null; then
                     echo "❌ TS syntax error: $file"
-                    bun build --no-save "$file" || true
+                    bun build --target=bun --no-save "$file" || true
                     errors=$((errors + 1))
                 else
                     echo "   ✅ $file"
