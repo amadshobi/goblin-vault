@@ -5,6 +5,7 @@
 
 import fs from "fs";
 import path from "path";
+import { stderr } from "node:process";
 import { Database } from "bun:sqlite";
 
 export interface OllamaAccountMeta {
@@ -183,8 +184,16 @@ export async function fetchOllamaAccountsMeta(): Promise<OllamaAccountMeta[]> {
           sessionUsagePct = parsed.sessionPct;
           weeklyUsagePct = parsed.weeklyPct;
           sessionResetsAt = parsed.sessionReset;
+        } else {
+          // Log non-OK responses so silent enrichment failures become
+          // diagnosable instead of vanishing into the void.
+          stderr.write(`⚠️  ollama.com/settings -> HTTP ${res.status} (account=${email})\n`);
         }
-      } catch (_) {}
+      } catch (err) {
+        // Network/abort/parse failures: surface the underlying error so we
+        // can tell DNS, TLS, timeout, or auth issues apart in the logs.
+        stderr.write(`⚠️  ollama.com/settings fetch failed (account=${email}): ${(err as Error).message}\n`);
+      }
     }
 
     const meta: OllamaAccountMeta = {

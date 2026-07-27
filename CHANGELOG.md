@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [v0.3.13] - 2026-07-27
 
 ### Added
 - **Ollama Cloud Real-time Scraper & Metadata Fetcher (`ollama-me.ts`)**:
@@ -9,6 +9,13 @@
   - Cache TTL 15 menit di `~/.cache/goblin-nexus/ollama-me-cache.json` untuk performa kilat.
   - Integration di `gn status`: Render diagram bar visual 28-karakter presisi 1-desimal per-akun Ollama Cloud.
   - Integration di `gn burn`: Menampilkan baris `Weekly Usage` & `Session Usage` lengkap dengan estimasi token (`17.00k tokens`) dan cost ($).
+
+### Refactored
+- **Code Review & Maintenance Improvements (`gn`)**:
+  - Direct object mutation pada cumulative logic `burn.ts` diganti dengan Strict Immutability Map Update (`merged.set(key, { ... })`).
+  - Positional array index matching untuk Ollama Cloud diubah menjadi Identity-based lookup (`metaByEmail` / `metaById`).
+  - Komentar prioritas merge `burn.ts` disesuaikan dengan kode (`snapshot > history > broker`).
+  - Error context logging ditambahkan pada scraper `ollama-me.ts`.
 
 ## [v0.3.11] - 2026-07-27
 

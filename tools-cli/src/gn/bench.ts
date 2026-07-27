@@ -120,12 +120,28 @@ async function getModels(targetFilter: string): Promise<ModelItem[]> {
     }
   }
 
+  // Target Filter Parsing (Supports provider/model, provider name, or partial model name)
+  if (targetFilter && targetFilter !== "config" && targetFilter !== "cfg" && targetFilter !== "all") {
+    const filterLower = targetFilter.toLowerCase();
+    if (filterLower.includes("/")) {
+      // Exact full model match: e.g. "google-antigravity/claude-sonnet-4-6"
+      allModels = allModels.filter((m) => m.id.toLowerCase() === filterLower || m.id.toLowerCase().includes(filterLower));
+    } else {
+      // Filter by provider prefix OR model ID match
+      allModels = allModels.filter(
+        (m) => m.provider.toLowerCase() === filterLower || m.id.toLowerCase().includes(filterLower)
+      );
+    }
+  }
+
+  // Filter by provider if specified via flag --provider
   if (filterProvider) {
     allModels = allModels.filter(
       (m) => m.provider.toLowerCase() === filterProvider!.toLowerCase() || m.id.toLowerCase().includes(filterProvider!.toLowerCase())
     );
   }
 
+  // VS Mode filtering
   if (vsModels !== null) {
     if (vsModels.length > 0) {
       allModels = allModels.filter((m) => vsModels!.some((v) => m.id.toLowerCase().includes(v.toLowerCase())));
