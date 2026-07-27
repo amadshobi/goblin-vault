@@ -319,17 +319,19 @@ async function main(): Promise<void> {
   // snapshots for the same account, so we dedupe by picking the freshest
   // per (provider, identityKey).
   const latestPerAccount = new Map<string, ReportRow>();
+  let anonIdx = 1;
   for (const r of payload.reports ?? []) {
     if (providerFilter && r.provider !== providerFilter) continue;
     const meta = (r.metadata as AnyRecord) ?? {};
+    const hasExplicitId = meta.email || meta.accountId || meta.projectId;
     const idKey =
       (meta.email as string | undefined) ??
       (meta.accountId as string | undefined) ??
       (meta.projectId as string | undefined) ??
-      `${r.provider}::${r.fetchedAt}`;
+      `anon_${anonIdx++}`;
     const key = `${r.provider}::${idKey}`;
     const existing = latestPerAccount.get(key);
-    if (!existing || (r.fetchedAt ?? 0) > (existing.fetchedAt ?? 0)) {
+    if (!existing || (hasExplicitId && (r.fetchedAt ?? 0) > (existing.fetchedAt ?? 0))) {
       latestPerAccount.set(key, r);
     }
   }
