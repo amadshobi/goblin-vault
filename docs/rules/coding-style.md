@@ -193,6 +193,13 @@ Goblin Vault berisi banyak CLI dan TUI, jadi UX terminal harus dijaga.
 - Jangan membuat automation yang melakukan destructive action tanpa konfirmasi atau guard.
 - Emoji boleh dipakai untuk memperjelas konteks, tapi jangan sampai mengganggu parsing output.
 
+### Standard Banner ASCII Header 🟠 SHOULD
+
+Setiap alat CLI/TUI utama di Goblin Vault sebaiknya menyajikan header help / landing menu menggunakan **ANSI Block Header Style** agar konsisten:
+- **Font Style**: Gunakan Unicode Solid Block Font (`█`, `▀`, `▄`, `╔`, `╗`, `╚`, `╝`).
+- **Layout & Spacing**: Tempatkan nama alat CLI dan versinya persis di **bawah** banner ASCII art, dan sertakan margin 1 baris kosong (`echo ""`) di atas banner agar tidak menempel pada prompt terminal user (`shobixlinuxdev>`).
+- **Coloring**: Default warna banner adalah **Pure White (`\033[1;37m`)** untuk kesan ultra-clean & berkelas (kecuali tool khusus seperti `OCM` yang memiliki skema warna identitas tersendiri).
+
 ---
 
 ## 10. Documentation & Changelog 🟠 SHOULD
