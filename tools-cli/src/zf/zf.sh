@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════
-# ZF — Zoxide & Tmux Navigation Engine (v1.2.1)
+# ZF — Zoxide & Tmux Navigation Engine (v1.2)
 # Architecture: Modular Subshell Router
 # ═══════════════════════════════════════════════════
 zf() {
@@ -22,7 +22,7 @@ zf() {
     local mode=""
     case "${1:-}" in
         --help|-h)
-            echo "Usage: zf [mode] [args] (v1.2.1)"
+            echo "Usage: zf [mode] [args] (v1.2)"
             echo ""
             echo "Directory picker → cd → optional tool execution / Zoxide & Tmux Management"
             echo ""
