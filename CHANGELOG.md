@@ -2,6 +2,15 @@
 
 ## [v0.3.14] - 2026-07-28
 
+### Refactored
+- **`ocm` Full TypeScript Migration & Environment Auto-Discovery Engine**:
+  - Konversi 100% modul `ocm` dari JavaScript CJS (`.js`) menjadi ESM TypeScript terstruktur (`.ts`) di bawah `tools-cli/src/ocm/src/`.
+  - Penambahan `tsconfig.json` & definisi tipe data (`config.ts`, `models.ts`) untuk type safety penuh.
+  - Fitur **Workspace Auto-Discovery**: Scanner dinamis mendukung variabel lingkungan `OPENCODE_CONFIG_DIR`, auto-detect `~/.config/opencode`, `~/.opencode`, CWD, dan sub-proyek.
+  - **MCP Protocol Sync**: Mengubah toggle MCP server agar membaca & menulis field standar `enabled: true/false`.
+  - **Compaction Keep Fix**: Penyelarasan `compaction.keep` menjadi nilai desimal fraksi (`0.0` - `1.0`).
+  - Centralized Agent Management via `~/.opencode/opencode.jsonc`.
+
 ### Added
 - **Dashboard Integrator on `ocm` TUI (`menu.js`)**:
   - Menampilkan ringkasan status aktif sebelum prompt aksi utama (`Active Workspace`, `Config File`, `Default Agent`, `Active Model`, `Last Session`, dan status validasi `API Keys`).

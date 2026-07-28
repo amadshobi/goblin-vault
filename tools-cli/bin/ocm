@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-# Inject NODE_PATH ke lokasi node_modules ~/.opencode agar binary tidak crash kehilangan dependensi
+# Inject NODE_PATH & jalankan TypeScript entrypoint ocm via Bun
 export NODE_PATH="$HOME/.opencode/node_modules"
-exec node "$(dirname "$0")/../src/ocm/index.js" "$@"
+exec bun run "$(dirname "$0")/../src/ocm/src/index.ts" "$@"
