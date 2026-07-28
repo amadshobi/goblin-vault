@@ -5,6 +5,7 @@ const fs = require('fs');
 
 const utils = require('../utils');
 const common = require('./common');
+const { getDashboardLines } = require('./dashboard');
 
 
 // Import commands
@@ -40,6 +41,16 @@ async function runInteractiveLoop(startAction = null) {
   
   while (true) {
     if (!action) {
+      // Print Dashboard status lines
+      try {
+        const dbLines = getDashboardLines();
+        console.log('');
+        dbLines.forEach(line => console.log('  ' + line));
+        console.log('');
+      } catch (err) {
+        // Silent fallthrough for dashboard display error
+      }
+
       action = await p.autocomplete({
         message: 'Pilih Aksi (Ketik untuk mencari):',
         options: [

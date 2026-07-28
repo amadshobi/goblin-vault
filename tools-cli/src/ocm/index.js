@@ -39,7 +39,7 @@ function parseArgs(args) {
   let startIdx = 0;
   const validSubcommands = [
     'run', 'agent', 'session', 'settings', 'mcp',
-    'providers', 'models', 'reference', 'doctor', 'switch'
+    'providers', 'models', 'reference', 'doctor', 'switch', 'manage'
   ];
   
   // Parse positional subcommands first

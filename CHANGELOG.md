@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.3.14] - 2026-07-28
+
+### Added
+- **Dashboard Integrator on `ocm` TUI (`menu.js`)**:
+  - Menampilkan ringkasan status aktif sebelum prompt aksi utama (`Active Workspace`, `Config File`, `Default Agent`, `Active Model`, `Last Session`, dan status validasi `API Keys`).
+  - Membantu developer melihat state sistem OpenCode secara sekilas tanpa harus masuk ke sub-menu.
+
+### Fixed
+- **CLI Subcommand `ocm manage` Registry & Help**:
+  - Mendaftarkan subcommand `manage` ke `validSubcommands` di `index.js`.
+  - Melengkapi Level 3 Help untuk `ocm manage add --help`, `ocm manage edit --help`, dan `ocm manage delete --help`.
+
 ## [v0.3.13] - 2026-07-27
 
 ### Added
