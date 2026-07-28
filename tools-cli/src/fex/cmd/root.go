@@ -37,7 +37,14 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "fex [path] [extension]",
 	Short: "fex — File Explorer with fzf + tmux split (Hybrid Go + Bash)",
-	Long: `fex — File Explorer dengan fzf dan tmux split.
+	Long: "\n\x1b[1;37m  ██████╗███████╗██╗  ██╗\x1b[0m\n" +
+		"\x1b[1;37m  ██╔═══╝██╔════╝╚██╗██╔╝\x1b[0m\n" +
+		"\x1b[1;37m  █████╗ █████╗   ╚███╔╝ \x1b[0m\n" +
+		"\x1b[1;37m  ██╔══╝ ██╔══╝   ██╔██╗ \x1b[0m\n" +
+		"\x1b[1;37m  ██║    ███████╗██╔╝ ██╗\x1b[0m\n" +
+		"\x1b[1;37m  ╚═╝    ╚══════╝╚═╝  ╚═╝\x1b[0m\n" +
+		"  \x1b[1;37m   FEX File Explorer\x1b[0m\n\n" +
+		`fex — File Explorer dengan fzf dan tmux split.
 Hybrid architecture: Go manages config, state, routing, error handling.
 Bash helpers handle external tool interaction (fzf, fd, rg, tmux, bat).
 
