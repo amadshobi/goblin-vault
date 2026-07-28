@@ -7,16 +7,13 @@ _has_gum() { command -v gum >/dev/null 2>&1; }
 
 _gn_header() {
     local title="${1:-GOBLIN NEXUS}"
-    if _has_gum; then
-        gum style \
-            --foreground 212 --border-foreground 99 --border double \
-            --align center --width 60 --margin "1 0" --padding "0 2" \
-            "🧙‍♂️ $title 👹"
-    else
-        echo "=========================================================="
-        echo "  🧙‍♂️ $title 👹"
-        echo "=========================================================="
-    fi
+    echo -e "\033[1;37m  ██████╗ ███╗   ██╗\033[0m"
+    echo -e "\033[1;37m ██╔════╝ ████╗  ██║\033[0m"
+    echo -e "\033[1;37m ██║  ███╗██╔██╗ ██║\033[0m"
+    echo -e "\033[1;37m ██║   ██║██║╚██╗██║\033[0m"
+    echo -e "\033[1;37m ╚██████╔╝██║ ╚████║\033[0m"
+    echo -e "\033[1;37m  ╚═════╝ ╚═╝  ╚═══╝\033[0m"
+    echo -e "  \033[1;37m   Goblin Nexus\033[0m \033[1;37m\n $title\033[0m\n"
 }
 
 _gn_info() {
@@ -128,12 +125,15 @@ run_with_optional_picker() {
 }
 
 show_help() {
+    echo ""
+    echo -e "\033[1;37m  ██████╗ ███╗   ██╗\033[0m"
+    echo -e "\033[1;37m ██╔════╝ ████╗  ██║\033[0m"
+    echo -e "\033[1;37m ██║  ███╗██╔██╗ ██║\033[0m"
+    echo -e "\033[1;37m ██║   ██║██║╚██╗██║\033[0m"
+    echo -e "\033[1;37m ╚██████╔╝██║ ╚████║\033[0m"
+    echo -e "\033[1;37m  ╚═════╝ ╚═╝  ╚═══╝\033[0m"
+    echo -e "  \033[1;37m   Goblin Nexus\033[0m \033[1;37m\n Powered by OMP Engine\033[0m\n"
     cat <<'HELP'
- ▄▀▀▀ █▀▀▄   █▀▀█ █▀▀7 █▀▀█ █  █ █  █
- █  █ █  █   █▀▀█ █▀▀  █  █ ▀▀▄█ ▀▀▄█
- ▀▀▀▀ ▀  ▀   █    ▀    ▀▀▀▀ ▀▀▀▀ ▀▀▀▀
- Goblin Nexus Proxy CLI v2.6.2 • Powered by OMP Engine
-
 USAGE
   $ gn <command> [subcommand_or_flags]
   $ gn <command> --help                     💡 Tampilkan panduan mendalam per-command!

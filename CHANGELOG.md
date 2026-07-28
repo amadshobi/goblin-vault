@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.3.15] - 2026-07-28
+
+### Added
+- **Global Ultra-Clean ASCII Art Banners for CLI Suite (`GN`, `ZF`, `FEX`, `OCM`)**:
+  - Penyesuaian banner visual seragam dengan font ASCII Art tebal presisi tinggi.
+  - Penempatan nama tool dan versi persis di bawah banner dengan skema warna pure white & margin atas yang lega agar tidak menempel di prompt terminal (`shobixlinuxdev>`).
+
 ## [v0.3.14] - 2026-07-28
 
 ### Added

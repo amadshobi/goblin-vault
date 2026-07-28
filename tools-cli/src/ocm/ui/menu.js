@@ -44,7 +44,7 @@ async function runInteractiveLoop(startAction = null) {
       // Print Dashboard status lines
       try {
         const dbLines = getDashboardLines();
-        console.log('');
+        console.log('\n');
         dbLines.forEach(line => console.log('  ' + line));
         console.log('');
       } catch (err) {

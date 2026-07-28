@@ -22,8 +22,14 @@ zf() {
     local mode=""
     case "${1:-}" in
         --help|-h)
-            echo "Usage: zf [mode] [args] (v1.2)"
             echo ""
+            echo -e "\033[1;37m  ███████╗███████╗\033[0m"
+            echo -e "\033[1;37m  ╚══███╔╝██╔════╝\033[0m"
+            echo -e "\033[1;37m    ███╔╝ █████╗  \033[0m"
+            echo -e "\033[1;37m   ███╔╝  ██╔══╝  \033[0m"
+            echo -e "\033[1;37m  ███████╗██║     \033[0m"
+            echo -e "\033[1;37m  ╚══════╝╚═╝     \033[0m"
+            echo -e "  \033[1;37mZF Smart Navigation\033[0m \033[1;37m\n"
             echo "Directory picker → cd → optional tool execution / Zoxide & Tmux Management"
             echo ""
             echo "Modes (Picker + Tool):"
