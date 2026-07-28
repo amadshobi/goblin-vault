@@ -123,26 +123,6 @@ Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
 
 ---
 
-## Agent Responsibilities
-
-Daerah operasi setiap agent (lihat definisi subagent di Kilo):
-
-- **goblin-architect** — Merancang arsitektur & tech decisions. Bukan implementasi.
-- **goblin-implementer** — Implementasi code, fix bug, tulis test, bangun fitur.
-- **goblin-reviewer** — Code review menyeluruh: pattern, anti-pattern, security,
-  performance, readability.
-- **goblin-maintainer** — Maintenance & fix existing: bug fix, update minor, refactor.
-- **goblin-guardian** — Security keeper: jaga stabilitas, deteksi anomali, enforce rules.
-- **goblin-documenter** — Generate/update dokumentasi (README, codemap, guides).
-- **goblin-planner** — Breakdown task jadi milestones & sub-tasks terstruktur.
-- **goblin-cli** — Develop/optimize CLI & TUI tools.
-- **co-founder** — Penjaga kestabilan, perkembangan, dan arah ecosystem.
-
-Aturan delegasi: selalu sertakan Task, Konteks (file/struktur/constraint), dan Rute
-(path benar) agar subagent tidak loop call yang tidak berguna.
-
----
-
 ## Konvensi Repo
 
 - **Bahasa dokumentasi**: Indonesia (utama), English untuk istilah teknis.
