@@ -135,7 +135,7 @@ HELP
             ;;
         quarantine|q)
             cat <<'HELP'
-🧙‍♂️ GN QUARANTINE — Credential Zombie Sanitizer
+🧙‍♂️ GN QUARANTINE — Credential Zombie Sanitizer (Granular Per-Akun/Per-Project)
 
 DESKRIPSI
   Mengelola credential exhausted/zombie dengan memindahkannya dari
@@ -143,19 +143,43 @@ DESKRIPSI
   Backup SQLite otomatis dibuat sebelum modifikasi (immutable safety).
   Service di-restart secara otomatis setelah operasi.
 
+  TARGET RESOLUTION — Auto-detect tipe target:
+    • Provider name (e.g. google-antigravity) → quarantine SEMUA akun di provider tsb
+    • Email spesifik (e.g. sohibwong102@gmail.com) → quarantine 1 akun
+    • Project ID / Account ID (e.g. rare-data-6vp89) → quarantine 1 project
+
 USAGE
-  $ gn quarantine <command> [args]
-  $ gn q <command> [args]
+  $ gn quarantine <command> [target]
+  $ gn q <command> [target]
 
 COMMANDS
-  list, l              Lihat credential yang sedang di-quarantine
-  add, a <provider>    Pindahkan seluruh credential provider ke quarantine
-  restore, r <provider> Kembalikan credential dari quarantine
+  list, l                  Lihat credential ter-karantina (dengan Email, Project/ID, Tanggal)
+  add, a <target>          Quarantine credential by provider / email / projectId
+  restore, r <target>      Restore credential by email / projectId / filename
+
+TARGET TYPES (auto-detected)
+  <provider>               Cocok dengan nama provider → ALL akun provider tsb
+                           (e.g. google-antigravity, openai-codex, ollama-cloud)
+  <email>                  Cocok dengan field email di SQLite data JSON
+                           (e.g. sohibwong102@gmail.com)
+  <projectId|accountId>    Cocok dengan projectId/accountId di SQLite data JSON
+                           (e.g. rare-data-6vp89, blissful-quanta-cggcw)
+
+SAFETY
+  • Backup SQLite DB dibuat OTOMATIS sebelum delete (immutability).
+  • Hanya row yang cocok yang dihapus dari auth_credentials, auth_credential_blocks,
+    auth_credential_refresh_leases — akun lain di provider yang sama TETAP AMAN.
+  • File JSON secret dipindahkan ke .quarantine/<file>.<timestamp>.quarantine.
+  • omp-broker & omp-gateway di-restart setelah operasi.
+  • Jika target tidak ditemukan, proses dibatalkan dengan warning (DB tidak diubah).
 
 EXAMPLES
-  $ gn q list                       Lihat daftar quarantine
-  $ gn q add google-antigravity     Karantina credential AGY
-  $ gn q restore ollama-cloud       Kembalikan credential Ollama
+  $ gn q list                              Daftar quarantine dengan info lengkap
+  $ gn q add google-antigravity            Quarantine SEMUA akun AGY
+  $ gn q add sohibwong102@gmail.com        Quarantine 1 akun spesifik
+  $ gn q add blissful-quanta-cggcw         Quarantine by project ID
+  $ gn q restore sohibwong102@gmail.com    Restore 1 akun (trigger omp migrate)
+  $ gn q restore rare-data-6vp89           Restore by project ID
 HELP
             ;;
         export|e)
