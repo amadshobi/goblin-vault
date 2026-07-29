@@ -181,7 +181,13 @@ export function findOpenCodeProjects(): Array<{ name: string; path: string }> {
  * @returns String JSON murni tanpa komentar.
  */
 export function stripComments(jsoncStr: string): string {
-  return jsoncStr.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  // 1. Strip multi-line comments
+  let str = jsoncStr.replace(/\/\*[\s\S]*?\*\//g, '');
+  // 2. Strip single-line comments safely without removing URLs like http:// or https://
+  str = str.replace(/(^|[^:"'])(\/\/.*$)/gm, '$1');
+  // 3. Strip trailing commas in objects and arrays to prevent JSON parse error
+  str = str.replace(/,\s*([\}\]])/g, '$1');
+  return str;
 }
 
 /**
