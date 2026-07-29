@@ -8,22 +8,22 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOOLS_DIR="$ROOT_DIR/tools-cli"
 
-STAGED_ONLY=false
-if [ "${1:-}" = "--staged" ] || [ "${1:-}" = "-s" ]; then
-    STAGED_ONLY=true
+FULL_REPO=false
+if [ "${1:-}" = "--full" ] || [ "${1:-}" = "-f" ]; then
+    FULL_REPO=true
 fi
 
-echo "😈 Goblin Syntax Checker starting... $( $STAGED_ONLY && echo '(Fast Staged Mode)' || echo '(Full Repo Scan)' )"
+echo "😈 Goblin Syntax Checker starting... $( $FULL_REPO && echo '(Full Repo Scan)' || echo '(Fast Staged Mode)' )"
 echo "────────────────────────────────────────"
 
 errors=0
 
 get_files_to_check() {
     local ext_pattern="$1"
-    if $STAGED_ONLY; then
-        git diff --cached --name-only 2>/dev/null | grep -E "\.(${ext_pattern})$" || true
-    else
+    if $FULL_REPO; then
         find "$ROOT_DIR" -type f -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | grep -E "\.(${ext_pattern})$" || true
+    else
+        git diff --cached --name-only 2>/dev/null | grep -E "\.(${ext_pattern})$" || true
     fi
 }
 
