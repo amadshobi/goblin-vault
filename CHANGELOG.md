@@ -1,5 +1,26 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **BARU `gn usage` engine** (`usage.ts`): Modul unified yang menggantikan `status-formatter.ts` + `burn.ts` dengan data 100% akurat (tanpa `assumedTotal 100k`).
+  - **Quota Mode (`gn usage [provider]`)**: Fetch live usage limits dari broker `/v1/usage`. Menampilkan progress bar real, persentase akurat, status badge (`🟢 OK`/`⚠️ LOW`/`🔴 EXHAUSTED`), exact used/limit count, dan countdown `resetsAt`.
+  - **Token Burn Mode (`gn usage --token [provider] [--days N]`)**: Query SQLite `client_usage` dari `~/.omp/agent/agent.db` untuk data real (requests, input/output/cache tokens, cost_usd). **BUKAN estimasi** — data asli dari database.
+  - **JSON Mode (`gn usage --json`)**: Output JSON mentah untuk scripting/piping.
+  - **Failure Resilience**: Graceful handling saat broker offline, DB locked, atau tabel `client_usage` kosong — pesan jelas tanpa crash.
+- **Quick Token Summary**: Di mode quota, `usage.ts` otomatis menampilkan ringkasan token 7d jika `client_usage` punya data.
+
+### Changed
+- **`gn usage / u` routing** (`gn.sh`): Delegate langsung ke `usage.ts` — hapus pipe `omp usage --json | status-formatter.ts` dan panggilan `burn.ts`.
+- **`help-formatter.sh`**: Level 2 help `usage` di-update — ganti `--history`/sparkline dengan `--token` mode, deskripsi dual-mode, visual indicators baru.
+- **`gn bench`** (`bench.ts`): Hapus dependensi `bench-roles.ts` untuk role specialization. Benchmark sekarang menggunakan generic prompt tanpa system prompt complex, tanpa hybrid scoring.
+
+### Removed
+- **`burn.ts`** & **`status-formatter.ts`**: File dihapus dari direktori. Keduanya sudah digantikan sepenuhnya oleh `usage.ts` — tidak ada routing yang memanggilnya lagi.
+
+### Removed
+- **`assumedTotal 100k` matematika rekaan**: `burn.ts` sebelumnya menggunakan estimasi 100k token untuk menghitung cost — sekarang `usage.ts` hanya menampilkan data real dari SQLite atau jujur mengatakan "0 tokens burned".
+
 ## [v0.3.15] - 2026-07-28
 
 ### Added

@@ -1,13 +1,11 @@
 #!/usr/bin/env bun
 // ─────────────────────────────────────────────────────────────
-// Goblin Nexus Benchmark & Health Ping Engine v2.5.0
-// Dynamic Spinner UX, Hybrid Scoring, & Agent Analytics Output.md
+// Goblin Nexus Benchmark & Health Ping Engine v3.0
+// Simple & honest: TTFT, tok/s, latency — no role specialization
 // ─────────────────────────────────────────────────────────────
 
 import fs from "fs";
 import path from "path";
-import { getRole, calculateHybridScore, type BenchRole } from "./bench-roles";
-import { saveBenchRun, resetOutputMd, appendOutputMd, type BenchRecord } from "./bench-storage";
 
 const args = process.argv.slice(2);
 const action = args[0] || "ping";
@@ -16,8 +14,6 @@ let target = "config";
 let forceRefresh = false;
 let selectMode = false;
 let filterProvider: string | null = null;
-let vsModels: string[] | null = null;
-let selectedRole: BenchRole = getRole("coder");
 let customTimeoutSec: number | null = null;
 
 for (let i = 1; i < args.length; i++) {
@@ -34,18 +30,6 @@ for (let i = 1; i < args.length; i++) {
     filterProvider = arg.split("=")[1];
   } else if (arg === "--provider" && i + 1 < args.length) {
     filterProvider = args[++i];
-  } else if (arg.startsWith("--role=")) {
-    selectedRole = getRole(arg.split("=")[1]);
-  } else if (arg === "--role" && i + 1 < args.length) {
-    selectedRole = getRole(args[++i]);
-  } else if (arg.startsWith("--vs=")) {
-    vsModels = arg.split("=")[1].split(",").map((s) => s.trim());
-  } else if (arg === "--vs") {
-    if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
-      vsModels = args[++i].split(",").map((s) => s.trim());
-    } else {
-      vsModels = [];
-    }
   } else if (!arg.startsWith("-")) {
     target = arg;
   }
@@ -53,8 +37,10 @@ for (let i = 1; i < args.length; i++) {
 
 const CACHE_DIR = `${process.env.HOME}/.cache/goblin-nexus`;
 const CACHE_TTL_MS = 5 * 24 * 60 * 60 * 1000;
-const PING_TIMEOUT_MS = customTimeoutSec ? customTimeoutSec * 1000 : 10_000; // 10s default ping
-const BENCH_TIMEOUT_MS = customTimeoutSec ? customTimeoutSec * 1000 : 60_000; // 60s default bench
+const PING_TIMEOUT_MS = customTimeoutSec ? customTimeoutSec * 1000 : 10_000;
+const BENCH_TIMEOUT_MS = customTimeoutSec ? customTimeoutSec * 1000 : 60_000;
+const DEFAULT_GATEWAY_BASE_URL = "http://127.0.0.1:4000/v1";
+const BENCH_PROMPT = "Write a concise explanation of what a closure is in JavaScript, with a short code example.";
 
 interface ModelItem {
   name: string;
@@ -68,7 +54,42 @@ interface AvailableModel {
   name: string;
   latency: number;
   speed?: string;
-  quality?: number;
+}
+
+function normalizeGatewayBaseUrl(rawUrl: string | undefined | null): string {
+  const trimmed = rawUrl?.trim();
+  if (!trimmed) return DEFAULT_GATEWAY_BASE_URL;
+  try {
+    const url = new URL(trimmed);
+    url.pathname = url.pathname.replace(/\/+$/, "");
+    return url.toString().replace(/\/+$/, "");
+  } catch (_) {
+    console.log(`⚠️  GN_GATEWAY_BASE_URL invalid: ${trimmed}. Fallback ke ${DEFAULT_GATEWAY_BASE_URL}`);
+    return DEFAULT_GATEWAY_BASE_URL;
+  }
+}
+
+function readGatewayBaseUrlFromConfig(): string | null {
+  const configPath = `${process.env.HOME}/.config/opencode/opencode.jsonc`;
+  if (!fs.existsSync(configPath)) return null;
+  try {
+    const raw = fs.readFileSync(configPath, "utf8").replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    const json = JSON.parse(raw);
+    return json.provider?.["goblin-nexus"]?.options?.baseURL || null;
+  } catch (e: any) {
+    console.log(`⚠️  Gagal membaca baseURL dari opencode.jsonc: ${e.message}`);
+    return null;
+  }
+}
+
+function resolveGatewayBaseUrl(): string {
+  return normalizeGatewayBaseUrl(process.env.GN_GATEWAY_BASE_URL || readGatewayBaseUrlFromConfig());
+}
+
+const GATEWAY_BASE_URL = resolveGatewayBaseUrl();
+
+function gatewayUrl(pathname: string): string {
+  return `${GATEWAY_BASE_URL}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
 }
 
 function loadCache(act: string, tgt: string): any | null {
@@ -106,7 +127,7 @@ async function getModels(targetFilter: string): Promise<ModelItem[]> {
     }
   } else {
     try {
-      const res = await fetch("http://127.0.0.1:4000/v1/models");
+      const res = await fetch(gatewayUrl("/models"));
       if (res.ok) {
         const data = (await res.json()) as { data?: Array<{ id: string }> };
         allModels = (data.data || []).map((m) => ({
@@ -116,44 +137,25 @@ async function getModels(targetFilter: string): Promise<ModelItem[]> {
         }));
       }
     } catch (e: any) {
-      console.log(`❌ Failed to connect to Gateway proxy (http://127.0.0.1:4000/v1): ${e.message}`);
+      console.log(`❌ Failed to connect to Gateway proxy (${GATEWAY_BASE_URL}): ${e.message}`);
     }
   }
 
-  // Target Filter Parsing (Supports provider/model, provider name, or partial model name)
   if (targetFilter && targetFilter !== "config" && targetFilter !== "cfg" && targetFilter !== "all") {
     const filterLower = targetFilter.toLowerCase();
     if (filterLower.includes("/")) {
-      // Exact full model match: e.g. "google-antigravity/claude-sonnet-4-6"
       allModels = allModels.filter((m) => m.id.toLowerCase() === filterLower || m.id.toLowerCase().includes(filterLower));
     } else {
-      // Filter by provider prefix OR model ID match
       allModels = allModels.filter(
         (m) => m.provider.toLowerCase() === filterLower || m.id.toLowerCase().includes(filterLower)
       );
     }
   }
 
-  // Filter by provider if specified via flag --provider
   if (filterProvider) {
     allModels = allModels.filter(
       (m) => m.provider.toLowerCase() === filterProvider!.toLowerCase() || m.id.toLowerCase().includes(filterProvider!.toLowerCase())
     );
-  }
-
-  // VS Mode filtering
-  if (vsModels !== null) {
-    if (vsModels.length > 0) {
-      allModels = allModels.filter((m) => vsModels!.some((v) => m.id.toLowerCase().includes(v.toLowerCase())));
-    } else {
-      const providerMap = new Map<string, ModelItem>();
-      for (const m of allModels) {
-        if (!providerMap.has(m.provider)) {
-          providerMap.set(m.provider, m);
-        }
-      }
-      allModels = Array.from(providerMap.values());
-    }
   }
 
   return allModels;
@@ -180,8 +182,7 @@ function printSummaryLineup(available: AvailableModel[]) {
   console.log("─".repeat(70));
   for (const item of available) {
     const speedInfo = item.speed ? `${item.speed} tok/s` : `⚡ ${item.latency}ms`;
-    const qualityInfo = item.quality !== undefined ? ` | ⭐ ${Math.round(item.quality * 100)}%` : "";
-    console.log(`  ${item.id.padEnd(42)} | ${speedInfo}${qualityInfo}`);
+    console.log(`  ${item.id.padEnd(42)} | ${speedInfo}`);
   }
   console.log("─".repeat(70) + "\n");
 }
@@ -223,7 +224,7 @@ async function runPing(models: ModelItem[], act: string, tgt: string) {
     try {
       const ctrl = new AbortController();
       const timeoutId = setTimeout(() => ctrl.abort(), PING_TIMEOUT_MS);
-      const res = await fetch("http://127.0.0.1:4000/v1/chat/completions", {
+      const res = await fetch(gatewayUrl("/chat/completions"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer dummy" },
         signal: ctrl.signal,
@@ -271,24 +272,20 @@ async function runBench(models: ModelItem[], act: string, tgt: string) {
     return;
   }
 
-  // Reset output.md for fresh agent evaluation
-  resetOutputMd(selectedRole.name, selectedRole.dataset.id);
-
-  console.log(`\n📊 [Goblin Nexus Bench] Target: ${models.length} model(s) | Role: ${selectedRole.emoji} ${selectedRole.name}\n`);
-  console.log("  MODEL ID                                   ROLE       LATENCY   TOKENS (TOK/S)   QUALITY");
-  console.log("  ─────────────────────────────────────────  ─────────  ────────  ───────────────  ───────");
+  console.log(`\n📊 [Goblin Nexus Bench] Target: ${models.length} model(s) — Simple benchmark\n`);
+  console.log("  MODEL ID                                   LATENCY    TOKENS (TOK/S)");
+  console.log("  ─────────────────────────────────────────  ────────  ───────────────");
 
   const isTTY = process.stdout.isTTY;
   const frames = ["⚡", "🔥", "✨", "🚀"];
   const available: AvailableModel[] = [];
-  const recordsToSave: BenchRecord[] = [];
 
   for (const m of models) {
     let i = 0;
     let timer: NodeJS.Timeout | undefined;
     if (isTTY) {
       timer = setInterval(() => {
-        process.stdout.write(`\r  ${frames[i++ % frames.length]} [BENCH] ${m.id.padEnd(38)} ${selectedRole.id.padEnd(9)} inferencing...`);
+        process.stdout.write(`\r  ${frames[i++ % frames.length]} [BENCH] ${m.id.padEnd(41)}  inferencing...`);
       }, 120);
     }
 
@@ -296,17 +293,14 @@ async function runBench(models: ModelItem[], act: string, tgt: string) {
     try {
       const ctrl = new AbortController();
       const timeoutId = setTimeout(() => ctrl.abort(), BENCH_TIMEOUT_MS);
-      const res = await fetch("http://127.0.0.1:4000/v1/chat/completions", {
+      const res = await fetch(gatewayUrl("/chat/completions"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer dummy" },
         signal: ctrl.signal,
         body: JSON.stringify({
           model: m.id,
-          messages: [
-            { role: "system", content: selectedRole.systemPrompt },
-            { role: "user", content: selectedRole.dataset.prompt },
-          ],
-          max_tokens: 250,
+          messages: [{ role: "user", content: BENCH_PROMPT }],
+          max_tokens: 150,
         }),
       });
       clearTimeout(timeoutId);
@@ -320,18 +314,11 @@ async function runBench(models: ModelItem[], act: string, tgt: string) {
         const compTok = data.usage?.completion_tokens || Math.round(text.length / 4);
         const totalTok = promptTok + compTok;
         const tokPerSec = compTok > 0 ? parseFloat(((compTok / elapsed) * 1000).toFixed(1)) : 0;
-        
-        // Compute Hybrid Score (Deterministic + Keyword Rubric)
-        const quality = calculateHybridScore(text, selectedRole.dataset);
-
-        // Append output to output.md for agent analytics
-        appendOutputMd(m.id, selectedRole.dataset.prompt, text, quality);
 
         const tokStr = `${totalTok} tok (${tokPerSec} t/s)`;
-        const qualityStr = `⭐ ${Math.round(quality * 100)}%`;
 
         console.log(
-          `  ${m.id.padEnd(41)}  ${selectedRole.id.padEnd(9)}  ${String(elapsed).padStart(5)}ms  ${tokStr.padEnd(15)}  ${qualityStr}`
+          `  ${m.id.padEnd(41)}  ${String(elapsed).padStart(6)}ms  ${tokStr.padEnd(19)}`
         );
 
         available.push({
@@ -340,29 +327,18 @@ async function runBench(models: ModelItem[], act: string, tgt: string) {
           name: m.name,
           latency: elapsed,
           speed: String(tokPerSec),
-          quality,
-        });
-
-        recordsToSave.push({
-          model: m.id,
-          role: selectedRole.id,
-          latencyMs: elapsed,
-          tokens: { prompt: promptTok, completion: compTok, total: totalTok, tokPerSec },
-          qualityScore: quality,
-          timestamp: new Date().toISOString(),
         });
       } else {
-        console.log(`  ${m.id.padEnd(41)}  ${selectedRole.id.padEnd(9)}  ❌ FAIL ${res.status}  ░░░░░░░░░░░░░░   0%`);
+        console.log(`  ${m.id.padEnd(41)}  ❌ FAIL ${res.status}`);
       }
     } catch (e: any) {
       if (isTTY && timer) { clearInterval(timer); process.stdout.write("\r\x1b[K"); }
-      console.log(`  ${m.id.padEnd(41)}  ${selectedRole.id.padEnd(9)}  ⏱️ TIMEOUT ${BENCH_TIMEOUT_MS / 1000}s ░░░░░░░░░░░░░░   0%`);
+      console.log(`  ${m.id.padEnd(41)}  ⏱️ TIMEOUT ${BENCH_TIMEOUT_MS / 1000}s`);
     }
   }
 
   console.log("");
   printSummaryLineup(available);
-  if (recordsToSave.length > 0) saveBenchRun(recordsToSave);
   saveCache(act, tgt, available);
   writeSelectFile(available);
 }
@@ -371,7 +347,7 @@ async function main() {
   const models = await getModels(target);
   if (models.length === 0) {
     console.log(`🔥 [Goblin Roast] Kagak ada model yang cocok untuk target '${target}', BOSS!`);
-    console.log(`💡 Hint: Pastikan gateway port 4000 aktif ('gn restart') atau provider ID benar.`);
+    console.log(`💡 Hint: Pastikan gateway aktif di ${GATEWAY_BASE_URL} ('gn restart') atau provider ID benar.`);
     writeSelectFile([]);
     process.exit(1);
   }
