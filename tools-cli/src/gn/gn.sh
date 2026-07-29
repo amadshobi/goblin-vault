@@ -109,6 +109,7 @@ DIAGNOSTICS & BENCHMARK
 
 QUOTA & COST TRACKING
   usage, u [provider]    📈 Dashboard kuota live + token burn & cost tracker
+  price, prc             💰 Custom pricing engine — list/set/calc per-1M token
 
 CREDENTIAL MANAGEMENT
   quarantine, q <cmd>    🔒 Karantina credential zombie/exhausted (list|add|restore)
@@ -128,6 +129,8 @@ EXAMPLES
   $ gn doctor             Full diagnostic
   $ gn q list             Lihat credential ter-quarantine
   $ gn q add ollama-cloud  Karantina semua credential Ollama
+  $ gn price                 Lihat tabel harga per 1M token
+  $ gn price set anthropic claude-sonnet-4 --input 3.00 --output 15.00
 HELP
 }
 
@@ -184,6 +187,15 @@ case "${1:-}" in
             exit 0
         fi
         bash "$GN_DIR/quarantine.sh" "$@"
+        ;;
+    price|prc)
+        shift
+        if _is_help_requested "$@"; then
+            _gn_header "HELP MANUAL: GN PRICE"
+            _show_subcommand_help "price"
+            exit 0
+        fi
+        bun "$GN_DIR/price.ts" "$@"
         ;;
     export|e)
         _gn_header "DYNAMIC CREDENTIAL EXPORT"

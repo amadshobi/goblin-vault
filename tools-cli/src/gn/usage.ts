@@ -31,6 +31,9 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
 
+import { queryTelemetry, getSummary, TELEMETRY_DB_PATH } from "./telemetry/db.ts";
+import { calculateCost, loadPrices } from "./telemetry/pricing.ts";
+
 // ─── Types ────────────────────────────────────────────────────
 
 type AnyRecord = Record<string, unknown>;
@@ -76,6 +79,7 @@ interface TokenRow {
 // ─── Config ────────────────────────────────────────────────────
 
 const DB_PATH = join(homedir(), ".omp", "agent", "agent.db");
+const OMP_STATS_DB_PATH = join(homedir(), ".omp", "stats.db");
 const DEFAULT_BROKER_PORTS = [4001, 4000];
 const REQUEST_TIMEOUT_MS = 8_000;
 
@@ -486,6 +490,218 @@ function providerFromModelKey(modelKey: string): string {
   return modelKey.split("/")[0] || "unknown";
 }
 
+/** Extract short model name from model_key (e.g. "google-antigravity/gemini-3.5-flash" → "gemini-3.5-flash") */
+function modelShortName(modelKey: string): string {
+  const idx = modelKey.indexOf("/");
+  return idx >= 0 ? modelKey.slice(idx + 1) : modelKey;
+}
+
+/** Query OMP stats.db (~/.omp/stats.db) — kaya dengan 276+ messages berisi input_tokens, output_tokens, cache_tokens, cost_total real.
+ *  Timestamp dalam epoch MILLISECONDS. Provider dan model langsung tersedia sebagai kolom.
+ */
+function queryOmpStatsDb(provider: string | null, days: number): TokenRow[] {
+  if (!existsSync(OMP_STATS_DB_PATH)) return [];
+
+  let db: Database | null = null;
+  try {
+    db = new Database(OMP_STATS_DB_PATH, { readonly: true });
+  } catch {
+    return [];
+  }
+
+  try {
+    const sinceMs = Date.now() - days * 86_400_000;
+    let sql = `SELECT provider, model, COUNT(*) as cnt, SUM(input_tokens) as in_tok, SUM(output_tokens) as out_tok, SUM(cache_read_tokens + cache_write_tokens) as cache_tok, SUM(cost_total) as cost FROM messages WHERE timestamp >= ?`;
+    const params: (number | string)[] = [sinceMs];
+
+    if (provider) {
+      sql += ` AND provider = ?`;
+      params.push(provider);
+    }
+
+    sql += ` GROUP BY provider, model ORDER BY provider, cnt DESC`;
+
+    interface StatsRow {
+      provider: string;
+      model: string;
+      cnt: number;
+      in_tok: number;
+      out_tok: number;
+      cache_tok: number;
+      cost: number;
+    }
+
+    const rows = db.query(sql).all(...params) as StatsRow[];
+    if (rows.length === 0) return [];
+
+    return rows.map((r) => ({
+      provider: r.provider,
+      model: r.model,
+      requests: r.cnt,
+      inputTokens: r.in_tok || 0,
+      outputTokens: r.out_tok || 0,
+      cacheReadTokens: r.cache_tok || 0,
+      cacheWriteTokens: 0,
+      costUsd: r.cost || 0,
+    }));
+  } catch (err) {
+    stderr.write(`⚠️  stats.db query error: ${(err as Error).message}\n`);
+    return [];
+  } finally {
+    if (db) db.close();
+  }
+}
+
+/** Safe Multi-Source Merge:
+ *  Menggabungkan data dari OMP stats.db (real ingestion), model_perf (historical),
+ *  dan telemetry.db (Goblin Nexus) per (provider, model) — tanpa double count, tanpa data rekaan.
+ *
+ *  Strategy:
+ *  1. Stats.db = PRIMARY — punya input_tokens, output_tokens, cache_tokens, cost total real
+ *  2. Model perf = SECONDARY — punya samples + output_tokens (historical, mungkin mencakup data lama)
+ *  3. Telemetry = TERTIARY — punya prompt + completion tokens (Goblin Nexus native)
+ *
+ *  Merge per (provider, model):
+ *    requests      = max(stats.cnt, model_perf.samples, telemetry.count)
+ *    input_tokens  = max(stats.input_tokens, telemetry.prompt_tokens)     // model_perf tdk punya
+ *    output_tokens = max(stats.output_tokens, model_perf.output_tokens, telemetry.completion_tokens)
+ *    cache_tokens  = stats.cache_read + stats.cache_write                 // hanya stats.db punya
+ *    cost_usd      = stats.cost_total ATAU hitung dari pricing jika input/output ada
+ */
+function mergeTokenRows(
+  statsRows: TokenRow[],
+  perfRows: TokenRow[],
+  telRows: TokenRow[],
+): { rows: TokenRow[]; sources: string[] } {
+  const sourcesUsed = new Set<string>();
+  if (statsRows.length > 0) sourcesUsed.add("stats.db (Real Ingestion)");
+  if (perfRows.length > 0) sourcesUsed.add("model_perf (OMP Historical)");
+  if (telRows.length > 0) sourcesUsed.add("telemetry.db (GN Native)");
+
+  // Build index keyed by (provider, model_short)
+  const merged = new Map<string, TokenRow>();
+
+  // Helper: key normalization for cross-source matching
+  const keyFor = (provider: string, model: string): string => {
+    // model_perf stores model_key as "provider/full/path", strip the prefix
+    const short = model.startsWith(`${provider}/`) ? model.slice(provider.length + 1) : model;
+    return `${provider}::${short}`;
+  };
+
+  // Insert or merge row into map
+  const upsert = (row: TokenRow) => {
+    const key = keyFor(row.provider, row.model);
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { ...row });
+      return;
+    }
+    // Merge: take MAX of each metric (data datang dari berbagai source, pakai yang terbesar)
+    existing.requests = Math.max(existing.requests, row.requests);
+    existing.inputTokens = Math.max(existing.inputTokens, row.inputTokens);
+    existing.outputTokens = Math.max(existing.outputTokens, row.outputTokens);
+    existing.cacheReadTokens = Math.max(existing.cacheReadTokens, row.cacheReadTokens);
+    existing.cacheWriteTokens = Math.max(existing.cacheWriteTokens, row.cacheWriteTokens);
+    existing.costUsd = Math.max(existing.costUsd, row.costUsd);
+    // If stats.db has the model name but perf used full key, prefer stats name
+    if (row.model.length < existing.model.length && row.requests > 0) {
+      existing.model = row.model;
+    }
+  };
+
+  // Insert all sources
+  for (const row of statsRows) upsert(row);
+  for (const row of perfRows) upsert(row);
+  for (const row of telRows) upsert(row);
+
+  const rows = [...merged.values()].sort(
+    (a, b) => a.provider.localeCompare(b.provider) || a.model.localeCompare(b.model),
+  );
+
+  return { rows, sources: [...sourcesUsed] };
+}
+
+/** Query the new independent telemetry.db (Phase 1 engine).
+ *  If rows have cost_usd = 0 (not pre-computed at write time), we
+ *  RECOMPUTE cost from current prices.json using the same transparent
+ *  per-1M math. NO FAKE MATH — every USD comes from real tokens × rate.
+ */
+function queryTelemetryDb(provider: string | null, days: number): TokenRow[] {
+  if (!existsSync(TELEMETRY_DB_PATH)) return [];
+
+  const raw = queryTelemetry({ provider: provider ?? undefined, days, limit: 100_000 });
+  if (raw.length === 0) return [];
+
+  // Group by (provider, model) and sum tokens
+  const grouped = new Map<string, {
+    provider: string;
+    model: string;
+    requests: number;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    costUsd: number;
+    hasPrecomputedCost: boolean;
+  }>();
+
+  for (const r of raw) {
+    const key = `${r.provider}::${r.model}`;
+    const cur = grouped.get(key) ?? {
+      provider: r.provider,
+      model: r.model,
+      requests: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      costUsd: 0,
+      hasPrecomputedCost: false,
+    };
+    cur.requests += 1;
+    cur.inputTokens += r.prompt_tokens || 0;
+    cur.outputTokens += r.completion_tokens || 0;
+    cur.cacheReadTokens += r.cache_read_tokens || 0;
+    cur.cacheWriteTokens += r.cache_write_tokens || 0;
+    if (r.cost_usd > 0) {
+      cur.costUsd += r.cost_usd;
+      cur.hasPrecomputedCost = true;
+    }
+    grouped.set(key, cur);
+  }
+
+  const prices = loadPrices();
+  const out: TokenRow[] = [];
+  for (const cur of grouped.values()) {
+    let cost = cur.costUsd;
+    // If telemetry entries were logged without pre-computed cost,
+    // recompute transparently from prices.json + actual tokens.
+    if (!cur.hasPrecomputedCost) {
+      const breakdown = calculateCost(
+        cur.provider,
+        cur.model,
+        cur.inputTokens,
+        cur.outputTokens,
+        cur.cacheReadTokens + cur.cacheWriteTokens,
+        prices,
+      );
+      cost = breakdown.total;
+    }
+    out.push({
+      provider: cur.provider,
+      model: cur.model,
+      requests: cur.requests,
+      inputTokens: cur.inputTokens,
+      outputTokens: cur.outputTokens,
+      cacheReadTokens: cur.cacheReadTokens,
+      cacheWriteTokens: cur.cacheWriteTokens,
+      costUsd: cost,
+    });
+  }
+  out.sort((a, b) => a.provider.localeCompare(b.provider) || a.model.localeCompare(b.model));
+  return out;
+}
+
 /** Query model_perf table — BERISI DATA REAL output_tokens & samples (request count) */
 function queryModelPerf(db: Database, provider: string | null, sinceSec: number): TokenRow[] {
   // model_perf.updated_at is epoch SECONDS (default: CAST(strftime('%s','now') AS INTEGER))
@@ -602,73 +818,84 @@ function queryUsageHistory(db: Database, provider: string | null, sinceMs: numbe
   return db.query(sql).all(...params) as { provider: string; snapshots: number }[];
 }
 
-function queryTokenBurn(provider: string | null, days: number): TokenRow[] {
-  if (!existsSync(DB_PATH)) {
-    stderr.write(`⚠️  Database tidak ditemukan: ${DB_PATH}\n`);
-    stderr.write("💡 Pastikan OMP agent sudah berjalan dan menghasilkan data.\n");
-    return [];
+function queryTokenBurn(provider: string | null, days: number): { rows: TokenRow[]; sources: string[] } {
+  const empty = { rows: [] as TokenRow[], sources: [] as string[] };
+
+  const sinceMs = Date.now() - days * 86_400_000;
+  const sinceSec = Math.floor(sinceMs / 1000);
+
+  // ── Query ALL sources in parallel ──
+  // 1. OMP stats.db (PRIMARY — 276+ messages, full token + cost)
+  const statsRows = queryOmpStatsDb(provider, days);
+
+  // 2. Model perf from agent.db (SECONDARY — samples + output_tokens)
+  let perfRows: TokenRow[] = [];
+  if (existsSync(DB_PATH)) {
+    try {
+      const db = new Database(DB_PATH, { readonly: true });
+      perfRows = queryModelPerf(db, provider, sinceSec);
+      db.close();
+    } catch {
+      // silent
+    }
   }
 
-  let db: Database | null = null;
-  try {
-    db = new Database(DB_PATH, { readonly: true });
-  } catch (err) {
-    stderr.write(`⚠️  Gagal membuka database SQLite: ${(err as Error).message}\n`);
-    return [];
+  // 3. Goblin Nexus telemetry.db (TERTIARY — prompt/completion tokens)
+  const telRows = queryTelemetryDb(provider, days);
+
+  // 4. Client usage (legacy OMP — full token breakdown, usually empty)
+  let clientRows: TokenRow[] = [];
+  if (existsSync(DB_PATH)) {
+    try {
+      const db = new Database(DB_PATH, { readonly: true });
+      clientRows = queryClientUsage(db, provider, sinceMs);
+      db.close();
+    } catch {
+      // silent
+    }
   }
 
-  try {
-    const sinceMs = Date.now() - days * 86_400_000;
-    const sinceSec = Math.floor(sinceMs / 1000);
+  // ── Multi-Source Merge ──
+  // Gabungkan ALL sources jadi satu merged set per (provider, model)
+  const { rows, sources } = mergeTokenRows(statsRows, [...perfRows, ...clientRows], telRows);
 
-    // ── Source Priority Chain: model_perf > client_usage > cost_history ──
-    // model_perf stores updated_at in epoch SECONDS
-    const perfRows = queryModelPerf(db, provider, sinceSec);
-    if (perfRows.length > 0) {
-      return perfRows;
-    }
-
-    // client_usage stores recorded_at in epoch MILLISECONDS
-    const clientRows = queryClientUsage(db, provider, sinceMs);
-    if (clientRows.length > 0) {
-      return clientRows;
-    }
-
-    // usage_cost_history stores recorded_at in epoch MILLISECONDS
-    const costRows = queryCostHistory(db, provider, sinceMs);
-    if (costRows.length > 0) {
-      return costRows;
-    }
-
-    // Fallback: report what exists in usage_history (quota snapshots, no token data)
-    const usageRows = queryUsageHistory(db, provider, sinceMs);
-    if (usageRows.length > 0) {
-      const provNames = usageRows.map((r) => r.provider).join(", ");
-      stderr.write(`ℹ️  ${usageRows.length} provider(s) dengan data quota di usage_history: ${provNames}\n`);
-      stderr.write("ℹ️  Tabel model_perf, client_usage, dan usage_cost_history kosong untuk window ini.\n");
-      stderr.write("💡 Data token burn akan tersedia setelah OMP gateway memproses request dan mencatatnya.\n");
-    }
-
-    return [];
-  } catch (err) {
-    stderr.write(`⚠️  SQLite query error: ${(err as Error).message}\n`);
-    return [];
-  } finally {
-    if (db) db.close();
+  if (rows.length > 0) {
+    return { rows, sources };
   }
+
+  // ── Fallback: report what exists in usage_history (quota snapshots) ──
+  if (existsSync(DB_PATH)) {
+    try {
+      const db = new Database(DB_PATH, { readonly: true });
+      const usageRows = queryUsageHistory(db, provider, sinceMs);
+      if (usageRows.length > 0) {
+        const provNames = usageRows.map((r) => r.provider).join(", ");
+        stderr.write(`ℹ️  ${usageRows.length} provider(s) dengan data quota di usage_history: ${provNames}\n`);
+        stderr.write("ℹ️  Tidak ada data token/cost di stats.db, model_perf, client_usage, atau cost_history.\n");
+        stderr.write("💡 Pastikan OMP gateway memproses request agar data token tercatat.\n");
+      }
+      db.close();
+    } catch {
+      // silent
+    }
+  }
+
+  return empty;
 }
 
 function renderTokenTable(rows: TokenRow[]): string {
-  // Detect if data came from model_perf (no input tokens tracked)
-  const fromModelPerf = rows.length > 0 && rows.every((r) => r.inputTokens === 0 && r.cacheReadTokens === 0 && r.cacheWriteTokens === 0 && r.costUsd === 0);
-  const headers = fromModelPerf
-    ? ["PROVIDER", "MODEL", "REQUESTS", "INPUT TOKENS", "OUTPUT TOKENS", "CACHE TOKENS", "COST ($)"]
-    : ["PROVIDER", "MODEL", "REQUESTS", "INPUT TOKENS", "OUTPUT TOKENS", "CACHE TOKENS", "COST ($)"];
+  // Detect data completeness for display
+  const hasInputTokens = rows.some((r) => r.inputTokens > 0);
+  const hasCost = rows.some((r) => r.costUsd > 0);
+  const showDashInput = !hasInputTokens;
+  const showDashCost = !hasCost && !hasInputTokens; // dash cost only when no input either (model_perf-only)
+
   const widths = [24, 28, 10, 14, 14, 14, 12];
   const sep = "─";
   const lines: string[] = [];
 
   // Header
+  const headers = ["PROVIDER", "MODEL", "REQUESTS", "INPUT TOKENS", "OUTPUT TOKENS", "CACHE TOKENS", "COST ($)"];
   const headerCells = headers.map((h, i) => pad(h, widths[i]));
   lines.push(headerCells.join("  "));
   lines.push(widths.map((w) => sep.repeat(w)).join("  "));
@@ -680,8 +907,8 @@ function renderTokenTable(rows: TokenRow[]): string {
 
   for (const r of rows) {
     const cacheTokens = r.cacheReadTokens + r.cacheWriteTokens;
-    const inputDisplay = fromModelPerf ? paint("—", "dim") : fmtNum(r.inputTokens);
-    const costDisplay = fromModelPerf ? paint("—", "dim") : fmtUsd(r.costUsd);
+    const inputDisplay = showDashInput ? paint("—", "dim") : fmtNum(r.inputTokens);
+    const costDisplay = showDashCost ? paint("—", "dim") : fmtUsd(r.costUsd);
     lines.push([
       pad(r.provider.slice(0, widths[0]), widths[0]),
       pad(r.model.slice(0, widths[1]), widths[1]),
@@ -709,8 +936,8 @@ function renderTokenTable(rows: TokenRow[]): string {
 
   lines.push(widths.map((w) => sep.repeat(w)).join("  "));
   const totalCache = totals.cacheReadTokens + totals.cacheWriteTokens;
-  const totalInputDisplay = fromModelPerf ? paint("—", "dim") : paint(fmtNum(totals.inputTokens), "bold");
-  const totalCostDisplay = fromModelPerf ? paint("—", "dim") : paint(fmtUsd(totals.costUsd), "bold");
+  const totalInputDisplay = showDashInput ? paint("—", "dim") : paint(fmtNum(totals.inputTokens), "bold");
+  const totalCostDisplay = showDashCost ? paint("—", "dim") : paint(fmtUsd(totals.costUsd), "bold");
   lines.push([
     pad(paint("TOTAL", "bold"), widths[0]),
     pad("", widths[1]),
@@ -735,19 +962,16 @@ async function main(): Promise<void> {
   }
 
   if (args.token) {
-    // ── TOKEN BURN MODE (SQLite real data) ──
+    // ── TOKEN BURN MODE (Multi-Source Merge) ──
     const providerFilter = args.provider;
-    if (providerFilter) {
-      stdout.write(`${paint("🔥 Real Token Burn", "bold")}  (filter: ${providerFilter}, ${args.days} days)\n\n`);
-    } else {
-      stdout.write(`${paint("🔥 Real Token Burn", "bold")}  (all providers, ${args.days} days)\n\n`);
-    }
 
-    const rows = queryTokenBurn(providerFilter, args.days);
+    const { rows, sources } = queryTokenBurn(providerFilter, args.days);
 
-    // Detect data source
-    const fromModelPerf = rows.length > 0 && rows.every((r) => r.inputTokens === 0 && r.cacheReadTokens === 0 && r.cacheWriteTokens === 0 && r.costUsd === 0);
-    const dataSource = fromModelPerf ? "model_perf" : "client_usage";
+    // Detect data behavior for rendering
+    const hasInputTokens = rows.some((r) => r.inputTokens > 0);
+    const hasCost = rows.some((r) => r.costUsd > 0);
+    const fromMultiSource = sources.length > 1;
+    const sourceStr = sources.join(" + ");
 
     if (args.json) {
       const payload = {
@@ -755,8 +979,8 @@ async function main(): Promise<void> {
         provider: providerFilter,
         days: args.days,
         generatedAt: new Date().toISOString(),
-        source: `sqlite:${dataSource}`,
-        database: DB_PATH,
+        sources,
+        merged: fromMultiSource,
         rows,
         summary: {
           totalRequests: rows.reduce((s, r) => s + r.requests, 0),
@@ -770,24 +994,32 @@ async function main(): Promise<void> {
       return;
     }
 
+    // Human header (skip for JSON)
+    if (providerFilter) {
+      stdout.write(`${paint("🔥 Real Token Burn", "bold")}  (filter: ${providerFilter}, ${args.days} days)\n\n`);
+    } else {
+      stdout.write(`${paint("🔥 Real Token Burn", "bold")}  (all providers, ${args.days} days)\n\n`);
+    }
+
     if (rows.length === 0) {
       stdout.write(paint("ℹ️  0 tokens burned — belum ada data token tercatat untuk window ini.\n\n", "dim"));
       stdout.write("💡 Berikut kemungkinan penyebab:\n");
       stdout.write("   • OMP gateway belum memproses request apapun\n");
-      stdout.write("   • Semua tabel token (model_perf, client_usage, cost_history) kosong\n");
+      stdout.write("   • Semua sumber data (stats.db, model_perf, client_usage) kosong\n");
       stdout.write("   • Filter provider terlalu spesifik\n");
-      stdout.write("   • Database diperbarui dengan data model_perf (output_tokens, samples)\n");
-      stdout.write("     Jalankan request dulu melalui OMP gateway agar tercatat.\n");
+      stdout.write("   • Jalankan request melalui OMP gateway agar data token tercatat di stats.db\n");
       return;
     }
 
     stdout.write(renderTokenTable(rows) + "\n");
-    stdout.write(`\n${paint("ℹ️  Source:", "dim")} ${DB_PATH} (tabel: ${dataSource})\n`);
+    stdout.write(`\n${paint("ℹ️  Sources:", "dim")} ${sourceStr}\n`);
     stdout.write(`${paint("ℹ️  Window:", "dim")} last ${args.days} day(s)\n`);
-    if (fromModelPerf) {
-      stdout.write(`${paint("ℹ️  Note:", "dim")} Data dari model_perf — hanya output_tokens & request count.\n`);
-      stdout.write(`  ${paint("   Input tokens & cost tidak tersedia (tidak disimpan oleh OMP di model_perf).", "dim")}\n`);
-      stdout.write(`  ${paint("   Gunakan tabel client_usage untuk data lengkap jika sudah terisi.", "dim")}\n`);
+    if (!hasInputTokens) {
+      stdout.write(`${paint("ℹ️  Note:", "dim")} Input tokens & cost tidak tersedia dari sumber yang ada.\n`);
+      stdout.write(`  ${paint("   Hanya output_tokens & request count yang tercatat di model_perf.", "dim")}\n`);
+    }
+    if (fromMultiSource) {
+      stdout.write(`  ${paint("   Data digabung dari beberapa sumber — lihat Sources di atas.", "dim")}\n`);
     }
     return;
   }
@@ -821,8 +1053,22 @@ async function main(): Promise<void> {
   const usageData = await renderQuota(args.provider);
 
   if (usageData && !args.json) {
-    // Show token quick summary from either client_usage or model_perf
-    if (existsSync(DB_PATH)) {
+    // Show token quick summary — prefer the new telemetry.db (Phase 1),
+    // then fall back to client_usage, then model_perf.
+    if (existsSync(TELEMETRY_DB_PATH)) {
+      try {
+        const summary = getSummary(7);
+        if (summary.rowCount > 0) {
+          stdout.write(`\n${paint("⚡ Quick Token Summary (7d)", "bold")}  ${paint("(from telemetry.db)", "dim")}\n`);
+          stdout.write(`  Requests: ${paint(fmtNum(summary.totalRequests), "green")}\n`);
+          stdout.write(`  Total Tokens: ${paint(fmtNum(summary.totalTokens), "green")}\n`);
+          stdout.write(`  Total Cost: ${paint(fmtUsd(summary.totalCostUsd), "green")}\n`);
+          stdout.write(`  ${paint("(use --token for detailed breakdown)", "dim")}\n`);
+        }
+      } catch {
+        // silently skip
+      }
+    } else if (existsSync(DB_PATH)) {
       try {
         const db = new Database(DB_PATH, { readonly: true });
         const sinceMs = Date.now() - 7 * 86_400_000;
@@ -844,19 +1090,41 @@ async function main(): Promise<void> {
           }
         }
 
-        // Fallback to model_perf if client_usage has no data (model_perf always has data)
-        const perfTable = db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='model_perf'").get();
-        if (perfTable) {
-          const perfCount = db.query(
-            `SELECT COUNT(*) as cnt, SUM(samples) as total_samples, SUM(output_tokens) as total_output FROM model_perf WHERE updated_at >= ?`
-          ).get(sinceSec) as { cnt: number; total_samples: number | null; total_output: number | null } | undefined;
+        // Try stats.db first (has full token + cost data)
+        let statsCount: { cnt: number; in_tok: number | null; out_tok: number | null; cache_tok: number | null; cost: number | null } | undefined;
+        if (existsSync(OMP_STATS_DB_PATH)) {
+          const statsDb = new Database(OMP_STATS_DB_PATH, { readonly: true });
+          statsCount = statsDb.query(
+            `SELECT COUNT(*) as cnt, SUM(input_tokens) as in_tok, SUM(output_tokens) as out_tok, SUM(cache_read_tokens + cache_write_tokens) as cache_tok, SUM(cost_total) as cost FROM messages WHERE timestamp >= ?`
+          ).get(sinceMs) as { cnt: number; in_tok: number | null; out_tok: number | null; cache_tok: number | null; cost: number | null } | undefined;
 
-          if (perfCount && perfCount.cnt > 0) {
-            stdout.write(`\n${paint("⚡ Quick Token Summary (7d)", "bold")}  ${paint("(from model_perf)", "dim")}\n`);
-            stdout.write(`  Requests: ${paint(fmtNum(perfCount.total_samples ?? 0), "green")}\n`);
-            stdout.write(`  Output Tokens: ${paint(fmtNum(perfCount.total_output ?? 0), "green")}\n`);
-            stdout.write(`  Input Tokens: ${paint("not tracked in model_perf", "dim")}\n`);
+          if (statsCount && statsCount.cnt > 0) {
+            stdout.write(`\n${paint("⚡ Quick Token Summary (7d)", "bold")}  ${paint("(from stats.db)", "dim")}\n`);
+            stdout.write(`  Requests: ${paint(fmtNum(statsCount.cnt), "green")}\n`);
+            stdout.write(`  Input Tokens: ${paint(fmtNum(statsCount.in_tok ?? 0), "green")}\n`);
+            stdout.write(`  Output Tokens: ${paint(fmtNum(statsCount.out_tok ?? 0), "green")}\n`);
+            stdout.write(`  Cache Tokens: ${paint(fmtNum(statsCount.cache_tok ?? 0), "green")}\n`);
+            stdout.write(`  Total Cost: ${paint(fmtUsd(statsCount.cost ?? 0), "green")}\n`);
             stdout.write(`  ${paint("(use --token for detailed breakdown)", "dim")}\n`);
+          }
+          statsDb.close();
+        }
+
+        // Then try model_perf as fallback (only if stats.db has no data)
+        if (!statsCount || statsCount.cnt === 0) {
+          const perfTable = db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='model_perf'").get();
+          if (perfTable) {
+            const perfCount = db.query(
+              `SELECT COUNT(*) as cnt, SUM(samples) as total_samples, SUM(output_tokens) as total_output FROM model_perf WHERE updated_at >= ?`
+            ).get(sinceSec) as { cnt: number; total_samples: number | null; total_output: number | null } | undefined;
+
+            if (perfCount && perfCount.cnt > 0) {
+              stdout.write(`\n${paint("⚡ Quick Token Summary (7d)", "bold")}  ${paint("(from model_perf)", "dim")}\n`);
+              stdout.write(`  Requests: ${paint(fmtNum(perfCount.total_samples ?? 0), "green")}\n`);
+              stdout.write(`  Output Tokens: ${paint(fmtNum(perfCount.total_output ?? 0), "green")}\n`);
+              stdout.write(`  Input Tokens: ${paint("not tracked in model_perf", "dim")}\n`);
+              stdout.write(`  ${paint("(use --token for detailed breakdown)", "dim")}\n`);
+            }
           }
         }
         db.close();

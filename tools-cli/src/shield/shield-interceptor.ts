@@ -1,6 +1,10 @@
 import { readFileSync, existsSync, appendFileSync } from "fs";
 import { join } from "path";
 
+// Auto Telemetry — logging untuk token burn & cost tracking
+import { logTelemetry } from "../gn/telemetry/db.ts";
+import { calculateCost } from "../gn/telemetry/pricing.ts";
+
 // Configuration paths
 const VAULT_SECURITY_DIR = join(process.env.GOBLIN_VAULT_ROOT || join(process.env.HOME || "", "civil/goblin-vault"), "tools-cli", "src", "shield");
 const LEGACY_SECURITY_DIR = join(process.env.HOME || "", ".shell", "security");
@@ -195,6 +199,96 @@ function getHeader(headers: Headers, name: string): string | null {
   return headers.get(name) ?? headers.get(name.toLowerCase()) ?? null;
 }
 
+// ────────────────────────────────────────────────────────────
+// Auto Telemetry Helpers (fire-and-forget, zero latency impact)
+// ────────────────────────────────────────────────────────────
+
+/**
+ * Extract provider & model from a full model ID string.
+ * "google-antigravity/gemini-3.6-flash" → { provider: "google-antigravity", model: "gemini-3.6-flash" }
+ * Falls back to "unknown" for unparseable model strings.
+ */
+function splitProviderModel(model: string): { provider: string; model: string } {
+  if (!model || typeof model !== "string") return { provider: "unknown", model: "unknown" };
+  const slashIdx = model.indexOf("/");
+  if (slashIdx > 0 && slashIdx < model.length - 1) {
+    return { provider: model.slice(0, slashIdx), model: model.slice(slashIdx + 1) };
+  }
+  return { provider: "unknown", model };
+}
+
+/**
+ * Parse the response body JSON, extract usage tokens, calculate cost,
+ * and persist to telemetry.db. All errors are silently swallowed so
+ * the interceptor NEVER crashes due to telemetry logging.
+ */
+async function logTelemetryFromResponse(
+  bodyText: string,
+  provider: string,
+  model: string,
+  statusCode: number,
+): Promise<void> {
+  try {
+    const parsed = JSON.parse(bodyText);
+    if (!parsed || typeof parsed !== "object") return;
+
+    const usage = parsed.usage;
+    if (!usage || typeof usage !== "object") return;
+
+    // Support both OpenAI /v1/chat/completions and Anthropic /v1/messages formats
+    const promptTokens = usage.prompt_tokens ?? usage.input_tokens ?? 0;
+    const completionTokens = usage.completion_tokens ?? usage.output_tokens ?? 0;
+    const cacheReadTokens =
+      usage.prompt_tokens_details?.cached_tokens ??
+      usage.cache_read_input_tokens ??
+      0;
+    const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
+    const totalTokens =
+      usage.total_tokens ??
+      (promptTokens + completionTokens + cacheReadTokens + cacheWriteTokens);
+
+    // Calculate cost via pricing engine (per-1M-token rates from prices.json)
+    const cost = calculateCost(provider, model, promptTokens, completionTokens, cacheReadTokens + cacheWriteTokens);
+
+    // Fire-and-forget: we do NOT await this promise
+    logTelemetry({
+      provider,
+      model,
+      clientApp: "shield",
+      promptTokens,
+      completionTokens,
+      cacheReadTokens,
+      cacheWriteTokens,
+      totalTokens,
+      costUsd: cost.total,
+      statusCode,
+      timestamp: Date.now(),
+    });
+  } catch {
+    // Silently ignore — telemetry must never crash the proxy
+  }
+}
+
+/**
+ * Convenience wrapper: given a model string, an upstream Response, and a status code,
+ * fire a background task to parse & log telemetry. No latency impact because the
+ * response body is cloned and consumed asynchronously.
+ */
+function fireTelemetry(
+  modelString: string,
+  upstreamResp: Response,
+  statusCode: number,
+): void {
+  const { provider, model } = splitProviderModel(modelString);
+  const respClone = upstreamResp.clone();
+  // Do NOT await — background, zero latency impact
+  respClone.text().then((bodyText) => {
+    logTelemetryFromResponse(bodyText, provider, model, statusCode);
+  }).catch(() => {});
+}
+
+// ────────────────────────────────────────────────────────────
+
 /**
  * Append a line to shield.log + echo to console. Single source of truth for fallback events.
  */
@@ -332,6 +426,12 @@ Bun.serve({
       // ── Fast path: 2xx → return as-is, no overhead ─────────
       if (!shouldTriggerFallback(effectiveStatus) || !fallbackEligible || !primaryModel || !parsedBody) {
         const respHeaders = buildResponseHeaders(upstreamResp.headers);
+
+        // Auto Telemetry: fire-and-forget for successful LLM responses
+        if (effectiveStatus >= 200 && effectiveStatus < 300 && fallbackEligible && primaryModel) {
+          fireTelemetry(primaryModel, upstreamResp, effectiveStatus);
+        }
+
         return new Response(upstreamResp.body, {
           status: upstreamResp.status,
           statusText: upstreamResp.statusText,
@@ -383,6 +483,12 @@ Bun.serve({
       if (lastRetryResp && successfulFallbackModel) {
         const respHeaders = buildResponseHeaders(lastRetryResp.headers);
         respHeaders.set("X-Goblin-Shield-Fallback", `primary=${primaryModel}; fallback=${successfulFallbackModel}; trigger=${effectiveStatus}`);
+
+        // Auto Telemetry: log the successful fallback response
+        if (lastRetryResp.ok && successfulFallbackModel) {
+          fireTelemetry(successfulFallbackModel, lastRetryResp, lastRetryResp.status);
+        }
+
         return new Response(lastRetryResp.body, {
           status: lastRetryResp.status,
           statusText: lastRetryResp.statusText,

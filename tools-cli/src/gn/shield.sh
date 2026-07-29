@@ -19,6 +19,9 @@ LOG_FILE="$SHIELD_DIR/shield.log"
 LISTEN_PORT="${SHIELD_LISTEN_PORT:-4002}"
 TARGET_PORT="${SHIELD_TARGET_PORT:-4000}"
 
+SERVICE_NAME="gn-shield.service"
+SERVICE_PATH="$HOME/.config/systemd/user/$SERVICE_NAME"
+
 show_help() {
     echo "🛡️ Goblin Privacy Shield Manager"
     echo ""
@@ -33,7 +36,71 @@ show_help() {
     echo "  status      Cek status keaktifan Privacy Shield & listening port"
     echo "  logs        Lihat live log sanitization & request traffic"
     echo "  rules       Buka / edit masking regex rules.json"
+    echo "  service     🏭 Install/uninstall systemd user service (install|remove|status)"
     echo ""
+}
+
+# ── Systemd Service Integration ──
+
+_service_available() {
+    [ -f "$SERVICE_PATH" ] && command -v systemctl >/dev/null 2>&1
+}
+
+_service_is_running() {
+    _service_available && systemctl --user is-active "$SERVICE_NAME" >/dev/null 2>&1
+}
+
+_service_start() {
+    if _service_is_running; then
+        echo "✅ [Goblin Shield] Systemd service '$SERVICE_NAME' sudah berjalan."
+        return 0
+    fi
+    echo "🏭 [Goblin Shield] Starting systemd service '$SERVICE_NAME'..."
+    systemctl --user start "$SERVICE_NAME"
+    sleep 1
+    if _service_is_running; then
+        echo "✅ [Goblin Shield] Systemd service '$SERVICE_NAME' aktif!"
+        systemctl --user status "$SERVICE_NAME" --no-pager | head -5
+    else
+        echo "❌ [Goblin Shield] Gagal start systemd service. Cek: journalctl --user -u $SERVICE_NAME -f"
+    fi
+}
+
+_service_stop() {
+    if _service_is_running; then
+        echo "🛑 [Goblin Shield] Stopping systemd service '$SERVICE_NAME'..."
+        systemctl --user stop "$SERVICE_NAME"
+        echo "✅ [Goblin Shield] Systemd service dihentikan."
+    else
+        echo "ℹ️ [Goblin Shield] Systemd service '$SERVICE_NAME' tidak berjalan."
+    fi
+}
+
+_service_install() {
+    local unit_src="$SHIELD_DIR/gn-shield.service"
+    if [ ! -f "$unit_src" ]; then
+        # Fall back to the already-installed systemd path
+        if [ -f "$SERVICE_PATH" ]; then
+            echo "✅ [Goblin Shield] Systemd service sudah terinstal di $SERVICE_PATH"
+            return 0
+        fi
+        echo "❌ [Goblin Shield] Unit file tidak ditemukan. Jalankan dari repo goblin-vault."
+        return 1
+    fi
+    mkdir -p "$(dirname "$SERVICE_PATH")"
+    cp "$unit_src" "$SERVICE_PATH"
+    systemctl --user daemon-reload
+    systemctl --user enable "$SERVICE_NAME"
+    echo "✅ [Goblin Shield] Systemd service terinstal & enabled!"
+    echo "   Jalankan: gn shield service start"
+}
+
+_service_remove() {
+    _service_stop
+    systemctl --user disable "$SERVICE_NAME" 2>/dev/null || true
+    rm -f "$SERVICE_PATH"
+    systemctl --user daemon-reload
+    echo "✅ [Goblin Shield] Systemd service dihapus."
 }
 
 is_running() {
@@ -47,6 +114,12 @@ is_running() {
 }
 
 start_shield() {
+    # Prefer systemd service when available
+    if _service_available; then
+        _service_start
+        return
+    fi
+
     if is_running; then
         echo "🛡️ [Goblin Shield] Shield daemon sudah berjalan! (PID: $(cat "$PID_FILE"))"
         return 0
@@ -67,6 +140,12 @@ start_shield() {
 }
 
 stop_shield() {
+    # Prefer systemd service when available
+    if _service_available; then
+        _service_stop
+        return
+    fi
+
     if is_running; then
         local pid=$(cat "$PID_FILE")
         echo "🛑 [Goblin Shield] Stopping daemon (PID: $pid)..."
@@ -119,7 +198,10 @@ case "${1:-}" in
         start_shield
         ;;
     status)
-        if is_running; then
+        if _service_is_running; then
+            echo "🟢 [Goblin Shield Status] Active (systemd service: $SERVICE_NAME)"
+            systemctl --user status "$SERVICE_NAME" --no-pager | head -8
+        elif is_running; then
             echo "🟢 [Goblin Shield Status] Active & Protecting! (PID: $(cat "$PID_FILE"))"
             echo "📡 Endpoint: http://127.0.0.1:$LISTEN_PORT -> Target Gateway: http://127.0.0.1:$TARGET_PORT"
         else
@@ -127,10 +209,13 @@ case "${1:-}" in
         fi
         ;;
     logs)
-        if [ -f "$LOG_FILE" ]; then
+        # For systemd service, use journalctl; for legacy, use log file
+        if _service_is_running; then
+            journalctl --user -u "$SERVICE_NAME" -f
+        elif [ -f "$LOG_FILE" ]; then
             tail -f "$LOG_FILE"
         else
-            echo "📜 Log file belum ada."
+            echo "📜 Log file belum ada. Coba: journalctl --user -u $SERVICE_NAME -f"
         fi
         ;;
     rules)
@@ -142,6 +227,25 @@ case "${1:-}" in
         else
             cat "$SHIELD_DIR/rules.json"
         fi
+        ;;
+    service)
+        svc_cmd="${2:-status}"
+        case "$svc_cmd" in
+            install)   _service_install ;;
+            remove)    _service_remove ;;
+            start)     _service_start ;;
+            stop)      _service_stop ;;
+            restart)   _service_stop; sleep 1; _service_start ;;
+            status|*)
+                if _service_available; then
+                    echo "🏭 [Goblin Shield] Systemd Service: $SERVICE_NAME"
+                    echo "   Unit file: $SERVICE_PATH"
+                    systemctl --user status "$SERVICE_NAME" --no-pager 2>&1 || echo "   (not running)"
+                else
+                    echo "ℹ️  Systemd service tidak tersedia."
+                fi
+                ;;
+        esac
         ;;
     help|--help|-h|*)
         show_help

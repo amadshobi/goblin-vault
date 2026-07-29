@@ -3,6 +3,17 @@
 ## [Unreleased]
 
 ### Added
+- **Auto Telemetry Logger di Goblin Shield** (`shield-interceptor.ts`): Setiap request LLM yang melewati interceptor (port 4002 → 4000) otomatis dicatat ke `telemetry.db`.
+  - Extract `usage` dari response JSON (`prompt_tokens`, `completion_tokens`, `cache_tokens`) — support OpenAI `/v1/chat/completions` dan Anthropic `/v1/messages`.
+  - Hitung `cost_usd` real-time via pricing engine (`calculateCost` dari `pricing.ts`).
+  - **Fire-and-forget**: Response di-clone dan dikonsumsi di background — **zero latency impact** ke response client.
+  - **Resilient**: Semua error telemetry di-swallow — interceptor TIDAK PERNAH crash karena logging gagal.
+- **Systemd User Service** (`gn-shield.service`): Daemon interceptor berjalan otomatis di background via `systemctl --user`.
+  - Auto-restart (`Restart=always`, `RestartSec=2`).
+  - Logging ke journald, bind port 4002, forward ke 4000.
+  - Service file di `~/.config/systemd/user/gn-shield.service` + copy di `tools-cli/src/shield/gn-shield.service`.
+- **`gn shield service` subcommand** (`shield.sh`): Manage systemd service — `install|remove|start|stop|restart|status`.
+  - `start`/`stop`/`restart` otomatis prefer systemd jika service terinstal, fallback ke legacy PID-based daemon.
 - **BARU `gn usage` engine** (`usage.ts`): Modul unified yang menggantikan `status-formatter.ts` + `burn.ts` dengan data 100% akurat (tanpa `assumedTotal 100k`).
   - **Quota Mode (`gn usage [provider]`)**: Fetch live usage limits dari broker `/v1/usage`. Menampilkan progress bar real, persentase akurat, status badge (`🟢 OK`/`⚠️ LOW`/`🔴 EXHAUSTED`), exact used/limit count, dan countdown `resetsAt`.
   - **Token Burn Mode (`gn usage --token [provider] [--days N]`)**: Query SQLite `client_usage` dari `~/.omp/agent/agent.db` untuk data real (requests, input/output/cache tokens, cost_usd). **BUKAN estimasi** — data asli dari database.

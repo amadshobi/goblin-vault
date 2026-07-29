@@ -174,6 +174,50 @@ EXAMPLES
   $ gn export           Export seluruh credential ke secret vault
 HELP
             ;;
+        price|prc)
+            cat <<'HELP'
+🧙‍♂️ GN PRICE — Custom Pricing Engine (per 1M tokens)
+
+DESKRIPSI
+  Mengelola tarif kustom per 1M token (USD) untuk seluruh provider/model
+  yang dipakai Goblin Nexus. Tarif disimpan di:
+    ~/.config/goblin-nexus/prices.json
+
+  Rumus biaya TRANSPARAN (per 1M token):
+    total = (prompt / 1M) * inputRate
+          + (completion / 1M) * outputRate
+          + (cache / 1M) * cacheRate
+
+  TIDAK ADA matematika rekaan. Semua angka diturunkan langsung dari
+  token aktual dan rate yang tersimpan di prices.json.
+
+USAGE
+  $ gn price [subcommand] [options]
+  $ gn prc [subcommand] [options]
+
+SUBCOMMANDS
+  list, (default)    Tampilkan tabel harga per 1M tokens (--json untuk raw)
+  set                Set/update tarif untuk satu (provider, model) pair
+  calc               Hitung biaya dari jumlah token aktual (sanity-check)
+
+OPTIONS (set)
+  --input <rate>     USD per 1M input/prompt tokens   (required)
+  --output <rate>    USD per 1M output/completion tokens (required)
+  --cache <rate>     USD per 1M cache tokens (optional, default 0)
+
+OPTIONS (calc)
+  --prompt <N>       Jumlah prompt tokens (required)
+  --completion <N>   Jumlah completion tokens (required)
+  --cache <N>        Jumlah cache tokens (optional, default 0)
+
+EXAMPLES
+  $ gn price                                        Lihat semua tarif
+  $ gn price list --json                            Output JSON mentah
+  $ gn price set google-antigravity gemini-2.5-flash --input 0.075 --output 0.30 --cache 0.02
+  $ gn price set anthropic claude-sonnet-4 --input 3.00 --output 15.00
+  $ gn price calc anthropic claude-sonnet-4 --prompt 100000 --completion 20000
+HELP
+            ;;
         *)
             cat <<'HELP'
 🧙‍♂️ GOBLIN NEXUS CLI — HELPER
