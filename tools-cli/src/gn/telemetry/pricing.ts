@@ -42,40 +42,19 @@ export interface PricesConfig {
 // Values are intentionally conservative defaults — user can adjust.
 const DEFAULT_RATES: Record<string, Record<string, ModelRate>> = {
   "google-antigravity": {
-    "gemini-2.5-pro":   { input: 1.25,  output: 10.0,  cache: 0.31 },
-    "gemini-2.5-flash": { input: 0.075, output: 0.30,  cache: 0.02 },
-    "gemini-3-pro":     { input: 2.50,  output: 15.0,  cache: 0.625 },
-    "gemini-3-flash":   { input: 0.10,  output: 0.40,  cache: 0.025 },
-  },
-  "openrouter": {
-    "default": { input: 3.00, output: 15.0, cache: 0.75 },
+    "gemini-3.1-pro":     { input: 2.00,  output: 12.0,  cache: 0.625 },
+    "gemini-3.5-flash":   { input: 1.50,  output: 9.0,  cache: 0.025 },
+    "gemini-3.6-flash":   { input: 1.50,  output: 7.50,  cache: 0.025 },
+    "claude-sonnet-4-6":   { input: 3.00, output: 15.0, cache: 0.30 },
+    "claude-opus-4-6":     { input: 5.00, output: 25.0, cache: 0.30 },
   },
   "openai-codex": {
-    "gpt-5":          { input: 1.25, output: 10.0,  cache: 0.125 },
-    "gpt-5-mini":     { input: 0.25, output: 2.00,  cache: 0.025 },
-    "gpt-5-codex":    { input: 1.50, output: 12.0,  cache: 0.15 },
-    "gpt-4o":         { input: 2.50, output: 10.0,  cache: 1.25 },
-    "gpt-4o-mini":    { input: 0.15, output: 0.60,  cache: 0.075 },
-    "o1":             { input: 15.0, output: 60.0,  cache: 7.50 },
-    "o1-mini":        { input: 3.00, output: 12.0,  cache: 1.50 },
-    "o3":             { input: 10.0, output: 40.0,  cache: 5.00 },
-    "o3-mini":        { input: 1.10, output: 4.40,  cache: 0.55 },
-    "o4-mini":        { input: 1.10, output: 4.40,  cache: 0.55 },
-  },
-  "anthropic": {
-    "claude-opus-4":       { input: 15.0, output: 75.0, cache: 1.50 },
-    "claude-sonnet-4":     { input: 3.00, output: 15.0, cache: 0.30 },
-    "claude-sonnet-4-5":   { input: 3.00, output: 15.0, cache: 0.30 },
-    "claude-haiku-4":      { input: 0.80, output: 4.00, cache: 0.08 },
-    "claude-3.5-sonnet":   { input: 3.00, output: 15.0, cache: 0.30 },
-    "claude-3.5-haiku":    { input: 0.80, output: 4.00, cache: 0.08 },
+    "gpt-5.4":          { input: 2.50, output: 15.0,  cache: 0.125 },
+    "gpt-5.5":          { input: 5.00, output: 30.0,  cache: 0.125 },
   },
   "ollama-cloud": {
-    "default": { input: 0.0, output: 0.0, cache: 0.0 },
-  },
-  "goblin-nexus": {
-    "default": { input: 0.0, output: 0.0, cache: 0.0 },
-  },
+    "minimax-m3": { input: 0.24, output: 0.96, cache: 0.0 },
+  }
 };
 
 function defaultConfig(): PricesConfig {
