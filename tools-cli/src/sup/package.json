@@ -1,6 +1,6 @@
 {
   "name": "sup",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Smart Universal Package Updater - parallel multi-PM updater with Clack TUI",
   "private": true,
   "type": "module",

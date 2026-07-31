@@ -25,6 +25,10 @@ import { isInteractive } from "./logger";
 import { TARGETS, type UpdateOutcome } from "./targets";
 import { runTarget } from "./runner";
 import { scanAll } from "./scanner";
+import {
+  requestSudoPassword,
+  targetNeedsSudo,
+} from "./sudo";
 
 interface AutoOptions {
   /**
@@ -85,6 +89,19 @@ export async function runAuto(opts: AutoOptions): Promise<void> {
       p.outro(color.dim(`Waktu total: ${((Date.now() - startedAt) / 1000).toFixed(1)}s`));
     }
     return;
+  }
+
+  // Cek apakah ada target outdated yang butuh sudo (apt/snap).
+  // Minta password sebelum update loop agar execLive() bisa kirim via stdin
+  // (stdin: "pipe" + sudo -S) dan tidak rebutan TTY dengan Clack spinner.
+  const needsSudo = [...outdated.keys()].some((id) => targetNeedsSudo(id));
+  if (needsSudo && isInteractive()) {
+    const pw = await requestSudoPassword(
+      "🔑 Target apt/snap butuh akses root — masukkan password sudo",
+    );
+    if (pw === null) {
+      p.log.warn("⚠️  Tanpa password sudo, target apt/snap mungkin gagal karena tidak bisa autentikasi.");
+    }
   }
 
   // Eksekusi sequential (1 per 1) untuk menghindari lock conflict (apt/dpkg/dnf).

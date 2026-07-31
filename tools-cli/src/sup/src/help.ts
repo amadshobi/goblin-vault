@@ -13,7 +13,7 @@ import color from "picocolors";
  */
 export function showLevel1Help(): void {
   console.log(`
-${color.bold(color.white("sup"))} ${color.dim("— Smart Universal Package Updater")} ${color.dim("v1.0.0")}
+${color.bold(color.white("sup"))} ${color.dim("— Smart Universal Package Updater")} ${color.dim("v1.0.1")}
 
 ${color.yellow("Deskripsi:")}
   sup adalah tool parallel updater untuk berbagai package manager (APT, SNAP,

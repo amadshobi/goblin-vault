@@ -25,7 +25,7 @@ export function renderBanner(subtitle: string = "Smart Universal Package Updater
     `${WHITE} ╚═══██╗██║   ██║██╔═══╝ ${RESET}`,
     `${WHITE}██████╔╝╚██████╔╝██║     ${RESET}`,
     `${WHITE}╚═════╝  ╚═════╝ ╚═╝     ${RESET}`,
-    `   ${WHITE}sup${RESET} ${DIM}v1.0.0 — ${subtitle}${RESET}`,
+    `   ${WHITE}sup${RESET} ${DIM}v1.0.1 — ${subtitle}${RESET}`,
     "",
   ];
   return lines.join("\n");

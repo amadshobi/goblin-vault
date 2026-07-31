@@ -198,9 +198,8 @@ const omp: UpdaterTarget = {
   },
   update: async () => {
     const start = Date.now();
-    // omp mungkin exit non-zero pada update yang sebenarnya sukses — coba 2 mode
-    const r1 = await execLive(["omp", "update", "--yes"], { inheritStdout: false });
-    const r = r1.ok ? r1 : await execLive(["omp", "update"], { inheritStdout: false });
+    // omp CLI tidak mendukung flag --yes/-y, jadi panggil langsung tanpa argumen.
+    const r = await execLive(["omp", "update"], { inheritStdout: false });
     return {
       id: omp.id,
       label: omp.label,
