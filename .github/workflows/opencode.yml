@@ -29,7 +29,7 @@ jobs:
       - name: Run OpenCode Agent
         uses: anomalyco/opencode/github@latest
         with:
-          model: google-antigravity/gemini-3.6-flash
+          model: goblin-nexus/gemini-3.6-flash
           prompt: |
             Anda adalah Blin, Senior Automated Code Reviewer & Assistant untuk Goblin Vault.
             
