@@ -38,6 +38,30 @@ interface AutoOptions {
 }
 
 /**
+ * Tampilkan daftar target yang gagal + pesan error-nya.
+ *
+ * Pemisahan concern: helper ini khusus merangkum kegagalan agar user
+ * tidak perlu scroll ke atas untuk mencari penyebab error.
+ *
+ * @param outcomes - Hasil eksekusi update per target.
+ */
+function showFailedDetails(outcomes: UpdateOutcome[]): void {
+  const failed = outcomes.filter((o) => !o.ok);
+  if (failed.length === 0) return;
+
+  const lines = failed.map(
+    (o) => `  ${color.red("✗")} ${color.bold(o.label)} — ${o.message}`,
+  );
+  const block = [`${failed.length} target gagal:`, ...lines].join("\n");
+
+  if (isInteractive()) {
+    p.note(block, "Detail Kegagalan");
+  } else {
+    process.stdout.write(`\n${color.bold("Detail Kegagalan")}\n${block}\n`);
+  }
+}
+
+/**
  * Tampilkan rangkuman akhir + return exit code yang sesuai.
  *
  * @param outcomes - Hasil eksekusi update per target.
@@ -117,6 +141,7 @@ export async function runAuto(opts: AutoOptions): Promise<void> {
 
   const totalSec = ((Date.now() - startedAt) / 1000).toFixed(1);
   summarize(outcomes);
+  showFailedDetails(outcomes);
 
   if (isInteractive()) {
     p.outro(color.dim(`Waktu total: ${totalSec}s`));

@@ -22,6 +22,31 @@ import { TARGETS, type UpdaterTarget, type OutdatedInfo, type UpdateOutcome } fr
 import { runTarget } from "./runner";
 import { scanAll } from "./scanner";
 
+/**
+ * Tampilkan daftar target yang gagal + pesan error-nya.
+ *
+ * Konsisten dengan helper serupa di `auto.ts` — dipisah per modul untuk
+ * menjaga low coupling; kalau format perlu diubah cukup edit di satu tempat
+ * per mode (interactive vs auto) tanpa menyentuh keduanya.
+ *
+ * @param outcomes - Hasil eksekusi update per target.
+ */
+function showFailedDetails(outcomes: UpdateOutcome[]): void {
+  const failed = outcomes.filter((o) => !o.ok);
+  if (failed.length === 0) return;
+
+  const lines = failed.map(
+    (o) => `  ${color.red("✗")} ${color.bold(o.label)} — ${o.message}`,
+  );
+  const block = [`${failed.length} target gagal:`, ...lines].join("\n");
+
+  if (isInteractive()) {
+    p.note(block, "Detail Kegagalan");
+  } else {
+    process.stdout.write(`\n${color.bold("Detail Kegagalan")}\n${block}\n`);
+  }
+}
+
 interface InteractiveOptions {
   /**
    * Dipakai kalau user sebelumnya pass `--yes`. Mode interaktif murni
@@ -113,6 +138,8 @@ export async function runInteractive(opts: InteractiveOptions): Promise<void> {
   } else {
     warn(`Selesai dengan catatan: ${ok} sukses, ${failed} gagal. Lihat output di atas.`);
   }
+
+  showFailedDetails(outcomes);
 
   p.outro(color.dim(`Waktu total: ${totalSec}s`));
   if (failed > 0) process.exitCode = 1;

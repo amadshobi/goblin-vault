@@ -22,6 +22,16 @@ import type { UpdaterTarget, UpdateOutcome } from "./targets";
  * @param target - UpdaterTarget hasil lookup.
  * @returns UpdateOutcome dari target.
  */
+/**
+ * Format durasi eksekusi jadi string yang ringkas + berwarna dim.
+ *
+ * @param durationMs - Durasi dalam milidetik.
+ * @returns String dengan format `(X.Xs)` siap cetak.
+ */
+function formatDuration(durationMs: number): string {
+  return color.dim(`(${(durationMs / 1000).toFixed(1)}s)`);
+}
+
 export async function runTarget(target: UpdaterTarget): Promise<UpdateOutcome> {
   if (!isInteractive()) {
     // Fallback text logger (tidak ada spinner).
@@ -30,9 +40,8 @@ export async function runTarget(target: UpdaterTarget): Promise<UpdateOutcome> {
     );
     const outcome = await target.update();
     const status = outcome.ok ? color.green("✅ OK") : color.red("❌ FAIL");
-    const elapsed = `(${(outcome.durationMs / 1000).toFixed(1)}s)`;
     process.stdout.write(
-      `   ${status}  ${color.dim(outcome.message)}  ${color.dim(elapsed)}\n\n`,
+      `   ${status}  ${color.dim(outcome.message)}  ${formatDuration(outcome.durationMs)}\n\n`,
     );
     return outcome;
   }
@@ -43,12 +52,13 @@ export async function runTarget(target: UpdaterTarget): Promise<UpdateOutcome> {
   try {
     const outcome = await target.update();
     if (outcome.ok) {
-      spinner.stop(`${color.green("✅")} ${target.label} — ${outcome.message}`);
+      // Sukses: tampilkan durasi sebagai info dim di sebelah pesan.
+      spinner.stop(
+        `${color.green("✅")} ${target.label} — ${outcome.message} ${formatDuration(outcome.durationMs)}`,
+      );
     } else {
       spinner.stop(
-        `${color.red("❌")} ${target.label} — ${outcome.message} ${color.dim(
-          `(${(outcome.durationMs / 1000).toFixed(1)}s)`,
-        )}`,
+        `${color.red("❌")} ${target.label} — ${outcome.message} ${formatDuration(outcome.durationMs)}`,
       );
     }
     return outcome;

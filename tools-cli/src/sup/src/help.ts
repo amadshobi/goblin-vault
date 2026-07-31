@@ -7,11 +7,15 @@
  */
 
 import color from "picocolors";
+import { renderBanner } from "./banner";
 
 /**
  * Level 1: Overview global.
  */
 export function showLevel1Help(): void {
+  // Cetak banner estetik (sesuai policy ANSI Block Header di coding-style §9)
+  // agar konsisten dengan banner yang ditampilkan oleh index.ts.
+  process.stdout.write(renderBanner() + "\n");
   console.log(`
 ${color.bold(color.white("sup"))} ${color.dim("— Smart Universal Package Updater")} ${color.dim("v1.0.1")}
 
@@ -122,8 +126,17 @@ ${color.yellow("Contoh:")}
 
   const entry = descriptions[lower];
   if (!entry) {
-    console.log(color.red(`\n❌ sup: tidak ada sub-command "${target}" yang dikenal.\n`));
-    console.log("Gunakan 'sup --help' untuk daftar lengkap.");
+    // Goblin Roast Hint: pesan error ramah + saran perbaikan, sesuai
+    // policy CLI UX di coding-style.md (Fail-Fast with Actionable Hints).
+    const roast = `❌ sup: sub-command '${color.bold(
+      target,
+    )}' tidak dikenal! Lu salah ngetik atau emang halusinasi, BOSS? 🤨`;
+    console.log(`\n${color.red(roast)}\n`);
+    console.log(
+      `💡 Hint: ${color.yellow(
+        "Coba `sup --help` buat lihat daftar target yang tersedia, atau `sup help all` buat info update semua PM.",
+      )}\n`,
+    );
     return;
   }
 

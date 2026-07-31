@@ -3,9 +3,10 @@
 ## [Unreleased]
 
 ### Fixed
-- **`sup` v1.0.1 Bug Fixes**:
+- **`sup` v1.0.1 Bug Fixes & UX Polish**:
   - **Sudo Loop Fix (`sup all`)**: Memperbaiki issue hang/looping pada `sup all` ketika mendeteksi target yang memerlukan akses root (`apt`/`snap`). Sekarang password sudo di-request via `p.password()` secara proactive setelah scanning dan disimpan di memori sebelum update loop dimulai.
   - **`omp` Update Flag Fix**: Menghapus flag `--yes` / `-y` dari pemanggilan update `omp` di `targets.ts` karena CLI Oh My Pi tidak mendukung flag `--yes`. Sekarang menggunakan `omp update` murni.
+  - **UI/UX Polish**: Menampilkan durasi eksekusi pada status sukses `(X.Xs)`, Failure Box Note rincian target gagal di outro, Goblin Roast Hint pada Level 2 help jika sub-command tidak dikenal, serta log transparansi pemberihan password sudo dari memori.
 
 ### Added
 - **`sup` TypeScript Migration**: Smart Universal Package Updater yang sebelumnya adalah bash script `scripts/shell/sup.sh` dimigrasikan menjadi tool TypeScript modern di `tools-cli/src/sup/`.

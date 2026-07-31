@@ -94,8 +94,22 @@ export function setSudoPassword(password: string): void {
  * Bersihkan password dari memori. Dipanggil di akhir sesi / saat exit.
  * Implementation note: overwrite buffer lalu null-kan reference. JS string
  * immutable jadi praktik overwrite cuma untuk menahan reference.
+ *
+ * Catatan UX: kalau sebelumnya memang ada password tersimpan, tampilkan
+ * log singkat (dim) supaya user tahu bahwa kredensial sudah diam-diam
+ * dibersihkan dari memori sesi — bukan tiba-tiba "hilang" tanpa jejak.
  */
 export function clearSudoPassword(): void {
+  if (hasSudoPassword()) {
+    // Pemberitahuan sebelum null-kan reference; di sini kita masih tahu
+    // bahwa memang ada password yang tersimpan.
+    // Pakai stdout langsung (bukan console.log Clack) agar konsisten
+    // dengan log cleanup yang ringan & non-blocking.
+    // eslint-disable-next-line no-console
+    console.log(
+      `${"\x1b[2m🔒 Password sudo dibersihkan dari memori sesi.\x1b[0m"}`,
+    );
+  }
   cachedPassword = null;
 }
 
