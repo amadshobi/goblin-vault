@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Wrapper executable for Goblin Nexus CLI (gn) inside Goblin Vault
+
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export GOBLIN_VAULT_ROOT="$(cd "$BIN_DIR/../.." && pwd)"
+
+exec bash "$GOBLIN_VAULT_ROOT/tools-cli/src/gn/gn.sh" "$@"

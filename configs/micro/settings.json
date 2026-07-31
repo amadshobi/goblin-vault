@@ -1,0 +1,28 @@
+{
+    "autoclose": false,
+    "autosave": 5000,
+    "clipboard": "terminal",
+    "colorscheme": "darcula-glass",
+    "diffgutter": true,
+    "filemanager.openontab": true,
+    "filemanager.showdotfiles": false,
+    "filemanager.showignored": false,
+    "hlsearch": true,
+    "hltrailingws": true,
+    "indentchar": "┊",
+    "lsp.autocompleteDetails": true,
+    "lsp.server": "python=pylsp,go=gopls,typescript=typescript-language-server,javascript=typescript-language-server,markdown=marksman",
+    "pluginchannels": [
+        "https://raw.githubusercontent.com/micro-editor/plugin-channel/master/channel.json"
+    ],
+    "pluginrepos": [],
+    "savecursor": true,
+    "saveundo": true,
+    "scrollbar": true,
+    "softwrap": true,
+    "statusformatl": "$(filename) $(modified) | $(opt:filetype) | $(opt:encoding)",
+    "statusformatr": "$(line):$(col) $(status.paste)",
+    "tabhighlight": true,
+    "tabsize": 2,
+    "tabstospaces": true
+}

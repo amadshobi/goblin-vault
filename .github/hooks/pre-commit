@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Pre-commit hook — Goblin Vault
+# Auto-run lint + health check sebelum commit di-enforce.
+# Di-install via scripts/install-hooks.sh (symlink ke .git/hooks).
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+echo "🐙 goblin pre-commit: running fast syntax check on staged files..."
+if ! bash "$REPO_ROOT/scripts/check_syntax.sh" --staged; then
+  echo "❌ check_syntax.sh gagal — commit dibatalkan. Fix dulu ya bos." >&2
+  exit 1
+fi
+
+echo "✅ pre-commit OK (Fast Staged Linter)"

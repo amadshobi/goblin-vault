@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Wrapper executable for ZF Navigation Engine inside Goblin Vault
+
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export GOBLIN_VAULT_ROOT="$(cd "$BIN_DIR/../.." && pwd)"
+
+source "$GOBLIN_VAULT_ROOT/tools-cli/src/zf/zf.sh"
+
+zf "$@"

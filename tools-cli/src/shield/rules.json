@@ -1,0 +1,80 @@
+{
+  "description": "Goblin Privacy Shield - Secret & Sensitive Data Regex Masking Rules + Smart Model Fallback Router",
+  "enabled": true,
+  "redact_replacement": "[REDACTED_BY_GOBLIN_SHIELD]",
+  "fallback": {
+    "description": "Smart Model Fallback Router — otomatis chain-retry ketika upstream 410/429/5xx",
+    "enabled": true,
+    "trigger_statuses": [410, 429],
+    "trigger_status_5xx": true,
+    "_comment_schema": "PRIMARY MODEL (Key) -> FALLBACK CHAIN ARRAY (Value in Priority Order)",
+    "fallback_models": {
+      "// PRIMARY: Claude Sonnet 4.6": "--------------------------------------------------",
+      "google-antigravity/claude-sonnet-4-6": [
+        "google-antigravity/gemini-3.1-pro"
+      ],
+      "// PRIMARY: Claude Opus 4.6": "--------------------------------------------------",
+      "google-antigravity/claude-opus-4-6": [
+        "google-antigravity/gemini-3.1-pro",
+      ],
+      "// PRIMARY: Gemini 3.5 Flash": "--------------------------------------------------",
+      "google-antigravity/gemini-3.5-flash": [
+        "opencode/deepseek-v4-flash-free",
+        "ollama-cloud/minimax-m3"
+      ],
+      "// PRIMARY: GPT 5.5": "--------------------------------------------------",
+      "openai-codex/gpt-5.5": [
+        "google-antigravity/gemini-3.1-pro",
+        "google-antigravity/gemini-3.6-flash"
+      ]
+      "// PRIMARY: Minimax M3": "--------------------------------------------------",
+      "ollama-cloud/minimax-m3": [
+        "opencode/deepseek-v4-flash-free"
+      ]
+
+    },
+    "default_fallback": [
+      "opencode/deepseek-v4-flash-free",
+      "google-antigravity/gemini-3.5-flash",
+      "ollama-cloud/minimax-m3"
+    ],
+    "endpoints": [
+      "/v1/chat/completions",
+      "/v1/messages"
+    ]
+  },
+  "patterns": [
+    {
+      "name": "OpenAI / Generic API Keys",
+      "regex": "(sk-[a-zA-Z0-9T3BlbkFJ]{20,})"
+    },
+    {
+      "name": "GitHub Personal Access Tokens",
+      "regex": "(ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})"
+    },
+    {
+      "name": "Google / Antigravity API Keys",
+      "regex": "(AIzaSy[a-zA-Z0-9_-]{33})"
+    },
+    {
+      "name": "Anthropic API Keys",
+      "regex": "(sk-ant-api03-[a-zA-Z0-9_-]{80,})"
+    },
+    {
+      "name": "AWS Access Key IDs",
+      "regex": "(AKIA[0-9A-Z]{16})"
+    },
+    {
+      "name": "Private Keys / RSA Keys",
+      "regex": "(-----BEGIN [A-Z]+ PRIVATE KEY-----([\\s\\S]*?)-----END [A-Z]+ PRIVATE KEY-----)"
+    },
+    {
+      "name": "Bearer Tokens",
+      "regex": "(Bearer\\s+[a-zA-Z0-9\\-\\._~\\+\\/]+=*)"
+    },
+    {
+      "name": "Internal / Local IP Addresses",
+      "regex": "\\b(?:10|172\\.(?:1[6-9]|2[0-9]|3[01])|192\\.168)\\.\\d{1,3}\\.\\d{1,3}\\b"
+    }
+  ]
+}

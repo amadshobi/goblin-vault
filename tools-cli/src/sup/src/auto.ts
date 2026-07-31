@@ -1,0 +1,180 @@
+/**
+ * sup — Mode Auto.
+ *
+ * Scan seluruh target via paralelisme (aman: pakai Promise.all, tapi yang dieksekusi
+ * cuma command kecil & read-only). Hasilnya: jalankan update SE-QUENTIAL karena banyak
+ * package manager (apt, brew) yang tidak boleh overlap dan kebanyakan butuh sudo.
+ *
+ * Alur:
+ *   1. untuk semua target, jalankan `detect()` filter dulu supaya skip total kalau
+ *      command-nya tidak ada di PATH (sehingga tidak spam error);
+ *   2. `scan()` paralel untuk yang detect = true -> kumpulkan outdated;
+ *   3. eksekusi `update()` satu per satu dengan `runTarget()`;
+ *   4. rangkuman total di akhir.
+ *
+ * Mode ini dipanggil dari:
+ *   - `sup all` (eksplisit user);
+ *   - `sup --yes`;
+ *   - fallback non-TTY (pipeline / CI).
+ *
+ * Granular per-package:
+ * - Untuk target granular (npm/pip), tiap item di `OutdatedInfo.items`
+ *   dipakai sebagai pilihan otomatis (all-selected, mode auto tidak
+ *   melakukan filter apapun — itu tugas UI interaktif).
+ * - `runTarget(...)` dipanggil dengan `selectedIds` lengkap (semua item
+ *   id untuk target tsb) supaya logika filter di dalam target.update()
+ *   konsisten antara mode interactive dan auto.
+ *
+ * Verbose:
+ * - Mode verbose (flag `-v`/`--verbose`) diteruskan ke setiap
+ *   `runTarget(..., { verbose })` dan akhirnya ke `target.update()`.
+ */
+
+import * as p from "@clack/prompts";
+import color from "picocolors";
+
+import { isInteractive } from "./logger";
+import { TARGETS, type OutdatedItem, type UpdateOutcome } from "./targets";
+import { runTarget } from "./runner";
+import { scanAll } from "./scanner";
+import {
+  requestSudoPassword,
+  targetNeedsSudo,
+} from "./sudo";
+
+interface AutoOptions {
+  /**
+   * true = skip semua prompt (untuk `sup all`, `--yes`, atau non-TTY default).
+   */
+  yesAll: boolean;
+  /**
+   * Mode verbose (flag `-v` / `--verbose`). Default false → quiet spinner.
+   */
+  verbose: boolean;
+}
+
+/**
+ * Tampilkan daftar target yang gagal + pesan error-nya.
+ *
+ * Pemisahan concern: helper ini khusus merangkum kegagalan agar user
+ * tidak perlu scroll ke atas untuk mencari penyebab error.
+ *
+ * @param outcomes - Hasil eksekusi update per target.
+ */
+function showFailedDetails(outcomes: UpdateOutcome[]): void {
+  const failed = outcomes.filter((o) => !o.ok);
+  if (failed.length === 0) return;
+
+  const lines = failed.map(
+    (o) => `  ${color.red("✗")} ${color.bold(o.label)} — ${o.message}`,
+  );
+  const block = [`${failed.length} target gagal:`, ...lines].join("\n");
+
+  if (isInteractive()) {
+    p.note(block, "Detail Kegagalan");
+  } else {
+    process.stdout.write(`\n${color.bold("Detail Kegagalan")}\n${block}\n`);
+  }
+}
+
+/**
+ * Tampilkan rangkuman akhir + return exit code yang sesuai.
+ *
+ * @param outcomes - Hasil eksekusi update per target.
+ */
+function summarize(outcomes: UpdateOutcome[]): void {
+  const ok = outcomes.filter((o) => o.ok).length;
+  const failed = outcomes.length - ok;
+  if (isInteractive()) {
+    if (failed === 0) {
+      p.log.success(
+        `🎉 Semua ${ok} target selesai update tanpa kesalahan. BOSS, system & packages segar! 🚀`,
+      );
+    } else {
+      p.log.warn(`⚠️ Selesai dengan catatan: ${ok} sukses, ${failed} gagal.`);
+    }
+  } else {
+    process.stdout.write(
+      `\n${color.bold("Rangkuman")}: ${color.green(ok + " sukses")}, ${color.red(
+        failed + " gagal",
+      )}\n`,
+    );
+  }
+}
+
+/**
+ * Eksekusi mode auto. Scan semua -> update yang outdated -> rangkuman.
+ */
+export async function runAuto(opts: AutoOptions): Promise<void> {
+  const startedAt = Date.now();
+  const verbose = opts.verbose === true;
+
+  if (isInteractive()) {
+    p.intro(color.bgMagenta(color.white(" sup · auto-update semua ")));
+  }
+
+  const spinner = isInteractive() ? p.spinner() : null;
+  if (spinner) spinner.start("🔍 Scanning package manager");
+  const outdated = await scanAll();
+  if (spinner) spinner.stop(`Scan selesai — ${outdated.size} target outdated`);
+
+  if (outdated.size === 0) {
+    if (isInteractive()) {
+      p.log.success("🎉 Semua package & tool sudah up to date, BOSS!");
+    } else {
+      process.stdout.write(
+        `${color.green("🎉")} Semua package & tool sudah up to date, BOSS!\n`,
+      );
+    }
+    if (spinner) {
+      p.outro(color.dim(`Waktu total: ${((Date.now() - startedAt) / 1000).toFixed(1)}s`));
+    }
+    return;
+  }
+
+  // Cek apakah ada target outdated yang butuh sudo (apt/snap).
+  // Minta password sebelum update loop agar execLive() bisa kirim via stdin
+  // (stdin: "pipe" + sudo -S) dan tidak rebutan TTY dengan Clack spinner.
+  const needsSudo = [...outdated.keys()].some((id) => targetNeedsSudo(id));
+  if (needsSudo && isInteractive()) {
+    const pw = await requestSudoPassword(
+      "🔑 Target apt/snap butuh akses root — masukkan password sudo",
+    );
+    if (pw === null) {
+      p.log.warn("⚠️  Tanpa password sudo, target apt/snap mungkin gagal karena tidak bisa autentikasi.");
+    }
+  }
+
+  // Eksekusi sequential (1 per 1) untuk menghindari lock conflict (apt/dpkg/dnf).
+  const outcomes: UpdateOutcome[] = [];
+  for (const [id, info] of outdated) {
+    const target = TARGETS.find((t) => t.id === id);
+    if (!target) continue;
+    // Untuk target granular, kirim semua item id agar logika filter di
+    // target.update() seragam dengan mode interaktif.
+    const allItemIds: string[] | undefined = info.items
+      ? (info.items as OutdatedItem[]).map((it) => it.id)
+      : undefined;
+    void info; // info sudah ter-representasi di allItemIds + outcome
+    // eslint-disable-next-line no-await-in-loop
+    const outcome = await runTarget(target, {
+      verbose,
+      selectedIds: allItemIds,
+    });
+    outcomes.push(outcome);
+  }
+
+  const totalSec = ((Date.now() - startedAt) / 1000).toFixed(1);
+  summarize(outcomes);
+  showFailedDetails(outcomes);
+
+  if (isInteractive()) {
+    p.outro(color.dim(`Waktu total: ${totalSec}s`));
+  } else {
+    process.stdout.write(`${color.dim(`Waktu total: ${totalSec}s`)}\n`);
+  }
+
+  const failed = outcomes.some((o) => !o.ok);
+  if (failed) process.exitCode = 1;
+  void opts; // opts.yesAll saat ini selalu true untuk runAuto (lihat caller).
+}

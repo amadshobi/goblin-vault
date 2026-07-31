@@ -3,6 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Goblin-Certified-magenta?style=for-the-badge&logo=opsgenie" alt="Goblin Certified" />
   <img src="https://img.shields.io/badge/Shell-Zsh%20%26%20Bash-blue?style=for-the-badge&logo=gnu-bash" alt="Shell" />
+  <img src="https://img.shields.io/badge/Go-1.2x+-00ADD8?style=for-the-badge&logo=go" alt="Go" />
   <img src="https://img.shields.io/badge/Node-v22+-green?style=for-the-badge&logo=node.js" alt="Node" />
   <img src="https://img.shields.io/badge/Status-Under%20Evolution-orange?style=for-the-badge" alt="Status" />
 </p>
@@ -17,41 +18,175 @@
 
 Repository ini adalah pusat komando dan memori dari seorang builder-goblin:
 
-* 📂 **`./.opencode/`** — Divisi otak & konfigurasi agent OpenCode (prompts, commands, plugins, & skills).
-* 📂 **`./tools-cli/`** — Pusat persenjataan CLI yang mempermudah navigasi dan operasional harian.
-  * 📁 `bin/` — Executable binaries/wrappers siap pakai (`fe`, `ocm`, `gh-blin`).
-  * 📁 `src/` — Source code mentah dari aplikasi CLI.
-  * 📁 `utils/` — Helper script sekali jalan.
-  * 📁 `tests/` — Laboratorium uji coba (scratchpad).
-  * 📁 `docs/` — Dokumentasi dan manual Book.
+```
+goblin-vault/
+├── tools-cli/              # Pusat persenjataan CLI
+│   ├── bin/                # Wrapper executable (ocm, gh-blin, sup, dll)
+│   ├── src/                # Source code CLI
+│   │   ├── fex/            # File Explorer (Go) — binary fex
+│   │   │   ├── cmd/        # Command handlers (root.go, search_mode.go, tree_mode.go)
+│   │   │   ├── docs/       # Dokumentasi fex
+│   │   │   ├── helpers/    # Helper utilities (fzf-pick.sh, tmux-split.sh, dll)
+│   │   │   └── internal/   # Internal packages (config, fzf, session, tmux, tree, ui, util)
+│   │   ├── gh-blin/        # GitHub Assistant TUI (Node)
+│   │   ├── goblin-control/ # Control center core (Node)
+│   │   ├── notes/          # Notes utility (Node)
+│   │   ├── ocm/            # OpenCode Configurator TUI (Node)
+│   │   └── sup/            # Smart Universal Package Updater (TypeScript + @clack/prompts)
+│   ├── tests/              # Laboratorium uji coba (scratchpad)
+│   └── docs/               # Dokumentasi & manual tiap tool
+├── scripts/                # Utilities shell & js
+│   ├── check_syntax.sh     # Linter/syntax check semua script
+│   ├── doctor.sh           # Health & dependency checker
+│   ├── install.sh          # Setup PATH & symlink config
+│   ├── install-hooks.sh    # Install git hooks (pre-commit/pre-push)
+│   ├── release.sh          # Modular SemVer release engine (vault & per-tool)
+│   └── worktree.sh         # Git worktree manager
+├── configs/                # Konfigurasi editor & tooling
+│   ├── micro/              # Source-of-truth config micro editor
+│   └── nvim/               # LazyVim setup (init.lua, lua/, stylua.toml)
+├── docs/                   # Rules, skills, update notes & history
+│   ├── rules/              # Coding style & operational rules
+├── .github/                # CI workflows + git hooks
+│   ├── workflows/          # GitHub Actions (ci.yml)
+│   └── hooks/              # pre-commit & pre-push hooks
+├── AGENTS.md               # Panduan agent & kontributor
+├── README.md               # Dokumentasi publik utama
+└── CHANGELOG.md            # Riwayat perubahan
+```
 
 ---
 
-## 🛠️ Senjata Utama (`tools-cli/bin/`)
+## 🧪 Development / Kontribusi Lokal
 
-### 1. 🔍 `fe` (File Explorer)
-Alat navigasi super cepat menggunakan `fzf` + `tmux` split. Dioptimalkan dengan filter `-prune` agar tidak tersangkut di folder sampah (`node_modules`, `.git`, dll.). Dilengkapi state-machine internal untuk mendukung navigasi balik (`Esc` untuk mundur, `Ctrl+H` untuk Home, `Ctrl+R` untuk Root).
+Repo ini sudah punya **git hooks** + **CI GitHub Actions** untuk menjaga kualitas
+kode sebelum masuk ke repo. Berikut cara kerjanya:
+
+### Git Hooks (lokal)
+
+Install hooks once:
+
+```bash
+bash scripts/install-hooks.sh
+```
+
+Hook yang aktif:
+- **pre-commit**: jalankan `bash scripts/check_syntax.sh` + `bash scripts/doctor.sh` — blocking, commit ditolak jika ada error.
+- **pre-push**: jalankan `bash scripts/doctor.sh` + build `fex` — blocking, push ditolak jika gagal.
+
+### CI (remote)
+
+Setiap PR/commit ke branch `dev` atau `main` memicu GitHub Actions:
+- Lint + syntax check (`check_syntax.sh`)
+- Build `fex` dari `tools-cli/src/fex/`
+
+### Build `fex` (manual)
+
+```bash
+cd tools-cli/src/fex && go build -o ~/.local/bin/fex .
+```
+
+### Checklist sebelum PR
+
+```bash
+bash scripts/doctor.sh        # dependency & PATH check
+bash scripts/check_syntax.sh  # lint Bash & JS
+cd tools-cli/src/fex && go build -o ~/.local/bin/fex .
+```
+
+---
+
+## 🛠️ Senjata Utama
+
+### 1. 🔍 `fex` (File Explorer — Go)
+Alat navigasi super cepat berbasis Go yang menggunakan `fzf` + `tmux` split.
+Subcommand: `tree`, `search`, `create`, `editor`, `path`, `kill`, `backup micro`, `restore micro`.
+State-machine internal dengan boundary `$HOME` (Esc/Ctrl-H untuk navigasi balik, Ctrl+R untuk Root).
+Optimalisasi `-prune` agar tidak tersangkut di folder sampah (`node_modules`, `.git`, dll).
 
 ### 2. ⚙️ `ocm` (OpenCode Configurator)
-Dashboard TUI interaktif berbasis Node.js (`@clack/prompts`) untuk mengelola workspace, agent, session, dan credentials API Key AI tanpa perlu mengedit file JSONC secara manual.
+Dashboard TUI interaktif berbasis Node.js (`@clack/prompts`) untuk mengelola
+workspace, agent, session, dan credentials API Key AI tanpa edit file JSONC manual.
+*Wrapper executable:* `tools-cli/bin/ocm`.
 
 ### 3. 🐙 `gh-blin` (GitHub Assistant TUI)
-Asisten pribadi bermata satu yang membantu menangani pull-requests, issues, dan monitoring repositori GitHub langsung dari terminal dengan nyaman.
+Asisten bermata satu untuk menangani pull-requests, issues, dan monitoring repo
+GitHub langsung dari terminal. Berbasis Node.js.
+*Wrapper executable:* `tools-cli/bin/gh-blin`.
+
+### 4. 🧠 `goblin-control` (Control Center Core)
+Node.js control center dengan modul: `check`, `cmd`, `create`, `delete`, `git`, `shortcuts`.
+Otak di balik orchestration harian goblin.
+
+### 5. 📝 `notes`
+Utility notes berbasis markdown (Node.js) — `create.js` + `storage.js` untuk
+manajemen catatan cepat dari terminal.
+
+### 6. 🧙‍♂️ `gn` (Goblin Nexus CLI) & 🛡️ `Privacy Shield`
+CLI manager terintegrasi untuk benchmarking, model routing, account status, dan interceptor privacy proxy filter (`Bun.serve`) untuk membersihkan data sensitif (API keys, PATs) sebelum dikirim ke AI provider.
+*Wrapper executable:* `tools-cli/bin/gn`.
+*Interceptor source:* `tools-cli/src/shield/`.
+
+### 7. 📂 `zf` (Zoxide & Tmux Navigation Engine)
+Alat navigasi direktori berbasis zoxide + fzf yang terintegrasi dengan Tmux & auto-launcher tools (`fex`, `gh-blin`, `lazygit`, `opencode`, `code`).
+*Wrapper executable:* `tools-cli/bin/zf`.
+*Source directory:* `tools-cli/src/zf/`.
+
+### 8. 🐚 Shell Custom Utilities (`ins`, `sup`)
+Fungsi scripting tingkat lanjut untuk daily terminal workflow:
+* `ins` (`scripts/shell/ins.sh`): Universal package installer dengan interactive live registry search (APT, NPM, Bun, PIP, dll).
+* `sup` (`tools-cli/bin/sup`): Parallel smart updater (TypeScript + Clack TUI) dengan granular multi-select package updater untuk APT, SNAP, Bun, OMP, Rustup, Brew, PIP, NPM global. Lihat `tools-cli/src/sup/`.
 
 ---
 
 ## ⚙️ Setup & Integrasi
 
-Agar semua senjata di dalam `tools-cli/` bisa dipanggil langsung dari terminal mana saja, cukup tambahkan folder `bin` ke `$PATH` shell Anda (Zsh/Bash):
+### PATH (binaries)
+Agar `ocm` & `gh-blin` bisa dipanggil dari mana saja, tambahkan folder `bin` ke `$PATH`:
 
 ```bash
 # Tambahkan ke ~/.zshrc atau exports.sh Anda
 export PATH="$PATH:$HOME/civil/goblin-vault/tools-cli/bin"
 ```
 
-Setelah itu, jalankan reload shell dan panggil `fe`, `ocm`, atau `gh-blin` secara bebas!
+### `fex` (Go binary)
+`fex` di-build dari `tools-cli/src/fex/` (Go module). Binary ter-deploy ke
+`~/.local/bin/fex` (cek via `bash scripts/doctor.sh`). Build ulang bila perlu:
+
+```bash
+cd tools-cli/src/fex && go build -o ~/.local/bin/fex .
+```
+
+### Health Check & Lint
+Sebelum kerja atau setelah perubahan, jalankan:
+
+```bash
+bash scripts/doctor.sh        # cek dependency & PATH
+bash scripts/check_syntax.sh  # lint semua Bash & JS
+```
+
+### Install Configs
+`install.sh` men-deploy config micro & nvim sebagai symlink ke `~/.config/`,
+auto-sync dengan source-of-truth di repo ini:
+
+```bash
+bash scripts/install.sh
+```
 
 ---
+
+## 📜 Konvensi & Rules
+
+- **Agent & kontributor:** baca `AGENTS.md` — berisi struktur, guideline engineering,
+  coding standards, dan daftar tanggung jawab agent.
+- **Coding style:** `docs/rules/coding-style.md` — immutability, batas ukuran file
+  (≤800 baris), error handling, input validation, reusable utilities, shell ISO.
+- **Skills:** definisi skill terdaftar di `kilo.jsonc` → `docs/skills/`
+  (`golang-pro`, `js-mastery`, `shell-scripting`).
+- **Bahasa:** dokumentasi Indonesia (utama), English untuk istilah teknis.
+
+---
+
 <p align="center">
   <i>Dibuat oleh Goblin, dirawat oleh Goblin, untuk kedamaian terminal Goblin. 🍻👹</i>
 </p>

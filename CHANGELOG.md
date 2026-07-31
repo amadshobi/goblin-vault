@@ -3,9 +3,194 @@
 ## [Unreleased]
 
 ### Added
-- Micro editor config management: `fex backup micro` / `fex restore micro`
-- `install.sh` — deploy configs to `~/.config/` on fresh machine
-- CHANGELOG.md — project changelog
+- **`sup` v1.1.0 Feature Release**:
+  - **Granular Package Picker UI (Default ALL Selected)**: Sub-package dari NPM global dan Python PIP3 kini diekspansi secara individu di UI Multiselect (`npm:opencode`, `pip:requests`, dll) dengan status default ter-select (`initialValues`).
+  - **Verbose Streaming Mode (`-v, --verbose`)**: Menambahkan flag `-v, --verbose` untuk menampilkan output live-streaming dari package manager (mematikan spinner tenang untuk kebutuhan debugging).
+  - **Dynamic Auto-Detect Version**: `banner.ts` dan `help.ts` kini mendeteksi versi secara dinamis dari `package.json` (`pkg.version`) untuk mencegah mis-versi di masa depan.
+  - **Precision Scanner Filters**: Scanner `rustup`, `bun`, dan `omp` kini melakukan pre-check status aktual sehingga tidak akan lagi muncul di menu jika sudah up-to-date.
+
+### Fixed
+- **`sup` v1.0.1 Bug Fixes & UX Polish**:
+  - **Sudo Loop Fix (`sup all`)**: Memperbaiki issue hang/looping pada `sup all` ketika mendeteksi target yang memerlukan akses root (`apt`/`snap`). Sekarang password sudo di-request via `p.password()` secara proactive setelah scanning dan disimpan di memori sebelum update loop dimulai.
+  - **`omp` Update Flag Fix**: Menghapus flag `--yes` / `-y` dari pemanggilan update `omp` di `targets.ts` karena CLI Oh My Pi tidak mendukung flag `--yes`. Sekarang menggunakan `omp update` murni.
+  - **UI/UX Polish**: Menampilkan durasi eksekusi pada status sukses `(X.Xs)`, Failure Box Note rincian target gagal di outro, Goblin Roast Hint pada Level 2 help jika sub-command tidak dikenal, serta log transparansi pemberihan password sudo dari memori.
+
+### Added
+- **`sup` TypeScript Migration**: Smart Universal Package Updater yang sebelumnya adalah bash script `scripts/shell/sup.sh` dimigrasikan menjadi tool TypeScript modern di `tools-cli/src/sup/`.
+  - Entry point: `tools-cli/src/sup/src/index.ts`; wrapper executable: `tools-cli/bin/sup` (chmod +x, auto-`bun install` jika dep belum ada).
+  - Pakai `@clack/prompts` (spinner, multiselect, intro/outro) + `picocolors`, sejajar style dengan `ocm` dan `gh-blin`.
+  - ASCII Banner "SUP" putih (`\033[1;37m`) sesuai Standard Banner ASCII Header.
+  - Dual-Level Help: `sup --help` (Level 1) & `sup <target> --help` / `sup help <target>` (Level 2).
+  - Sub-command direct: `sup apt`, `sup npm`, `sup bun`, `sup omp`, `sup rustup`, `sup brew`, `sup pip`, `sup snap`, `sup all` — skip UI, langsung scan+update.
+  - Mode `sup all`: scan paralel semua target → eksekusi sequential (menghindari lock conflict `apt`/`dpkg`).
+  - Non-TTY Guard (`process.stdout.isTTY === false`): otomatis fallback ke text logger statis & mode auto — usable di pipeline/CI.
+  - Goblin Roast Hint + pesan `🔥 [sup fatal]` untuk error reporting yang ramah terminal.
+  - TypeScript strict mode + `bun-types` untuk API runtime yang aman.
+- **Auto Telemetry Logger di Goblin Shield** (`shield-interceptor.ts`): Setiap request LLM yang melewati interceptor (port 4002 → 4000) otomatis dicatat ke `telemetry.db`.
+  - Extract `usage` dari response JSON (`prompt_tokens`, `completion_tokens`, `cache_tokens`) — support OpenAI `/v1/chat/completions` dan Anthropic `/v1/messages`.
+  - Hitung `cost_usd` real-time via pricing engine (`calculateCost` dari `pricing.ts`).
+  - **Fire-and-forget**: Response di-clone dan dikonsumsi di background — **zero latency impact** ke response client.
+  - **Resilient**: Semua error telemetry di-swallow — interceptor TIDAK PERNAH crash karena logging gagal.
+- **Systemd User Service** (`gn-shield.service`): Daemon interceptor berjalan otomatis di background via `systemctl --user`.
+  - Auto-restart (`Restart=always`, `RestartSec=2`).
+  - Logging ke journald, bind port 4002, forward ke 4000.
+  - Service file di `~/.config/systemd/user/gn-shield.service` + copy di `tools-cli/src/shield/gn-shield.service`.
+- **`gn shield service` subcommand** (`shield.sh`): Manage systemd service — `install|remove|start|stop|restart|status`.
+  - `start`/`stop`/`restart` otomatis prefer systemd jika service terinstal, fallback ke legacy PID-based daemon.
+- **BARU `gn usage` engine** (`usage.ts`): Modul unified yang menggantikan `status-formatter.ts` + `burn.ts` dengan data 100% akurat (tanpa `assumedTotal 100k`).
+  - **Quota Mode (`gn usage [provider]`)**: Fetch live usage limits dari broker `/v1/usage`. Menampilkan progress bar real, persentase akurat, status badge (`🟢 OK`/`⚠️ LOW`/`🔴 EXHAUSTED`), exact used/limit count, dan countdown `resetsAt`.
+  - **Token Burn Mode (`gn usage --token [provider] [--days N]`)**: Query SQLite `client_usage` dari `~/.omp/agent/agent.db` untuk data real (requests, input/output/cache tokens, cost_usd). **BUKAN estimasi** — data asli dari database.
+  - **JSON Mode (`gn usage --json`)**: Output JSON mentah untuk scripting/piping.
+  - **Failure Resilience**: Graceful handling saat broker offline, DB locked, atau tabel `client_usage` kosong — pesan jelas tanpa crash.
+- **Quick Token Summary**: Di mode quota, `usage.ts` otomatis menampilkan ringkasan token 7d jika `client_usage` punya data.
+
+### Changed
+- **`gn usage / u` routing** (`gn.sh`): Delegate langsung ke `usage.ts` — hapus pipe `omp usage --json | status-formatter.ts` dan panggilan `burn.ts`.
+- **`help-formatter.sh`**: Level 2 help `usage` di-update — ganti `--history`/sparkline dengan `--token` mode, deskripsi dual-mode, visual indicators baru.
+- **`gn bench`** (`bench.ts`): Hapus dependensi `bench-roles.ts` untuk role specialization. Benchmark sekarang menggunakan generic prompt tanpa system prompt complex, tanpa hybrid scoring.
+- **`README.md`**: Update section & tree `sup` — entrypoint berpindah dari bash `scripts/shell/sup.sh` ke TS wrapper `tools-cli/bin/sup` + source `tools-cli/src/sup/`.
+
+### Removed
+- **`burn.ts`** & **`status-formatter.ts`**: File dihapus dari direktori. Keduanya sudah digantikan sepenuhnya oleh `usage.ts` — tidak ada routing yang memanggilnya lagi.
+- **`scripts/shell/sup.sh`**: File bash lawas diarsipkan ke `docs/history/sup-migration/sup.sh.v3-bash-legacy` (bukan dihapus total supaya histori implementasi tetap terjaga). Implementasi aktif pindah ke `tools-cli/src/sup/`.
+
+### Removed
+- **`assumedTotal 100k` matematika rekaan**: `burn.ts` sebelumnya menggunakan estimasi 100k token untuk menghitung cost — sekarang `usage.ts` hanya menampilkan data real dari SQLite atau jujur mengatakan "0 tokens burned".
+
+## [v0.3.15] - 2026-07-28
+
+### Added
+- **Global Ultra-Clean ASCII Art Banners for CLI Suite (`GN`, `ZF`, `FEX`, `OCM`)**:
+  - Penyesuaian banner visual seragam dengan font ASCII Art tebal presisi tinggi.
+  - Penempatan nama tool dan versi persis di bawah banner dengan skema warna pure white & margin atas yang lega agar tidak menempel di prompt terminal (`shobixlinuxdev>`).
+
+## [v0.3.14] - 2026-07-28
+
+### Refactored
+- **`ocm` Full TypeScript Migration & Environment Auto-Discovery Engine**:
+  - Konversi 100% modul `ocm` dari JavaScript CJS (`.js`) menjadi ESM TypeScript terstruktur (`.ts`) di bawah `tools-cli/src/ocm/src/`.
+  - Penambahan `tsconfig.json` & definisi tipe data (`config.ts`, `models.ts`) untuk type safety penuh.
+  - Fitur **Workspace Auto-Discovery**: Scanner dinamis mendukung variabel lingkungan `OPENCODE_CONFIG_DIR`, auto-detect `~/.config/opencode`, `~/.opencode`, CWD, dan sub-proyek.
+  - **MCP Protocol Sync**: Mengubah toggle MCP server agar membaca & menulis field standar `enabled: true/false`.
+  - **Compaction Keep Fix**: Penyelarasan `compaction.keep` menjadi nilai desimal fraksi (`0.0` - `1.0`).
+  - Centralized Agent Management via `~/.opencode/opencode.jsonc`.
+
+### Added
+- **Dashboard Integrator on `ocm` TUI (`menu.js`)**:
+  - Menampilkan ringkasan status aktif sebelum prompt aksi utama (`Active Workspace`, `Config File`, `Default Agent`, `Active Model`, `Last Session`, dan status validasi `API Keys`).
+  - Membantu developer melihat state sistem OpenCode secara sekilas tanpa harus masuk ke sub-menu.
+
+### Fixed
+- **CLI Subcommand `ocm manage` Registry & Help**:
+  - Mendaftarkan subcommand `manage` ke `validSubcommands` di `index.js`.
+  - Melengkapi Level 3 Help untuk `ocm manage add --help`, `ocm manage edit --help`, dan `ocm manage delete --help`.
+
+## [v0.3.13] - 2026-07-27
+
+### Added
+- **Ollama Cloud Real-time Scraper & Metadata Fetcher (`ollama-me.ts`)**:
+  - Penarikan metadata akun Ollama Cloud resmi via `POST https://ollama.com/api/me` (Email, Plan, ID, Suspended Status) dengan auto-discovery dari SQLite DB `~/.omp/agent/agent.db` dan Secret Vault.
+  - HTML Web Scraper untuk dashboard `https://ollama.com/settings` (ekstraksi persentase pemakaian persis 1:1 dari `session_usage_pct` & `weekly_usage_pct`).
+  - Cache TTL 15 menit di `~/.cache/goblin-nexus/ollama-me-cache.json` untuk performa kilat.
+  - Integration di `gn status`: Render diagram bar visual 28-karakter presisi 1-desimal per-akun Ollama Cloud.
+  - Integration di `gn burn`: Menampilkan baris `Weekly Usage` & `Session Usage` lengkap dengan estimasi token (`17.00k tokens`) dan cost ($).
+
+### Refactored
+- **Code Review & Maintenance Improvements (`gn`)**:
+  - Direct object mutation pada cumulative logic `burn.ts` diganti dengan Strict Immutability Map Update (`merged.set(key, { ... })`).
+  - Positional array index matching untuk Ollama Cloud diubah menjadi Identity-based lookup (`metaByEmail` / `metaById`).
+  - Komentar prioritas merge `burn.ts` disesuaikan dengan kode (`snapshot > history > broker`).
+  - Error context logging ditambahkan pada scraper `ollama-me.ts`.
+
+## [v0.3.11] - 2026-07-27
+
+### Added
+- **`gn` Dual-Level Help System**:
+  - Subcommand Deep Help Manual (`help-formatter.sh`) untuk `ping`, `bench`, `status`, `burn`, `pool`, `shield`, `agent`.
+  - Konsistensi akses help via `gn <command> --help`, `gn <command> -h`, atau `gn help <command>`.
+  - Tampilan help estetik dengan visual header, deskripsi target, detail flag, dan contoh penggunaan praktis.
+
+## [v0.3.10] - 2026-07-27
+
+### Added
+- **`scripts/check_syntax.sh` TypeScript Support & Fast Staged Fix**:
+  - Menambahkan pengecekan sintaksis & AST TypeScript (`.ts`/`.tsx`) via Bun (`bun build --no-save`).
+  - Memperbaiki mode `--staged`: Hanya memproses file yang sedang di-stage (`git diff --cached`), menghilangkan noise/scan file non-staged di pre-commit hook.
+  - Updating `pre-push` hook untuk menjalankan full syntax check (Bash, Go, JS, TS) secara menyeluruh sebelum push.
+
+## [v0.3.9] - 2026-07-27
+
+### Added
+- **`gn bench` Dynamic Multi-Role Benchmark Engine**:
+  - Modular System Prompt Roles (`coder`, `bugfix`, `planning`, `codereview`) tersimpan di `tools-cli/src/gn/prompts/roles/*.txt`.
+  - Modular Dataset Test Cases tersimpan di `tools-cli/src/gn/prompts/datasets/*.json`.
+  - **Dual-Source of Truth Scoring**: Hybrid Scoring Matcher (Keyword & Structural Rubric) + Self-Cleaning `tools-cli/src/gn/storage/output.md` untuk Agent Deep Analytics.
+  - Storage Append-Only di `tools-cli/src/gn/storage/history.json` (auto-ignored oleh Git).
+  - Mode Selector: `--provider <id>`, `--vs` / `--vs=m1,m2` (Adu Banteng cross-provider), `--role <role>`, dan `--timeout <sec>` (default 60s untuk bench, 10s untuk ping).
+- **`gn ping` Visual UX Upgrade**: Clean status badges (`200 OK`, `429 LIMIT`), dynamic spinner, visual ANSI latency bar (`miniBar`), dan summary lineup.
+
+### Changed
+- `gn status` & `gn burn` layout formatting cleanups (penataan visual progress bar 28-char & pembersihan secret/opaque IDs).
+
+## [v0.3.8] - 2026-07-27
+
+### Added
+- `gn burn` (`burn.ts` + `bu` alias) — Token & Cost Burn Tracker. Mengakses REST endpoint OMP Broker v17.1.4 (`GET /v1/usage/clients` & `GET /v1/usage/history`) untuk menampilkan token burn per client dengan breakdown input/output/cache tokens, estimated cost (USD), dan sparkline history (▁▂▃▄▅▆▇█). Mendukung flag `--history`, `--json`, `--days <int>`, `--provider <id>`. Degradasi elegan ke `omp usage --json` saat broker belum menyediakan field token burn, dengan pesan Goblin Roast yang ramah.
+- `gn status` upgrade (`status-formatter.ts`) — Konsumsi JSON output `omp usage --json` lalu render dengan visual status dot (`●`/`○`/`✗`) berwarna ANSI, normalisasi `usedFraction`/`windowLabel` dari shape OMP v17.1.4, ringkasan `disabledCredentials` (mis. `✗ email — disabled 3d ago: re-login to restore`), dan `capacity` summary per-provider (mis. `capacity: 7d → 2.00/2 accounts used (0.00× quota left)`). Integrasi `gum style` opsional, fallback ANSI untuk TTY/non-TTY.
+- `show_help` gn — Tambah subcommand `burn`/`bu` dengan deskripsi flag & contoh penggunaan di section `EXAMPLES`.
+
+## [v0.3.5] - 2026-07-26
+
+### Added
+- `shield-interceptor.ts` Smart Fallback Array Chain — Dukungan `fallback_models` berbasis array candidates (`Primary -> Array[Fallback1, Fallback2]`) dengan multi-level sequential retry saat upstream mengembalikan status HTTP `410`, `429`, atau `5xx`.
+- Header Debug `X-Goblin-Shield-Fallback` — Menampilkan metadata jejak fallback model pada response headers yang dikirimkan ke client/OpenCode.
+- Fast Staged Linter — Flag `--staged` di `check_syntax.sh` untuk hanya memeriksa staged files dan optimasi `pre-commit` hook agar commit berjalan super kilat.
+- Dokumentasi Prosedur Release — Menambahkan panduan rilis otomatis `scripts/release.sh` ke `AGENTS.md` & `README.md`.
+
+## [v0.3.0] - 2026-07-26
+
+### Added
+- `scripts/release.sh` — Modular SemVer release engine untuk Goblin Vault yang mendukung automated version bump, pre-release health audit, git tagging, dan per-tool release targets (`vault`, `fex`, `gn`, `zf`, `ocm`).
+- `gn pool` — Dynamic Account Pool Switching (`pool-manager.ts` & `gn.sh`) untuk isolation proxy & bypass SQLite DB via `OMP_AUTH_BROKER_ACCOUNT_POOL_FILE`.
+- `gn` Visual Engine Update — Header ASCII Art `GN PROXY` Unicode Shade Block, `gum style` double border, spinner loading `_gn_spin`, dan Goblin Roast Error handling.
+- `tools-cli/src/gn/` & `tools-cli/bin/gn` — Goblin Nexus CLI port dari `~/.shell/` untuk benchmark, model routing, dan agent model switcher.
+- `tools-cli/src/shield/` — Goblin Privacy Shield Interceptor (`Bun.serve` proxy) untuk masking regex API keys/secrets.
+- `tools-cli/src/zf/` & `tools-cli/bin/zf` — Zoxide & Tmux Navigation Engine port dari `~/.shell/` yang kini bersatu di `tools-cli`.
+- `scripts/shell/ins.sh` — Universal interactive package searcher & installer (APT, NPM, Bun, PIP, dll).
+- `scripts/shell/sup.sh` — Smart parallel package updater dengan interactive multi-select.
+
+### Changed
+- `gn ping` & `gn bench` table output simplified — Menghapus kolom terduplikasi, hanya menampilkan Full Model ID & Latency/Speed secara ringkas.
+- `~/.shell/core/aliases.sh` — Menghapus alias `gn` yang redundant agar `zsh-syntax-highlighting` secara otomatis membaca binary `tools-cli/bin/gn` di `$PATH` sebagai command valid (hijau).
+- `fex`: rename entrypoint Go module dari `cmd/fe` ke `cmd/fex` untuk konsistensi penamaan binary & launcher script `tools-cli/bin/fex`.
+- `docs/rules/coding-style.md` — panduan gaya kode wajib (immutability, file-size, error handling, input validation, naming, reusable utils, shell ISO, language/emoji)
+- `AGENTS.md` — diekspansi dari 12 baris buzzword menjadi panduan lengkap (struktur repo, guideline engineering, coding standards, agent responsibilities, konvensi, do/don't)
+- `README.md` — di-overhaul agar sync dengan struktur aktual (tambah `goblin-control`, `notes`, `configs/nvim`, `docs/skills`, `docs/rules`; perbaiki penjelasan `fex` sebagai Go binary & panduan build/PATH)
+- `fex backup micro` — backup micro editor config from `~/.config/micro/` to `goblin-vault/configs/micro/`
+- `fex restore micro` — restore micro editor config from `goblin-vault/configs/micro/` to `~/.config/micro/`
+- `configs/micro/` — source-of-truth directory for micro editor configuration
+  - `settings.json`, `bindings.json`, `init.lua`, `palettero.cfg`, `goblin-help.md`
+  - `colorschemes/darcula-glass.micro`, `colorschemes/darcula-goblin.micro`
+  - `plug/filemanager/filemanager.lua`, `syntax.yaml`, `repo.json`
+- CHANGELOG.md — project changelog (since initial commit)
+- Micro editor: `softwrap` enabled (long lines auto-wrap, no horizontal scroll)
+- Micro editor: filemanager plugin now opens tree at parent directory of current file (not CWD)
+- Foundation OSS: `LICENSE` (MIT), `.gitignore` hardened, `.editorconfig` untuk konsistensi formatting lintas editor
+- CI + hooks: `.github/workflows/ci.yml` (lint + build otomatis di PR/commit), `.github/hooks/` (pre-commit + pre-push), `scripts/install-hooks.sh` untuk install hooks secara relatif
+- `docs/history/` — direktori riwayat implementasi harian (`YYYY-MM-DD_nama.md`)
+
+### Changed
+- `refactor(fex)`: pecah `cmd/root.go` (989 baris) jadi modul domain (`tree_mode`, `bookmarks_mode`, `search_mode`, `find_mode`, `bindings`, `dialogs`, `filelist`) + extract `internal/util/escape.go` — Closes #1
+- `.gitignore` diperbaiki: kritikal files (`AGENTS.md`, `kilo.jsonc`, `docs/rules/*`, `docs/skills/*`, `docs/update/*`) sekarang ter-track
+- Hook hardening: pre-commit menjalankan `doctor.sh` secara blocking, pre-push menjalankan `doctor.sh` + build `fex`
+- `refactor(fex)`: pecah `tree.go` (393 baris) jadi `tree_core.go` (240 baris, pure data model & filesystem helpers) + `tree_interactive.go` (157 baris, fzf-based selector) — Closes #2. Public API tetap, `go vet` & `go build` pass
+- Binary rename: `fe` → `fex` — konsisten dengan nama folder `fex/` & perintah `fex`, update `.gitignore` & rebuild ke `~/.local/bin/fex`
+
+### Fixed
+- Git hooks menggunakan symlink relatif agar tetap jalan mesin berganti direktori repo
+- Rename Ctrl+R di fex: rename kedua gagal (file "ngelock") — fix hapus `sess.SetLastOpened(newPath)` dari rename case (bukan navigasi), perbaiki `findEntry` fallback dari `strings.Contains` ke `strings.HasSuffix` dengan separator boundary, surface error `os.Rename` ke stderr, hapus guard `lines[idx] != ""` di parser `--expect` fzf.go, ganti `renameDialog` dari stdin prompt ke fzf popup dengan nama file otomatis terisi (pre-filled Query), hapus debugLog calls dari `tree_mode.go`
+- Tmux breakage: panel kanan/terminal baru aneh pas fex jalan di tmux — hapus `SplitOnStartup` sepenuhnya, editor sekarang spawn di pane yang sama (bukan di panel kanan), hapus semua `tmux.InTmux()` conditional di `tree_mode.go`, `find_mode.go`, `bookmarks_mode.go`, `search_mode.go`
+- Keybinding conflicts tmux ↔ nvim: tmux `bind -n C-n/C-k/C-w` bentrok sama nvim custom mappings — tmux `C-n` pindah ke `C-p`, tmux `C-k` pindah ke `C-d`, tmux `C-w` dihapus; nvim `C-q` pindah ke `C-x`, nvim `C-w` pindah ke `C-b`, nvim `C-d` duplicate line dihapus
 
 ## [0.1.0] - 2026-07-08
 

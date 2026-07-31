@@ -1,0 +1,30 @@
+filetype: filemanager
+
+detect:
+    filename: "^filemanager$"
+
+rules:
+    # Current directory path at the top
+    - special: "^(/.+|~/.+)"
+
+    # ASCII separator line
+    - comment: "^─+$"
+
+    # Parent directory entry
+    - special: "^📁 \\.\\.$|^📂 \\.\\.$|^\\.\\.$"
+
+    # Directory entries (📁 collapsed, 📂 expanded)
+    - statement: "^📁"
+    - preproc: "^📂"
+
+    # File type icons (nerd font / devicons)
+    - type: " "      # Go
+    - identifier: " " # Rust
+    - constant: " "   # Python
+    - type: " "       # TypeScript
+    - identifier: " " # JavaScript
+    - special: " "    # JSON/YAML
+    - preproc: " "    # Markdown
+    - comment: " "    # Text
+    - constant: " "   # Images
+    - error: " "      # Archives

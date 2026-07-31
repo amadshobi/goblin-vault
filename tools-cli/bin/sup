@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Wrapper executable for sup (Smart Universal Package Updater) inside Goblin Vault.
+#
+# Menjalankan entrypoint TypeScript via Bun. Mirip gaya wrapper `ocm`.
+
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export GOBLIN_VAULT_ROOT="$(cd "$BIN_DIR/../.." && pwd)"
+
+# Pastikan dep tersedia di node_modules lokal tools-cli/src/sup.
+# Kalau belum di-install (misal repo fresh clone), install dulu.
+if [ ! -d "$GOBLIN_VAULT_ROOT/tools-cli/src/sup/node_modules/@clack" ]; then
+  if command -v bun >/dev/null 2>&1; then
+    (cd "$GOBLIN_VAULT_ROOT/tools-cli/src/sup" && bun install --silent) || true
+  fi
+fi
+
+exec bun run "$GOBLIN_VAULT_ROOT/tools-cli/src/sup/src/index.ts" "$@"
