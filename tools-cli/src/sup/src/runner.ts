@@ -89,7 +89,7 @@ export async function runTarget(
   // TTY + mode quiet (default). Spinner boleh tetap jalan selama eksekusi.
   if (!verbose) {
     const spinner = p.spinner();
-    spinner.start(`Memulai ${target.label}…`);
+    spinner.start(`Memulai ${target.label}`);
     try {
       // eslint-disable-next-line no-await-in-loop
       const outcome = await target.update(opts.selectedIds);

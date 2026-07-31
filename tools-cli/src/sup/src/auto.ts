@@ -114,7 +114,7 @@ export async function runAuto(opts: AutoOptions): Promise<void> {
   }
 
   const spinner = isInteractive() ? p.spinner() : null;
-  if (spinner) spinner.start("🔍 Scan package manager paralel…");
+  if (spinner) spinner.start("🔍 Scanning package manager");
   const outdated = await scanAll();
   if (spinner) spinner.stop(`Scan selesai — ${outdated.size} target outdated`);
 

@@ -174,7 +174,7 @@ export async function runInteractive(opts: InteractiveOptions): Promise<void> {
 
   // Step 1 — scanning dengan spinner.
   const scanSpinner = p.spinner();
-  scanSpinner.start("🔍 Scan package manager paralel…");
+  scanSpinner.start("🔍 Scanning package manager");
   const outdated = await scanAll();
   scanSpinner.stop(`Scan selesai — ${outdated.size} target outdated`);
 
