@@ -21,7 +21,7 @@ Repository ini adalah pusat komando dan memori dari seorang builder-goblin:
 ```
 goblin-vault/
 ├── tools-cli/              # Pusat persenjataan CLI
-│   ├── bin/                # Wrapper executable (ocm, gh-blin)
+│   ├── bin/                # Wrapper executable (ocm, gh-blin, sup, dll)
 │   ├── src/                # Source code CLI
 │   │   ├── fex/            # File Explorer (Go) — binary fex
 │   │   │   ├── cmd/        # Command handlers (root.go, search_mode.go, tree_mode.go)
@@ -31,7 +31,8 @@ goblin-vault/
 │   │   ├── gh-blin/        # GitHub Assistant TUI (Node)
 │   │   ├── goblin-control/ # Control center core (Node)
 │   │   ├── notes/          # Notes utility (Node)
-│   │   └── ocm/            # OpenCode Configurator TUI (Node)
+│   │   ├── ocm/            # OpenCode Configurator TUI (Node)
+│   │   └── sup/            # Smart Universal Package Updater (TypeScript + @clack/prompts)
 │   ├── tests/              # Laboratorium uji coba (scratchpad)
 │   └── docs/               # Dokumentasi & manual tiap tool
 ├── scripts/                # Utilities shell & js
@@ -134,7 +135,7 @@ Alat navigasi direktori berbasis zoxide + fzf yang terintegrasi dengan Tmux & au
 ### 8. 🐚 Shell Custom Utilities (`ins`, `sup`)
 Fungsi scripting tingkat lanjut untuk daily terminal workflow:
 * `ins` (`scripts/shell/ins.sh`): Universal package installer dengan interactive live registry search (APT, NPM, Bun, PIP, dll).
-* `sup` (`scripts/shell/sup.sh`): Parallel smart updater dengan granular multi-select package updater.
+* `sup` (`tools-cli/bin/sup`): Parallel smart updater (TypeScript + Clack TUI) dengan granular multi-select package updater untuk APT, SNAP, Bun, OMP, Rustup, Brew, PIP, NPM global. Lihat `tools-cli/src/sup/`.
 
 ---
 

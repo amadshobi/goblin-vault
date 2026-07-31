@@ -3,6 +3,16 @@
 ## [Unreleased]
 
 ### Added
+- **`sup` TypeScript Migration**: Smart Universal Package Updater yang sebelumnya adalah bash script `scripts/shell/sup.sh` dimigrasikan menjadi tool TypeScript modern di `tools-cli/src/sup/`.
+  - Entry point: `tools-cli/src/sup/src/index.ts`; wrapper executable: `tools-cli/bin/sup` (chmod +x, auto-`bun install` jika dep belum ada).
+  - Pakai `@clack/prompts` (spinner, multiselect, intro/outro) + `picocolors`, sejajar style dengan `ocm` dan `gh-blin`.
+  - ASCII Banner "SUP" putih (`\033[1;37m`) sesuai Standard Banner ASCII Header.
+  - Dual-Level Help: `sup --help` (Level 1) & `sup <target> --help` / `sup help <target>` (Level 2).
+  - Sub-command direct: `sup apt`, `sup npm`, `sup bun`, `sup omp`, `sup rustup`, `sup brew`, `sup pip`, `sup snap`, `sup all` — skip UI, langsung scan+update.
+  - Mode `sup all`: scan paralel semua target → eksekusi sequential (menghindari lock conflict `apt`/`dpkg`).
+  - Non-TTY Guard (`process.stdout.isTTY === false`): otomatis fallback ke text logger statis & mode auto — usable di pipeline/CI.
+  - Goblin Roast Hint + pesan `🔥 [sup fatal]` untuk error reporting yang ramah terminal.
+  - TypeScript strict mode + `bun-types` untuk API runtime yang aman.
 - **Auto Telemetry Logger di Goblin Shield** (`shield-interceptor.ts`): Setiap request LLM yang melewati interceptor (port 4002 → 4000) otomatis dicatat ke `telemetry.db`.
   - Extract `usage` dari response JSON (`prompt_tokens`, `completion_tokens`, `cache_tokens`) — support OpenAI `/v1/chat/completions` dan Anthropic `/v1/messages`.
   - Hitung `cost_usd` real-time via pricing engine (`calculateCost` dari `pricing.ts`).
@@ -25,9 +35,11 @@
 - **`gn usage / u` routing** (`gn.sh`): Delegate langsung ke `usage.ts` — hapus pipe `omp usage --json | status-formatter.ts` dan panggilan `burn.ts`.
 - **`help-formatter.sh`**: Level 2 help `usage` di-update — ganti `--history`/sparkline dengan `--token` mode, deskripsi dual-mode, visual indicators baru.
 - **`gn bench`** (`bench.ts`): Hapus dependensi `bench-roles.ts` untuk role specialization. Benchmark sekarang menggunakan generic prompt tanpa system prompt complex, tanpa hybrid scoring.
+- **`README.md`**: Update section & tree `sup` — entrypoint berpindah dari bash `scripts/shell/sup.sh` ke TS wrapper `tools-cli/bin/sup` + source `tools-cli/src/sup/`.
 
 ### Removed
 - **`burn.ts`** & **`status-formatter.ts`**: File dihapus dari direktori. Keduanya sudah digantikan sepenuhnya oleh `usage.ts` — tidak ada routing yang memanggilnya lagi.
+- **`scripts/shell/sup.sh`**: File bash lawas diarsipkan ke `docs/history/sup-migration/sup.sh.v3-bash-legacy` (bukan dihapus total supaya histori implementasi tetap terjaga). Implementasi aktif pindah ke `tools-cli/src/sup/`.
 
 ### Removed
 - **`assumedTotal 100k` matematika rekaan**: `burn.ts` sebelumnya menggunakan estimasi 100k token untuk menghitung cost — sekarang `usage.ts` hanya menampilkan data real dari SQLite atau jujur mengatakan "0 tokens burned".
