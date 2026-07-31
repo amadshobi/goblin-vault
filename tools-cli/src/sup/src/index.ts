@@ -55,6 +55,12 @@ const KNOWN_SUBCMDS = new Set<string>([
 /**
  * Parse argumen CLI mentah menjadi struktur opsi.
  *
+ * Flag yang didukung saat ini:
+ * - `-h` / `--help`           : tampilkan bantuan.
+ * - `-y` / `--yes` / `--all`  : auto-update semua target.
+ * - `-v` / `--verbose`        : tampilkan output package manager secara
+ *                               live streaming (matikan spinner clack).
+ *
  * @param rawArgs - `process.argv.slice(2)`.
  * @returns Opsi terstruktur.
  */
@@ -62,6 +68,7 @@ interface ParsedArgs {
   help: boolean;
   helpTarget: string | null;
   yesAll: boolean;
+  verbose: boolean;
   target: string | null;
   unknown: string[];
 }
@@ -71,6 +78,7 @@ function parseArgs(rawArgs: string[]): ParsedArgs {
     help: false,
     helpTarget: null,
     yesAll: false,
+    verbose: false,
     target: null,
     unknown: [],
   };
@@ -86,6 +94,10 @@ function parseArgs(rawArgs: string[]): ParsedArgs {
       case "--yes":
       case "--all":
         opts.yesAll = true;
+        break;
+      case "-v":
+      case "--verbose":
+        opts.verbose = true;
         break;
       default:
         if (raw.startsWith("-")) {
@@ -170,7 +182,7 @@ async function main(): Promise<void> {
   if (args.target) {
     const lower = args.target.toLowerCase();
     if (lower === "all") {
-      await runAuto({ yesAll: true });
+      await runAuto({ yesAll: true, verbose: args.verbose });
       return;
     }
     const target = findTarget(lower);
@@ -193,7 +205,7 @@ async function main(): Promise<void> {
     }
 
     p.intro(color.bgCyan(color.black(` sup → ${target.label} `)));
-    await runTarget(target);
+    await runTarget(target, { verbose: args.verbose });
     p.outro(color.green("Update selesai."));
     clearSudoPassword();
     return;
@@ -206,7 +218,7 @@ async function main(): Promise<void> {
     process.stdout.write(
       `${color.dim("ℹ️  Mode non-TTY terdeteksi — fallback ke auto-update semua.")}\n\n`,
     );
-    await runAuto({ yesAll: true });
+    await runAuto({ yesAll: true, verbose: args.verbose });
     return;
   }
 
@@ -224,7 +236,7 @@ async function main(): Promise<void> {
     }
   }
 
-  await runInteractive({ yesAll: args.yesAll });
+  await runInteractive({ yesAll: args.yesAll, verbose: args.verbose });
   clearSudoPassword();
 }
 

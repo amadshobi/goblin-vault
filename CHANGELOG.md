@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+- **`sup` v1.1.0 Feature Release**:
+  - **Granular Package Picker UI (Default ALL Selected)**: Sub-package dari NPM global dan Python PIP3 kini diekspansi secara individu di UI Multiselect (`npm:opencode`, `pip:requests`, dll) dengan status default ter-select (`initialValues`).
+  - **Verbose Streaming Mode (`-v, --verbose`)**: Menambahkan flag `-v, --verbose` untuk menampilkan output live-streaming dari package manager (mematikan spinner tenang untuk kebutuhan debugging).
+  - **Dynamic Auto-Detect Version**: `banner.ts` dan `help.ts` kini mendeteksi versi secara dinamis dari `package.json` (`pkg.version`) untuk mencegah mis-versi di masa depan.
+  - **Precision Scanner Filters**: Scanner `rustup`, `bun`, dan `omp` kini melakukan pre-check status aktual sehingga tidak akan lagi muncul di menu jika sudah up-to-date.
+
 ### Fixed
 - **`sup` v1.0.1 Bug Fixes & UX Polish**:
   - **Sudo Loop Fix (`sup all`)**: Memperbaiki issue hang/looping pada `sup all` ketika mendeteksi target yang memerlukan akses root (`apt`/`snap`). Sekarang password sudo di-request via `p.password()` secara proactive setelah scanning dan disimpan di memori sebelum update loop dimulai.

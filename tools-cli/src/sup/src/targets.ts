@@ -5,19 +5,52 @@
  * - punya `id` unik (untuk dispatch).
  * - punya `label` + `hint` (untuk UI Clack p.multiselect).
  * - punya `detect()` -> Promise<boolean>  apakah PM tersedia di sistem.
- * - punya `scan()`  -> Promise<OutdatedInfo | null>  info outdated atau null.
- * - punya `update(targets?)` -> Promise<UpdateOutcome>.
+ * - punya `scan()` -> Promise<OutdatedInfo | null>
+ *       info outdated atau null.
+ *       Bisa berisi `items?: OutdatedItem[]` untuk granular per-package
+ *       (mis. tiap paket npm/pip outdated punya entry sendiri dengan id
+ *       ber-prefix target id, contoh: "npm:opencode", "pip:requests").
+ * - punya `update(selectedIds?: string[])` -> Promise<UpdateOutcome>
+ *       opsional menerima daftar id item pilihan user. Untuk target
+ *       non-granular, argumen ini bisa diabaikan dan semua di-update.
  *
  * Invariant: kalau `detect()` false, scan/update tidak dipanggil.
  */
 
+import color from "picocolors";
+
 import { exec, execLive, hasCommand } from "./exec";
 
 /**
+ * Satu item package/PM yang bisa di-update secara individual.
+ *
+ * Konvensi id:
+ * - Untuk target non-granular (APT, SNAP, Brew, Bun, dsb) -> id = target.id
+ *   dan hanya ada satu item utama (atau nol ketika tak ada outdated).
+ * - Untuk target granular (NPM, PIP) -> id berbentuk `${target.id}:${pkgName}`
+ *   contoh "npm:opencode", "pip:requests".
+ *
+ * Field `value` dipakai oleh clack `p.multiselect` (`initialValues` meng-
+ * ekspektasikan daftar `value`). Kita samakan dengan `id` supaya caller
+ * tidak perlu mapping tambahan.
+ */
+export interface OutdatedItem {
+  /** Identifier unik item — dipake sebagai nilai clack multiselect. */
+  id: string;
+  /** Label untuk UI (sudah termasuk emoji kategori bila perlu). */
+  label: string;
+  /** Hint kecil untuk UI clack. */
+  hint?: string;
+}
+
+/**
  * Info hasil scanning.
+ *
+ * Kalau `items` terisi, UI menampilkan granular per-package picker; kalau
+ * tidak, UI fallback ke label utama (mode lama).
  */
 export interface OutdatedInfo {
-  /** Identifier target ini (misal "apt", "npm:typescript"). */
+  /** Identifier target ini (misal "apt", "npm"). */
   id: string;
   /** Label untuk UI. */
   label: string;
@@ -25,6 +58,13 @@ export interface OutdatedInfo {
   hint: string;
   /** Jumlah package yang outdated (kalau ada). */
   count?: number;
+  /**
+   * Opsional: daftar granular per-package / per-target yang outdated.
+   * Kalau ada, UI multiselect akan menampilkan entry per-item ini.
+   * Kalau absent/undefined, UI fallback menampilkan satu entry dengan
+   * `id` sebagai value.
+   */
+  items?: OutdatedItem[];
 }
 
 /**
@@ -40,6 +80,17 @@ export interface UpdateOutcome {
 
 /**
  * Definisi 1 target package manager.
+ *
+ * `update(selectedIds?, opts?)` menerima:
+ * - `selectedIds?` : optional list id item yang dipilih user.
+ *   Untuk target non-granular, default-nya `undefined` = update semua.
+ *   Untuk target granular (npm/pip), caller akan mengirim subset id
+ *   (`npm:opencode`, `npm:kilocode`, ...) yang akan dipakai target untuk
+ *   memfilter paket yang di-install.
+ * - `opts?.verbose` (default false) : kalau true, execLive pakai
+ *   `inheritStdout:true` sehingga output command streaming live ke
+ *   terminal. Caller (runner) sudah stop spinner clack SEBELUM
+ *   invoke update() untuk menghindari tabrakan renderer.
  */
 export interface UpdaterTarget {
   id: string;
@@ -47,7 +98,23 @@ export interface UpdaterTarget {
   hint: string;
   detect: () => Promise<boolean>;
   scan: () => Promise<OutdatedInfo | null>;
-  update: () => Promise<UpdateOutcome>;
+  update: (
+    selectedIds?: string[],
+    opts?: { verbose?: boolean },
+  ) => Promise<UpdateOutcome>;
+}
+
+/**
+ * Helper kecil untuk resolve `inheritStdout` flag pada execLive().
+ *
+ * - verbose=true   -> inherit = true  (live streaming ke terminal).
+ * - verbose=false  -> inherit = false (mode quiet, spinner tetap jalan).
+ *
+ * Ditulis sebagai helper supaya setiap target tidak harus menulis
+ * ternary yang sama berulang-ulang.
+ */
+function liveStdout(verbose: boolean | undefined): { inheritStdout: boolean } {
+  return { inheritStdout: verbose === true };
 }
 
 /* ------------------------------------------------------------------ *
@@ -90,18 +157,37 @@ const apt: UpdaterTarget = {
       label: `${apt.label} (${count} packages upgradable)`,
       hint: apt.hint,
       count,
+      // APT non-granular (satu blok paket di-upgrade bareng).
+      // Tampilkan satu entry utama dengan id target.
+      items: [
+        {
+          id: apt.id,
+          label: `${apt.label} (${count} upgradable)`,
+          hint: apt.hint,
+        },
+      ],
     };
   },
-  update: async () => {
+  update: async (
+    _selectedIds?: string[],
+    opts?: { verbose?: boolean },
+  ) => {
+    // APT bersifat all-or-nothing — `selectedIds` diabaikan untuk target
+    // ini (interface signature diseragamkan supaya caller tak perlu
+    // dispatch by-target).
+    void _selectedIds;
     const start = Date.now();
+    const stdout = liveStdout(opts?.verbose);
     const cmd1 = await withSudo(["apt", "update"]);
     const cmd2 = await withSudo(["apt", "upgrade", "-y"]);
     const cmd3 = await withSudo(["apt", "autoremove", "-y"]);
     const cmd4 = await withSudo(["apt", "autoclean", "-y"]);
-    const r1 = await execLive(cmd1, { inheritStdout: false });
-    const r2 = await execLive(cmd2);
-    const r3 = await execLive(cmd3, { inheritStdout: false });
-    const r4 = await execLive(cmd4, { inheritStdout: false });
+    // Tahap "upgrade" adalah yang terpanjang & paling menarik untuk
+    // dilihat -> hormati flag verbose. Tahap lain default quiet.
+    const r1 = await execLive(cmd1, stdout);
+    const r2 = await execLive(cmd2, stdout);
+    const r3 = await execLive(cmd3, stdout);
+    const r4 = await execLive(cmd4, stdout);
     const ok = r1.ok && r2.ok && r3.ok && r4.ok;
     return {
       id: apt.id,
@@ -132,12 +218,24 @@ const snap: UpdaterTarget = {
       label: `${snap.label} (${count} packages upgradable)`,
       hint: snap.hint,
       count,
+      items: [
+        {
+          id: snap.id,
+          label: `${snap.label} (${count} upgradable)`,
+          hint: snap.hint,
+        },
+      ],
     };
   },
-  update: async () => {
+  update: async (
+    _selectedIds?: string[],
+    opts?: { verbose?: boolean },
+  ) => {
+    void _selectedIds;
     const start = Date.now();
     const cmd = await withSudo(["snap", "refresh"]);
-    const r = await execLive(cmd);
+    // Snap refresh = satu command panjang; hormati verbose.
+    const r = await execLive(cmd, liveStdout(opts?.verbose));
     return {
       id: snap.id,
       label: snap.label,
@@ -158,17 +256,31 @@ const bun: UpdaterTarget = {
   hint: "bun upgrade",
   detect: () => hasCommand("bun"),
   scan: async () => {
-    // Bun tidak punya "outdated list" yang ringan, jadi default tampilkan opsi upgrade selalu
     if (!(await hasCommand("bun"))) return null;
+    const r = await exec(["bun", "upgrade"], { timeoutMs: 15000 });
+    const output = `${r.stdout}\n${r.stderr}`;
+    // Jika output menyatakan sudah di versi terbaru -> tidak ada update (return null)
+    if (output.includes("already on the latest version")) return null;
     return {
       id: bun.id,
       label: bun.label,
       hint: bun.hint,
+      items: [
+        {
+          id: bun.id,
+          label: bun.label,
+          hint: bun.hint,
+        },
+      ],
     };
   },
-  update: async () => {
+  update: async (
+    _selectedIds?: string[],
+    opts?: { verbose?: boolean },
+  ) => {
+    void _selectedIds;
     const start = Date.now();
-    const r = await execLive(["bun", "upgrade"]);
+    const r = await execLive(["bun", "upgrade"], liveStdout(opts?.verbose));
     return {
       id: bun.id,
       label: bun.label,
@@ -190,16 +302,30 @@ const omp: UpdaterTarget = {
   detect: () => hasCommand("omp"),
   scan: async () => {
     if (!(await hasCommand("omp"))) return null;
+    const r = await exec(["omp", "update"], { timeoutMs: 15000 });
+    const output = `${r.stdout}\n${r.stderr}`;
+    if (output.includes("Already up to date")) return null;
     return {
       id: omp.id,
       label: omp.label,
       hint: omp.hint,
+      items: [
+        {
+          id: omp.id,
+          label: omp.label,
+          hint: omp.hint,
+        },
+      ],
     };
   },
-  update: async () => {
+  update: async (
+    _selectedIds?: string[],
+    opts?: { verbose?: boolean },
+  ) => {
+    void _selectedIds;
     const start = Date.now();
     // omp CLI tidak mendukung flag --yes/-y, jadi panggil langsung tanpa argumen.
-    const r = await execLive(["omp", "update"], { inheritStdout: false });
+    const r = await execLive(["omp", "update"], liveStdout(opts?.verbose));
     return {
       id: omp.id,
       label: omp.label,
@@ -221,15 +347,30 @@ const rustup: UpdaterTarget = {
   detect: () => hasCommand("rustup"),
   scan: async () => {
     if (!(await hasCommand("rustup"))) return null;
+    const r = await exec(["rustup", "check"], { timeoutMs: 20000 });
+    const output = `${r.stdout}\n${r.stderr}`;
+    // Jika tidak ada "Update available" -> return null
+    if (!/update available/i.test(output)) return null;
     return {
       id: rustup.id,
       label: rustup.label,
       hint: rustup.hint,
+      items: [
+        {
+          id: rustup.id,
+          label: rustup.label,
+          hint: rustup.hint,
+        },
+      ],
     };
   },
-  update: async () => {
+  update: async (
+    _selectedIds?: string[],
+    opts?: { verbose?: boolean },
+  ) => {
+    void _selectedIds;
     const start = Date.now();
-    const r = await execLive(["rustup", "update"]);
+    const r = await execLive(["rustup", "update"], liveStdout(opts?.verbose));
     return {
       id: rustup.id,
       label: rustup.label,
@@ -260,12 +401,27 @@ const brew: UpdaterTarget = {
       label: `${brew.label} (${count} outdated)`,
       hint: brew.hint,
       count,
+      // Brew `upgrade` bersifat all-or-nothing (1 target = upgrade
+      // seluruh outdated). Item tunggal mempertahankan UX yang sudah ada.
+      items: [
+        {
+          id: brew.id,
+          label: `${brew.label} (${count} outdated)`,
+          hint: brew.hint,
+        },
+      ],
     };
   },
-  update: async () => {
+  update: async (
+    _selectedIds?: string[],
+    opts?: { verbose?: boolean },
+  ) => {
+    void _selectedIds;
     const start = Date.now();
-    const r1 = await execLive(["brew", "update"], { inheritStdout: false });
-    const r2 = await execLive(["brew", "upgrade"]);
+    const stdout = liveStdout(opts?.verbose);
+    const r1 = await execLive(["brew", "update"], stdout);
+    // brew upgrade adalah yang terpanjang dan informatif → hormati verbose.
+    const r2 = await execLive(["brew", "upgrade"], stdout);
     return {
       id: brew.id,
       label: brew.label,
@@ -277,8 +433,25 @@ const brew: UpdaterTarget = {
 };
 
 /* ------------------------------------------------------------------ *
- *  TARGET: PIP3                                                       *
+ *  TARGET: PIP3 (granular — per-package picker)                       *
+ *                                                                    *
+ *  `scan()` akan populate `items[]` dengan id ber-prefix             *
+ *  `pip:<packageName>` sehingga UI clack multiselect bisa            *
+ *  tampilkan satu entry per package (default ter-select semua).       *
+ *  `update(selectedIds?)` melakukan filter id yang ber-prefix "pip:" *
+ *  dan hanya me-reinstall subset itu.                                *
  * ------------------------------------------------------------------ */
+
+/**
+ * Parse `pip3 list --outdated --format=freeze` menjadi nama package saja.
+ * Format tiap line: "package==version"
+ */
+function parsePipOutdatedFreeze(stdout: string): string[] {
+  return stdout
+    .split("\n")
+    .map((l) => l.split("==")[0].trim())
+    .filter((l) => l.length > 0);
+}
 
 const pip: UpdaterTarget = {
   id: "pip",
@@ -288,41 +461,53 @@ const pip: UpdaterTarget = {
   scan: async () => {
     if (!(await hasCommand("pip3"))) return null;
     const r = await exec(
-      ["pip3", "list", "--outdated", "--format=columns"],
-      { timeoutMs: 30000 },
-    );
-    const lines = r.stdout.split("\n").slice(2).filter((l) => l.trim().length > 0);
-    const count = lines.length;
-    if (count === 0) return null;
-    return {
-      id: pip.id,
-      label: `${pip.label} (${count} packages outdated)`,
-      hint: pip.hint,
-      count,
-    };
-  },
-  update: async () => {
-    const start = Date.now();
-    const list = await exec(
       ["pip3", "list", "--outdated", "--format=freeze"],
       { timeoutMs: 30000 },
     );
-    const pkgs = list.stdout
-      .split("\n")
-      .map((l) => l.split("==")[0].trim())
-      .filter((l) => l.length > 0);
+    const names = parsePipOutdatedFreeze(r.stdout);
+    if (names.length === 0) return null;
+    return {
+      id: pip.id,
+      label: `${pip.label} (${names.length} packages outdated)`,
+      hint: pip.hint,
+      count: names.length,
+      items: names.map((name) => ({
+        id: `${pip.id}:${name}`,
+        label: `${pip.label}: ${color.bold(name)}`,
+        hint: "pip package",
+      })),
+    };
+  },
+  update: async (
+    selectedIds?: string[],
+    opts?: { verbose?: boolean },
+  ) => {
+    const start = Date.now();
+    const allPkgs = parsePipOutdatedFreeze(
+      (await exec(["pip3", "list", "--outdated", "--format=freeze"], { timeoutMs: 30000 })).stdout,
+    );
+    // Filter subset kalau user un-select beberapa paket di UI.
+    // Hanya terima id ber-prefix `pip:` (guard supaya caller yang salah
+    // mengirim paket dari PM lain tidak bikin update salah target).
+    const prefix = `${pip.id}:`;
+    const pkgs =
+      selectedIds && selectedIds.length > 0
+        ? selectedIds
+            .filter((id) => id.startsWith(prefix))
+            .map((id) => id.slice(prefix.length))
+        : allPkgs;
     if (pkgs.length === 0) {
       return {
         id: pip.id,
         label: pip.label,
         ok: true,
-        message: "Tidak ada pip3 package outdated",
+        message: "Tidak ada pip3 package yang dipilih / outdated",
         durationMs: Date.now() - start,
       };
     }
     const r = await execLive(
       ["pip3", "install", "-U", "--break-system-packages", "--user", ...pkgs],
-      { inheritStdout: false },
+      liveStdout(opts?.verbose),
     );
     return {
       id: pip.id,
@@ -337,19 +522,24 @@ const pip: UpdaterTarget = {
 };
 
 /* ------------------------------------------------------------------ *
- *  TARGET: NPM (global) — 1 entry tapi ekspansi per package           *
+ *  TARGET: NPM (global) — granular per-package picker                 *
+ *                                                                    *
+ *  `scan()` populate `items[]` dengan id ber-prefix `npm:<pkg>`,     *
+ *  sehingga UI menampilkan satu entry per paket.                      *
+ *  `update(selectedIds?)` melakukan filter id ber-prefix "npm:" dan *
+ *  hanya install subset itu ke versi @latest.                         *
  * ------------------------------------------------------------------ */
 
-interface NpmOutdatedEntry {
-  name: string;
-}
-
-async function readNpmOutdated(): Promise<NpmOutdatedEntry[]> {
+/**
+ * Baca output `npm outdated -g --json` -> array nama package.
+ */
+async function readNpmOutdated(): Promise<string[]> {
   const r = await exec(["npm", "outdated", "-g", "--json"], { timeoutMs: 30000 });
-  if (!r.stdout.trim() || r.stdout.trim() === "{}") return [];
+  const txt = r.stdout.trim();
+  if (!txt || txt === "{}" || txt === "[]") return [];
   try {
-    const parsed = JSON.parse(r.stdout);
-    return Object.keys(parsed).map((name) => ({ name }));
+    const parsed = JSON.parse(txt);
+    return Object.keys(parsed);
   } catch {
     return [];
   }
@@ -361,38 +551,55 @@ const npmGlobal: UpdaterTarget = {
   hint: "global npm packages",
   detect: () => hasCommand("npm"),
   scan: async () => {
-    const entries = await readNpmOutdated();
-    if (entries.length === 0) return null;
+    const names = await readNpmOutdated();
+    if (names.length === 0) return null;
     return {
       id: npmGlobal.id,
-      label: `${npmGlobal.label} (${entries.length} outdated)`,
+      label: `${npmGlobal.label} (${names.length} outdated)`,
       hint: npmGlobal.hint,
-      count: entries.length,
+      count: names.length,
+      items: names.map((name) => ({
+        id: `${npmGlobal.id}:${name}`,
+        label: `${npmGlobal.label}: ${color.bold(name)}`,
+        hint: "global npm package",
+      })),
     };
   },
-  update: async () => {
+  update: async (
+    selectedIds?: string[],
+    opts?: { verbose?: boolean },
+  ) => {
     const start = Date.now();
-    const entries = await readNpmOutdated();
-    if (entries.length === 0) {
+    const allPkgs = await readNpmOutdated();
+    // Filter subset kalau user un-select beberapa paket di UI.
+    // Hanya terima id ber-prefix `npm:` (guard supaya caller yang
+    // salah kirim paket dari PM lain tidak bikin update salah target).
+    const prefix = `${npmGlobal.id}:`;
+    const pkgs =
+      selectedIds && selectedIds.length > 0
+        ? selectedIds
+            .filter((id) => id.startsWith(prefix))
+            .map((id) => id.slice(prefix.length))
+        : allPkgs;
+    if (pkgs.length === 0) {
       return {
         id: npmGlobal.id,
         label: npmGlobal.label,
         ok: true,
-        message: "NPM global up to date",
+        message: "Tidak ada npm global package yang dipilih / outdated",
         durationMs: Date.now() - start,
       };
     }
-    const names = entries.map((e) => e.name);
     const r = await execLive(
-      ["npm", "install", "-g", ...names.map((n) => `${n}@latest`)],
-      { inheritStdout: false },
+      ["npm", "install", "-g", ...pkgs.map((n) => `${n}@latest`)],
+      liveStdout(opts?.verbose),
     );
     return {
       id: npmGlobal.id,
       label: npmGlobal.label,
       ok: r.ok,
       message: r.ok
-        ? `${names.length} npm package(s) upgraded`
+        ? `${pkgs.length} npm package(s) upgraded`
         : `npm install -g gagal (exit ${r.exitCode})`,
       durationMs: Date.now() - start,
     };

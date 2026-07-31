@@ -16,13 +16,25 @@
  *   - `sup all` (eksplisit user);
  *   - `sup --yes`;
  *   - fallback non-TTY (pipeline / CI).
+ *
+ * Granular per-package:
+ * - Untuk target granular (npm/pip), tiap item di `OutdatedInfo.items`
+ *   dipakai sebagai pilihan otomatis (all-selected, mode auto tidak
+ *   melakukan filter apapun — itu tugas UI interaktif).
+ * - `runTarget(...)` dipanggil dengan `selectedIds` lengkap (semua item
+ *   id untuk target tsb) supaya logika filter di dalam target.update()
+ *   konsisten antara mode interactive dan auto.
+ *
+ * Verbose:
+ * - Mode verbose (flag `-v`/`--verbose`) diteruskan ke setiap
+ *   `runTarget(..., { verbose })` dan akhirnya ke `target.update()`.
  */
 
 import * as p from "@clack/prompts";
 import color from "picocolors";
 
 import { isInteractive } from "./logger";
-import { TARGETS, type UpdateOutcome } from "./targets";
+import { TARGETS, type OutdatedItem, type UpdateOutcome } from "./targets";
 import { runTarget } from "./runner";
 import { scanAll } from "./scanner";
 import {
@@ -35,6 +47,10 @@ interface AutoOptions {
    * true = skip semua prompt (untuk `sup all`, `--yes`, atau non-TTY default).
    */
   yesAll: boolean;
+  /**
+   * Mode verbose (flag `-v` / `--verbose`). Default false → quiet spinner.
+   */
+  verbose: boolean;
 }
 
 /**
@@ -91,6 +107,7 @@ function summarize(outcomes: UpdateOutcome[]): void {
  */
 export async function runAuto(opts: AutoOptions): Promise<void> {
   const startedAt = Date.now();
+  const verbose = opts.verbose === true;
 
   if (isInteractive()) {
     p.intro(color.bgMagenta(color.white(" sup · auto-update semua ")));
@@ -133,9 +150,17 @@ export async function runAuto(opts: AutoOptions): Promise<void> {
   for (const [id, info] of outdated) {
     const target = TARGETS.find((t) => t.id === id);
     if (!target) continue;
-    void info; // info saat ini dipakai di UI saja; outcome ada di UpdateOutcome.
+    // Untuk target granular, kirim semua item id agar logika filter di
+    // target.update() seragam dengan mode interaktif.
+    const allItemIds: string[] | undefined = info.items
+      ? (info.items as OutdatedItem[]).map((it) => it.id)
+      : undefined;
+    void info; // info sudah ter-representasi di allItemIds + outcome
     // eslint-disable-next-line no-await-in-loop
-    const outcome = await runTarget(target);
+    const outcome = await runTarget(target, {
+      verbose,
+      selectedIds: allItemIds,
+    });
     outcomes.push(outcome);
   }
 
@@ -151,5 +176,5 @@ export async function runAuto(opts: AutoOptions): Promise<void> {
 
   const failed = outcomes.some((o) => !o.ok);
   if (failed) process.exitCode = 1;
-  void opts; // future: opts.yesAll bisa skip prompt konfirmasi final (saat ini sudah otomatis).
+  void opts; // opts.yesAll saat ini selalu true untuk runAuto (lihat caller).
 }

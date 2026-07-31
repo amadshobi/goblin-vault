@@ -7,17 +7,13 @@
  */
 
 import color from "picocolors";
-import { renderBanner } from "./banner";
+import { VERSION } from "./banner";
 
 /**
  * Level 1: Overview global.
  */
 export function showLevel1Help(): void {
-  // Cetak banner estetik (sesuai policy ANSI Block Header di coding-style §9)
-  // agar konsisten dengan banner yang ditampilkan oleh index.ts.
-  process.stdout.write(renderBanner() + "\n");
-  console.log(`
-${color.bold(color.white("sup"))} ${color.dim("— Smart Universal Package Updater")} ${color.dim("v1.0.1")}
+  console.log(`${color.bold(color.white("sup"))} ${color.dim("— Smart Universal Package Updater")} ${color.dim("v" + VERSION)}
 
 ${color.yellow("Deskripsi:")}
   sup adalah tool parallel updater untuk berbagai package manager (APT, SNAP,
@@ -35,13 +31,14 @@ ${color.yellow("Daftar Sub-Command & Target (Level 2 Help: sup <command> --help)
   ${color.green("bun")}        Bun runtime upgrade
   ${color.green("omp")}        Oh My Pi (omp update)
   ${color.green("rustup")}     Rust toolchain update
-  ${color.green("brew")}       Homebrew packages
-  ${color.green("pip")}        Python PIP3 packages
-  ${color.green("npm")}        NPM global packages
+  ${color.green("brew")}        Homebrew packages
+  ${color.green("pip")}        Python PIP3 packages (granular per-package)
+  ${color.green("npm")}        NPM global packages (granular per-package)
   ${color.green("all")}        Update semua target yang outdated (non-interactive)
 
 ${color.yellow("Global Flags:")}
   ${color.cyan("-y, --yes, --all")}    Langsung jalankan semua target (skip interaktif)
+  ${color.cyan("-v, --verbose")}       Tampilkan output live streaming dari package manager (matikan spinner tenang)
   ${color.cyan("-h, --help")}          Tampilkan bantuan ini
 `);
 }

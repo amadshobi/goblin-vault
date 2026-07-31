@@ -6,7 +6,12 @@
  *   2. Banner dicetak oleh caller (index.ts), tapi di sini kita tampilkan intro singkat.
  *   3. Clack spinner "Scanning…" sambil `scanAll()` jalan paralel.
  *   4. Multiselect p.multiselect() berisi daftar PM yang outdated + count-nya.
+ *      Mendukung granular per-package picker untuk target NPM dan PIP
+ *      (lihat `OutdatedInfo.items` di targets.ts): satu entry per paket
+ *      outdated, default ter-select semua sehingga user bisa Enter langsung
+ *      untuk update seluruhnya, atau Space untuk toggle paket tertentu.
  *   5. Jalankan runner per target yang dipilih — satu per satu dengan spinner.
+ *      Item granular diteruskan ke `target.update(selectedIds, { verbose })`.
  *   6. Outro dengan rangkuman + exit-code-aware.
  *
  * Safety:
@@ -18,7 +23,13 @@ import * as p from "@clack/prompts";
 import color from "picocolors";
 
 import { isInteractive, success, warn } from "./logger";
-import { TARGETS, type UpdaterTarget, type OutdatedInfo, type UpdateOutcome } from "./targets";
+import {
+  TARGETS,
+  type UpdaterTarget,
+  type OutdatedInfo,
+  type OutdatedItem,
+  type UpdateOutcome,
+} from "./targets";
 import { runTarget } from "./runner";
 import { scanAll } from "./scanner";
 
@@ -53,6 +64,75 @@ interface InteractiveOptions {
    * (default) abaikan flag ini. Disimpan agar signature stabil untuk caller.
    */
   yesAll: boolean;
+  /**
+   * Mode verbose (flag `-v` / `--verbose`). Default false → spinner
+   * tenang. True → spinner dihentikan & output di-stream live.
+   */
+  verbose: boolean;
+}
+
+/**
+ * Flatten `OutdatedInfo` dari seluruh target jadi daftar pilihan granular.
+ *
+ * - Kalau `info.items` tersedia (NPM, PIP, atau target lain yang expose
+ *   granular per-package), setiap `OutdatedItem` jadi 1 entry pilihan
+ *   dengan value = `OutdatedItem.id` (mis. "npm:opencode", "pip:requests").
+ * - Kalau tidak tersedia, 1 entry pilihan dengan value = `target.id`
+ *   (mis. "apt", "snap", "brew").
+ *
+ * Konsistensi id = `OutdatedItem.id` adalah kontrak penting: `runTarget`
+ * pakai value ini sebagai `selectedIds` dan target granular akan filter
+ * prefix-nya.
+ *
+ * @param outdated - Map id target -> OutdatedInfo.
+ * @returns Array clack multiselect options.
+ */
+function flattenOutdatedToChoices(
+  outdated: Map<string, OutdatedInfo>,
+): { value: string; label: string; hint?: string }[] {
+  const choices: { value: string; label: string; hint?: string }[] = [];
+  for (const info of outdated.values()) {
+    if (info.items && info.items.length > 0) {
+      for (const item of info.items as OutdatedItem[]) {
+        choices.push({
+          value: item.id,
+          label: item.label,
+          hint: item.hint,
+        });
+      }
+    } else {
+      // Fallback: satu entry utama untuk target non-granular.
+      choices.push({
+        value: info.id,
+        label: info.label,
+        hint: info.hint,
+      });
+    }
+  }
+  return choices;
+}
+
+/**
+ * Group pilihan clack kembali per target berdasarkan prefix id.
+ *
+ * Mapping untuk granular id: "npm:opencode" -> "npm".
+ * Untuk non-granular: id == target.id, mapping langsung.
+ *
+ * @param selectedIds - Daftar id item pilihan dari multiselect.
+ * @returns Map target.id -> string[] (subset item id untuk target tsb).
+ */
+function groupSelectedIdsByTarget(
+  selectedIds: string[],
+): Map<string, string[]> {
+  const grouped = new Map<string, string[]>();
+  for (const id of selectedIds) {
+    const colonIdx = id.indexOf(":");
+    const targetId = colonIdx > 0 ? id.slice(0, colonIdx) : id;
+    const arr = grouped.get(targetId) ?? [];
+    arr.push(id);
+    grouped.set(targetId, arr);
+  }
+  return grouped;
 }
 
 /**
@@ -65,19 +145,19 @@ async function chooseTargets(
   outdated: Map<string, OutdatedInfo>,
 ): Promise<string[] | symbol | null> {
   if (outdated.size === 0) return [];
-  const choices = [...outdated.values()].map((info) => ({
-    value: info.id,
-    label: info.label,
-    hint: info.hint,
-  }));
+  const choices = flattenOutdatedToChoices(outdated);
   if (!isInteractive()) {
     // Caller sudah pasti route ke mode auto kalau non-TTY.
     return choices.map((c) => c.value);
   }
   const selected = await p.multiselect({
-    message: "Pilih target yang ingin di-update (Space untuk toggle):",
+    message:
+      "Pilih target / paket yang ingin di-update (Space untuk toggle, Enter untuk jalankan semua yg terceklist):",
     options: choices,
-    initialValues: choices.map((c) => c.value), // default semua
+    // PENTING (per spec UX): semua item TER-SELECT by default.
+    // User bisa langsung Enter untuk update semua, atau Space untuk
+    // un-select paket tertentu yang ingin dilewati.
+    initialValues: choices.map((c) => c.value),
     required: false,
   });
   return selected;
@@ -87,8 +167,8 @@ async function chooseTargets(
  * Mode interaktif penuh: scan -> pilih -> eksekusi -> rangkuman.
  */
 export async function runInteractive(opts: InteractiveOptions): Promise<void> {
-  void opts; // signature stabilizer
   const startedAt = Date.now();
+  const verbose = opts.verbose === true;
 
   p.intro(color.bgCyan(color.black(" sup · Smart Universal Package Updater ")));
 
@@ -105,7 +185,7 @@ export async function runInteractive(opts: InteractiveOptions): Promise<void> {
     return;
   }
 
-  // Step 3 — multi-select target.
+  // Step 3 — multi-select target (granular per paket kalau tersedia).
   const ids = await chooseTargets(outdated);
   if (typeof ids === "symbol") {
     // user cancel via Ctrl+C / Esc
@@ -119,13 +199,21 @@ export async function runInteractive(opts: InteractiveOptions): Promise<void> {
     return;
   }
 
-  // Step 4 — eksekusi sequential.
+  // Step 4 — group pilihan per target.id, jalankan sequential per target.
+  // Untuk target granular (npm/pip), `selectedIds` berisi item id dengan
+  // prefix target.id yang akan di-filter di dalam target.update().
+  const grouped = groupSelectedIdsByTarget(ids);
   const outcomes: UpdateOutcome[] = [];
-  for (const id of ids) {
-    const target: UpdaterTarget | undefined = TARGETS.find((t) => t.id === id);
+  for (const [targetId, perTargetIds] of grouped) {
+    const target: UpdaterTarget | undefined = TARGETS.find(
+      (t) => t.id === targetId,
+    );
     if (!target) continue;
     // eslint-disable-next-line no-await-in-loop
-    const outcome = await runTarget(target);
+    const outcome = await runTarget(target, {
+      verbose,
+      selectedIds: perTargetIds,
+    });
     outcomes.push(outcome);
   }
 

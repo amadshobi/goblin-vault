@@ -9,6 +9,12 @@
  * - Pesan error harus konteks-nya jelas (command apa, args apa, exit code berapa).
  * - Untuk command destuktif (apt upgrade, snap refresh) biarkan caller
  *   yang decide apakah interactive confirm dibutuhkan.
+ *
+ * Mode Verbose (flag `-v` / `--verbose` di CLI):
+ * - `verbose === true`  -> stdout di-INHERIT ke caller (streaming live).
+ * - `verbose === false` (default) -> stdout di-PIPE dan ditelan.
+ * - UI Clack spinner tetap aktif selama eksekusi non-verbose, sehingga
+ *   user melihat spinner berputar tenang dari awal sampai akhir update.
  */
 
 import { spawn } from "bun";
@@ -143,8 +149,16 @@ export async function exec(
  * - Kalau password tidak tersedia (non-interaktif)→ fallback `stdin: "inherit"`
  *   supaya sudo tetap bisa prompt sendiri bila mungkin.
  *
+ * Verbose / Quiet:
+ * - `opts.inheritStdout === true` → `stdout:"inherit"` (live-stream).
+ *   Caller (runner.ts) harus `spinner.stop()` SEBELUM invoke agar renderer
+ *   clack tidak tabrakan dengan output terminal.
+ * - `opts.inheritStdout === false` (default) → `stdout:"pipe"`, spinner
+ *   boleh tetap berputar tenang selama proses berjalan.
+ *
  * @param cmdParts - Command + args.
- * @returns ExecResult (stdout/stderr tetap dikumpulkan sekalian).
+ * @param opts.inheritStdout - true = streaming live; false (default) = quiet.
+ * @returns ExecResult.
  */
 export async function execLive(
   cmdParts: string[],
@@ -162,10 +176,16 @@ export async function execLive(
       ? ["sudo", "-S", ...cmdParts.slice(1)]
       : cmdParts;
 
+  // Aturan verbose:
+  // - inheritStdout === true   -> inherit stdout (live stream ke caller)
+  // - inheritStdout === false  -> pipe stdout (UI spinner boleh tetap jalan)
+  // - inheritStdout === undefined -> default = pipe (back-compat mode quiet)
+  const stdoutMode = opts.inheritStdout === true ? "inherit" : "pipe";
+
   return await new Promise<ExecResult>((resolve) => {
     const proc = spawn({
       cmd: effectiveCmd,
-      stdout: opts.inheritStdout === false ? "pipe" : "inherit",
+      stdout: stdoutMode,
       stderr: "inherit",
       // Penting: kalau pakai sudo dengan password, kita MUST handle stdin
       // sendiri (pipe). Kalau tidak, fallback ke inherit.
@@ -191,7 +211,9 @@ export async function execLive(
     }
 
     let captured = "";
-    if (opts.inheritStdout === false) {
+    // Hanya tangkap kalau pipe (mode quiet). Kalau inherit, baca akan
+    // hang karena tidak ada chunk yang masuk ke pipe.
+    if (stdoutMode === "pipe") {
       new Response(proc.stdout).text().then((t) => (captured = t));
     }
 
