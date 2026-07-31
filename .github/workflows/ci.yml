@@ -25,8 +25,28 @@ jobs:
         with:
           node-version: "20"   # LTS
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install System Dependencies (fzf & tmux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fzf tmux
+
+      - name: Add tools-cli/bin to PATH
+        run: echo "$GITHUB_WORKSPACE/tools-cli/bin" >> $GITHUB_PATH
+
       - name: Shell & JS syntax check
         run: bash scripts/check_syntax.sh
+
+      - name: Build fex (Go) & Install to PATH
+        working-directory: tools-cli/src/fex
+        run: |
+          go build -o $GITHUB_WORKSPACE/tools-cli/bin/fex ./cmd/fex
+          mkdir -p ~/.local/bin
+          cp $GITHUB_WORKSPACE/tools-cli/bin/fex ~/.local/bin/fex
 
       - name: Health & dependency check
         run: bash scripts/doctor.sh
@@ -35,9 +55,12 @@ jobs:
         working-directory: tools-cli/src/fex
         run: go vet ./...
 
-      - name: Build fex (Go)
-        working-directory: tools-cli/src/fex
-        run: go build -o /tmp/fex ./cmd/fex
-
       - name: Smoke test fex
-        run: /tmp/fex --help
+        run: fex --help
+
+      - name: Build & Typecheck sup (TypeScript/Bun)
+        working-directory: tools-cli/src/sup
+        run: |
+          bun install
+          bun run typecheck
+          bun run build
