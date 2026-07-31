@@ -46,13 +46,14 @@ goblin-vault/
 │   ├── micro/              # Source-of-truth config micro editor
 │   └── nvim/               # LazyVim setup (init.lua, lua/, stylua.toml)
 ├── docs/                   # Rules, skills, update notes & history
+│   ├── CHANGELOG/          # Changelog modular per-tool (sup.md, fex.md, gn.md, dll)
 │   ├── rules/              # Coding style & operational rules
 ├── .github/                # CI workflows + git hooks
 │   ├── workflows/          # GitHub Actions (ci.yml)
 │   └── hooks/              # pre-commit & pre-push hooks
 ├── AGENTS.md               # Panduan agent & kontributor
 ├── README.md               # Dokumentasi publik utama
-└── CHANGELOG.md            # Riwayat perubahan
+└── CHANGELOG.md            # Master macro changelog (navigasi per-tool)
 ```
 
 ---
