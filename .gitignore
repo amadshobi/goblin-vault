@@ -37,6 +37,13 @@ opencode.jsonc
 *.p12
 secrets.json
 credentials.json
+*.db
+*.sqlite
+*.sqlite3
+
+# Bun & Package Lock Noise
+bun.lockb
+.bun/
 
 # OS & editor noise
 .DS_Store
