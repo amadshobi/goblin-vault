@@ -32,7 +32,7 @@ Code of Conduct ini berlaku di semua ruang proyek (repositori, issue tracker, pu
 
 ## 5. Penegakan (Enforcement)
 
-Insiden perilaku yang tidak menyenangkan, menghina, atau tidak dapat diterima dapat dilaporkan dengan menghubungi tim pengelola repositori di **CivilHQ** via GitHub Issue/Discussions atau kontak maintainer. Semua pengaduan akan ditinjau dan diselidiki dengan cepat dan adil.
+Insiden perilaku yang tidak menyenangkan, menghina, atau tidak dapat diterima dapat dilaporkan dengan menghubungi maintainer di **@amadshobi** via GitHub Issue/Discussions atau kontak maintainer. Semua pengaduan akan ditinjau dan diselidiki dengan cepat dan adil.
 
 ## 6. Atribusi (Attribution)
 

@@ -22,7 +22,7 @@ Hanya versi terbaru yang aktif berada di branch `main` atau tag release resmi ya
 
 Jika Anda menemukan potensi celah keamanan di dalam script, tool CLI, atau workflow **Goblin Vault**:
 
-1. **Private Reporting**: Laporkan temuan Anda secara pribadi melalui menu **[Security > Advisory > Report a vulnerability](https://github.com/CivilHQ/goblin-vault/security/advisories/new)** di repositori GitHub kami, atau hubungi Maintainer via email/kontak privat.
+1. **Private Reporting**: Laporkan temuan Anda secara pribadi melalui menu **[Security > Advisory > Report a vulnerability](https://github.com/amadshobi/goblin-vault/security/advisories/new)** di repositori GitHub kami, atau hubungi Maintainer via email/kontak privat.
 2. **Detail Laporan**:
    - Deskripsi ringkas kerentanan.
    - Langkah-langkah reproduksi (PoC / proof-of-concept).

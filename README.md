@@ -4,8 +4,8 @@
   <br/><br/>
   <strong>Pusat Komando & Arsenal CLI/TUI untuk Terminal Enthusiast</strong>
   <br/><br/>
-  <a href="https://github.com/CivilHQ/goblin-vault/actions/workflows/ci.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/CivilHQ/goblin-vault/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI&color=10B981&labelColor=1F2937&logoColor=white" alt="CI Status" />
+  <a href="https://github.com/amadshobi/goblin-vault/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/amadshobi/goblin-vault/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI&color=10B981&labelColor=1F2937&logoColor=white" alt="CI Status" />
   </a>
   <img src="https://img.shields.io/badge/License-MIT-00E5FF?style=for-the-badge&logo=open-source-initiative&logoColor=black&labelColor=1F2937" alt="License MIT" />
   <img src="https://img.shields.io/badge/Version-0.3.19-A855F7?style=for-the-badge&labelColor=1F2937" alt="Version" />
@@ -119,7 +119,7 @@ Filosofi inti:
 
 ```bash
 # 1. Clone repositori
-git clone https://github.com/CivilHQ/goblin-vault.git
+git clone https://github.com/amadshobi/goblin-vault.git
 cd goblin-vault
 
 # 2. Tambahkan bin/ ke PATH (di ~/.zshrc atau ~/.bashrc)
