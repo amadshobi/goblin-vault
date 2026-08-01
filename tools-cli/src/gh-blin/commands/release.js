@@ -7,7 +7,7 @@ async function listReleases(repo, limit = 20) {
   const s = p.spinner();
   s.start('Fetching releases...');
   try {
-    const releases = ghExec(`release list --repo "${repo}" --limit ${limit} --json tagName,name,isDraft,isPrerelease,publishedAt`);
+    const releases = ghExec(['release', 'list', '--repo', repo, '--limit', String(limit), '--json', 'tagName,name,isDraft,isPrerelease,publishedAt']);
     s.stop(`Found ${releases?.length || 0} releases`);
     if (!releases || releases.length === 0) {
       p.note('No releases found.');
@@ -26,7 +26,7 @@ async function viewRelease(repo, tagName) {
   const s = p.spinner();
   s.start('Fetching release details...');
   try {
-    const release = ghRaw(`release view "${tagName}" --repo "${repo}"`);
+    const release = ghRaw(['release', 'view', tagName, '--repo', repo]);
     s.stop('Done');
     
     p.note(release, `Release: ${tagName}`);
@@ -53,10 +53,10 @@ async function createRelease(repo) {
   const s = p.spinner();
   s.start('Creating release...');
   try {
-    let cmd = `release create "${tag}" --repo "${repo}" --title "${name.replace(/"/g, '\\"')}"`;
-    if (notes.trim()) cmd += ` --notes "${notes.replace(/"/g, '\\"')}"`;
-    if (isPrerelease) cmd += ' --prerelease';
-    const out = ghRaw(cmd);
+    const args = ['release', 'create', tag, '--repo', repo, '--title', name];
+    if (notes.trim()) args.push('--notes', notes);
+    if (isPrerelease) args.push('--prerelease');
+    const out = ghRaw(args);
     s.stop('Release Created');
     p.note(out, 'New Release');
     return true;

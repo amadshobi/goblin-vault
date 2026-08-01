@@ -1,6 +1,6 @@
 const p = require('@clack/prompts');
 const color = require('picocolors');
-const { execSync } = require('child_process');
+const { spawnSync } = require('child_process');
 const { ghExec, ghRaw } = require('../utils/gh');
 const { formatRepo, clearLastLines } = require('../utils/display');
 
@@ -8,7 +8,7 @@ async function listRepos(limit = 50) {
   const s = p.spinner();
   s.start('Fetching repos...');
   try {
-    const repos = ghExec(`repo list --limit ${limit} --json nameWithOwner,isPrivate,stargazerCount,description`);
+    const repos = ghExec(['repo', 'list', '--limit', String(limit), '--json', 'nameWithOwner,isPrivate,stargazerCount,description']);
     s.stop(`Found ${repos?.length || 0} repos`);
     return repos || [];
   } catch (err) {
@@ -35,11 +35,15 @@ async function cloneRepo(repo) {
   const s = p.spinner();
   s.start(`Cloning ${repo}...`);
   try {
-    const out = execSync(`gh repo clone "${repo}" "${resolvedPath}"`, {
+    const r = spawnSync('gh', ['repo', 'clone', repo, resolvedPath], {
       encoding: 'utf8',
       stdio: 'pipe',
       timeout: 120000,
     });
+    if (r.status !== 0) {
+      throw new Error((r.stderr || r.stdout || '').trim() || `gh repo clone exit ${r.status}`);
+    }
+    const out = r.stdout || '';
     s.stop('Cloned');
     p.note(out, 'Clone');
     return true;
@@ -55,7 +59,7 @@ async function viewRepo(repo) {
   const s = p.spinner();
   s.start('Fetching repo details...');
   try {
-    const r = ghExec(`repo view "${repo}" --json nameWithOwner,description,url,isPrivate,stargazerCount,forkCount,primaryLanguage,homepageUrl,defaultBranch`);
+    const r = ghExec(['repo', 'view', repo, '--json', 'nameWithOwner,description,url,isPrivate,stargazerCount,forkCount,primaryLanguage,homepageUrl,defaultBranch']);
     s.stop('Done');
     
     let output = `${r.nameWithOwner}\n`;
@@ -82,7 +86,7 @@ async function openRepo(repo) {
   const s = p.spinner();
   s.start(`Opening ${repo} in browser...`);
   try {
-    ghRaw(`repo view "${repo}" --web`);
+    ghRaw(['repo', 'view', repo, '--web']);
     s.stop('Opened in browser');
     return true;
   } catch (err) {

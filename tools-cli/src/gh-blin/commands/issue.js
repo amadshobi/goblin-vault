@@ -7,7 +7,7 @@ async function listIssues(repo, state = 'OPEN') {
   const s = p.spinner();
   s.start(`Fetching ${state} issues...`);
   try {
-    const issues = ghExec(`issue list --repo "${repo}" --state ${state} --json number,title,state,author,createdAt,labels`);
+    const issues = ghExec(['issue', 'list', '--repo', repo, '--state', state, '--json', 'number,title,state,author,createdAt,labels']);
     s.stop(`Found ${issues?.length || 0} issues`);
     if (!issues || issues.length === 0) {
       p.note(`No ${state.toLowerCase()} issues found.`);
@@ -26,7 +26,7 @@ async function viewIssue(repo, issueNumber) {
   const s = p.spinner();
   s.start('Fetching issue details...');
   try {
-    const issue = ghExec(`issue view ${issueNumber} --repo "${repo}" --json number,title,state,body,author,createdAt,labels,comments`);
+    const issue = ghExec(['issue', 'view', String(issueNumber), '--repo', repo, '--json', 'number,title,state,body,author,createdAt,labels,comments']);
     s.stop('Done');
     
     let output = `#${issue.number} ${issue.title}\n`;
@@ -67,9 +67,9 @@ async function createIssue(repo) {
   const s = p.spinner();
   s.start('Creating issue...');
   try {
-    let cmd = `issue create --repo "${repo}" --title "${title.replace(/"/g, '\\"')}"`;
-    if (body.trim()) cmd += ` --body "${body.replace(/"/g, '\\"')}"`;
-    const out = ghRaw(cmd);
+    const args = ['issue', 'create', '--repo', repo, '--title', title];
+    if (body.trim()) args.push('--body', body);
+    const out = ghRaw(args);
     s.stop('Issue Created');
     p.note(out, 'New Issue');
     return true;
@@ -90,7 +90,7 @@ async function closeIssue(repo, issueNumber) {
   const s = p.spinner();
   s.start(`Closing issue #${issueNumber}...`);
   try {
-    const out = ghRaw(`issue close ${issueNumber} --repo "${repo}"`);
+    const out = ghRaw(['issue', 'close', String(issueNumber), '--repo', repo]);
     s.stop('Closed');
     p.note(out, 'Close');
     return true;

@@ -3,12 +3,14 @@ const color = require('picocolors');
 const { ghExec, ghRaw, getCurrentRepo } = require('../utils/gh');
 const { formatPR, showInPager } = require('../utils/display');
 const { clearLastLines } = require('../utils/display');
+const { continuePrompt } = require('../utils/prompt');
+const { reviewMenu } = require('./review');
 
 async function listPRs(repo, state = 'OPEN') {
   const s = p.spinner();
   s.start(`Fetching ${state} PRs...`);
   try {
-    const prs = ghExec(`pr list --repo "${repo}" --state ${state} --json number,title,state,author,headRefName,createdAt`);
+    const prs = ghExec(['pr', 'list', '--repo', repo, '--state', state, '--json', 'number,title,state,author,headRefName,createdAt']);
     s.stop(`Found ${prs?.length || 0} PRs`);
     if (!prs || prs.length === 0) {
       p.note(`No ${state.toLowerCase()} PRs found.`);
@@ -27,7 +29,7 @@ async function viewPR(repo, prNumber) {
   const s = p.spinner();
   s.start('Fetching PR details...');
   try {
-    const pr = ghExec(`pr view ${prNumber} --repo "${repo}" --json number,title,state,body,author,headRefName,baseRefName,createdAt,mergedAt,additions,deletions,files,reviews`);
+    const pr = ghExec(['pr', 'view', String(prNumber), '--repo', repo, '--json', 'number,title,state,body,author,headRefName,baseRefName,createdAt,mergedAt,additions,deletions,files,reviews']);
     s.stop('Done');
     
     let output = `#${pr.number} ${pr.title}\n`;
@@ -65,7 +67,7 @@ async function checkoutPR(repo, prNumber) {
   const s = p.spinner();
   s.start(`Checking out PR #${prNumber}...`);
   try {
-    const out = ghRaw(`pr checkout ${prNumber} --repo "${repo}"`);
+    const out = ghRaw(['pr', 'checkout', String(prNumber), '--repo', repo]);
     s.stop('Done');
     p.note(out, 'Checkout');
     return true;
@@ -81,7 +83,7 @@ async function approvePR(repo, prNumber) {
   const s = p.spinner();
   s.start(`Approving PR #${prNumber}...`);
   try {
-    const out = ghRaw(`pr review ${prNumber} --repo "${repo}" --approve`);
+    const out = ghRaw(['pr', 'review', String(prNumber), '--repo', repo, '--approve']);
     s.stop('Approved');
     p.note(out, 'Approval');
     return true;
@@ -97,7 +99,7 @@ async function mergePR(repo, prNumber) {
   const s = p.spinner();
   s.start(`Merging PR #${prNumber}...`);
   try {
-    const out = ghRaw(`pr merge ${prNumber} --repo "${repo}" --merge`);
+    const out = ghRaw(['pr', 'merge', String(prNumber), '--repo', repo, '--merge']);
     s.stop('Merged');
     p.note(out, 'Merge');
     return true;
@@ -118,7 +120,7 @@ async function closePR(repo, prNumber) {
   const s = p.spinner();
   s.start(`Closing PR #${prNumber}...`);
   try {
-    const out = ghRaw(`pr close ${prNumber} --repo "${repo}"`);
+    const out = ghRaw(['pr', 'close', String(prNumber), '--repo', repo]);
     s.stop('Closed');
     p.note(out, 'Close');
     return true;
@@ -143,9 +145,9 @@ async function createPR(repo) {
   const s = p.spinner();
   s.start('Creating PR...');
   try {
-    let cmd = `pr create --repo "${repo}" --head "${head}" --base "${base}" --title "${title.replace(/"/g, '\\"')}"`;
-    if (body.trim()) cmd += ` --body "${body.replace(/"/g, '\\"')}"`;
-    const out = ghRaw(cmd);
+    const args = ['pr', 'create', '--repo', repo, '--head', head, '--base', base, '--title', title];
+    if (body.trim()) args.push('--body', body);
+    const out = ghRaw(args);
     s.stop('PR Created');
     p.note(out, 'New PR');
     return true;
@@ -170,6 +172,7 @@ async function prMenu(repo) {
         { value: 'merge', label: 'Merge PR' },
         { value: 'close', label: 'Close PR' },
         { value: 'create', label: 'Create PR' },
+        { value: 'aiReview', label: 'Review PR (AI)', hint: 'generate + publish' },
         { value: 'back', label: 'Back' },
       ],
     });
@@ -200,6 +203,8 @@ async function prMenu(repo) {
     } else if (action === 'create') {
       await createPR(repo);
       await continuePrompt();
+    } else if (action === 'aiReview') {
+      await reviewMenu(repo);
     }
   }
 }
@@ -217,8 +222,4 @@ async function selectPR(prs) {
   return selected;
 }
 
-async function continuePrompt() {
-  await p.text({ message: 'Tekan Enter untuk lanjut...', placeholder: '' });
-}
-
-module.exports = { prMenu };
+module.exports = { prMenu, selectPR };

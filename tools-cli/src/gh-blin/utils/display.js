@@ -1,5 +1,48 @@
 const color = require('picocolors');
 
+const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
+
+/** Buang semua ANSI styling codes dari string. */
+function stripAnsi(str) {
+  return String(str).replace(ANSI_PATTERN, '');
+}
+
+/** Hitung lebar visual string (tanpa menghitung ANSI codes). */
+function visualWidth(str) {
+  return stripAnsi(str).length;
+}
+
+/**
+ * Truncate ke maxLen karakter VISUAL, tetap mempertahankan ANSI codes
+ * (tidak pernah memotong di tengah escape sequence). Tambah '...' + reset
+ * warna kalau terpotong.
+ */
+function truncateVisual(str, maxLen) {
+  if (!str) return '';
+  if (visualWidth(str) <= maxLen) return String(str);
+  const limit = Math.max(0, maxLen - 3);
+  let out = '';
+  let visible = 0;
+  const tokens = String(str).match(/\x1b\[[0-9;]*m|[^\x1b]/g) || [];
+  for (const tok of tokens) {
+    if (tok[0] === '\x1b') {
+      out += tok; // ANSI tidak menambah lebar visual
+      continue;
+    }
+    if (visible >= limit) break;
+    out += tok;
+    visible++;
+  }
+  const reset = ANSI_PATTERN.test(str) ? '\x1b[0m' : '';
+  return out + '...' + reset;
+}
+
+/** Pad string ke targetLen karakter VISUAL (ANSI codes diabaikan). */
+function padVisual(str, targetLen) {
+  const pad = targetLen - visualWidth(str);
+  return pad > 0 ? str + ' '.repeat(pad) : String(str);
+}
+
 /**
  * Truncate string to max length with ellipsis.
  */
@@ -49,6 +92,66 @@ function formatRepo(repo) {
 }
 
 /**
+ * Format a review block for terminal display: bordered box with PR header,
+ * stats line, and the review text inside. Alignment dihitung dari lebar
+ * VISUAL (ANSI styling codes tidak menggeser border).
+ * @param {string} reviewText - The review body/comment to display.
+ * @param {object} [prData] - PR context {number, title, author, state, additions, deletions, files, createdAt}.
+ * @param {object} [meta] - AI metadata untuk footer: {model, backend, tokens:{total}}.
+ * @returns {string} Formatted string ready for console.log.
+ */
+function formatReview(reviewText, prData = {}, meta = {}) {
+  const width = 60;
+  const bar = color.dim('─'.repeat(width));
+
+  // Header: #num + title
+  const num = prData.number != null ? `#${prData.number}` : '';
+  const title = truncate(prData.title || '(no title)', 40);
+  const headerLine = `║${color.bold(color.cyan(padVisual(truncateVisual(`${num} ${title}`.trim(), width), width)))}║`;
+
+  // Stats: author, state, additions/deletions, files, created
+  const stats = [];
+  if (prData.author?.login) stats.push(`author: ${prData.author.login}`);
+  if (prData.state) stats.push(`state: ${prData.state}`);
+  if (typeof prData.additions === 'number') stats.push(`+${prData.additions}`);
+  if (typeof prData.deletions === 'number') stats.push(`-${prData.deletions}`);
+  if (Array.isArray(prData.files)) stats.push(`files: ${prData.files.length}`);
+  if (prData.createdAt) stats.push(`created: ${truncate(prData.createdAt, 10)}`);
+  const statsText = stats.length ? truncateVisual(stats.join('  '), width) : ' '.repeat(width);
+  const statsLine = `║${color.dim(padVisual(statsText, width))}║`;
+
+  // Review body boxed — ukur & pad berdasarkan lebar visual
+  const bodyLines = String(reviewText || '(no review comment)').split('\n');
+  const body = bodyLines
+    .map(line => `║ ${padVisual(truncateVisual(line, width - 2), width - 2)} ║`)
+    .join('\n');
+
+  // Footer AI metadata (opsional): model + variant/backend + total tokens
+  const footer = [];
+  if (meta && (meta.model != null || meta.tokens?.total != null)) {
+    const model = meta.model || '(default)';
+    const variantTag = meta.variant
+      ? ` (variant: ${meta.variant})`
+      : (meta.backend ? ` (${meta.backend})` : '');
+    const tokens = meta.tokens?.total != null
+      ? ` · tokens: ${meta.tokens.total.toLocaleString('id-ID')}`
+      : '';
+    const footerText = truncateVisual(`Model: ${model}${variantTag}${tokens}`, width);
+    footer.push(`║${color.dim(padVisual(footerText, width))}║`);
+  }
+
+  return [
+    `╔${bar}╗`,
+    headerLine,
+    statsLine,
+    `║${bar}║`,
+    body,
+    ...footer,
+    `╚${bar}╝`,
+  ].join('\n');
+}
+
+/**
  * Open content in pager (less/bat) or just log it.
  */
 function showInPager(content, title = '') {
@@ -90,4 +193,4 @@ function clearLastLines(numLines = 2) {
   }
 }
 
-module.exports = { truncate, formatPR, formatIssue, formatRelease, formatRepo, showInPager, clearLastLines };
+module.exports = { stripAnsi, visualWidth, truncateVisual, padVisual, truncate, formatPR, formatIssue, formatRelease, formatRepo, formatReview, showInPager, clearLastLines };
