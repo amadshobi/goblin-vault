@@ -11,11 +11,11 @@
   <br/><br/>
   <strong>File Explorer TUI (Go Hybrid)</strong>
   <br/><br/>
-  <img src="https://img.shields.io/badge/Language-Go%201.22-00F0FF?style=for-the-badge&logo=go&logoColor=black&labelColor=0D1117" alt="Go" />
-  <img src="https://img.shields.io/badge/CLI-Cobra-A855F7?style=for-the-badge&logo=go&logoColor=white&labelColor=0D1117" alt="Cobra" />
-  <img src="https://img.shields.io/badge/Engine-fzf-FF007F?style=for-the-badge&labelColor=0D1117" alt="fzf" />
-  <img src="https://img.shields.io/badge/Integration-Tmux-84CC16?style=for-the-badge&logo=tmux&logoColor=white&labelColor=0D1117" alt="Tmux" />
-  <img src="https://img.shields.io/badge/Editor-Neovim%20%7C%20Micro-10B981?style=for-the-badge&logo=neovim&logoColor=white&labelColor=0D1117" alt="Editor Neovim / Micro" />
+  <img src="https://img.shields.io/badge/Language-Go%201.22-00F0FF?style=for-the-badge&logo=go&logoColor=black&labelColor=1F2937" alt="Go" />
+  <img src="https://img.shields.io/badge/CLI-Cobra-A855F7?style=for-the-badge&logo=go&logoColor=white&labelColor=1F2937" alt="Cobra" />
+  <img src="https://img.shields.io/badge/Engine-fzf-FF007F?style=for-the-badge&labelColor=1F2937" alt="fzf" />
+  <img src="https://img.shields.io/badge/Integration-Tmux-84CC16?style=for-the-badge&logo=tmux&logoColor=black&labelColor=1F2937" alt="Tmux" />
+  <img src="https://img.shields.io/badge/Editor-Neovim%20%7C%20Micro-10B981?style=for-the-badge&logo=neovim&logoColor=white&labelColor=1F2937" alt="Editor Neovim / Micro" />
   <br/><br/>
   <img src="../../../docs/assets/gif/fex.gif" alt="fex demo" width="800" />
   <br/>

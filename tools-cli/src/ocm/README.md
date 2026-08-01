@@ -11,11 +11,11 @@
   <br/><br/>
   <strong>OpenCode Configurator TUI v1.2.0</strong>
   <br/><br/>
-  <img src="https://img.shields.io/badge/Version-1.2.0-A855F7?style=for-the-badge&labelColor=0D1117" alt="Version" />
-  <img src="https://img.shields.io/badge/TypeScript-5.x-3B82F6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=0D1117" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Runtime-Bun-FFFDF5?style=for-the-badge&logo=bun&logoColor=black&labelColor=0D1117" alt="Bun" />
-  <img src="https://img.shields.io/badge/TUI-Clack-FF5722?style=for-the-badge&labelColor=0D1117" alt="Clack TUI" />
-  <img src="https://img.shields.io/badge/Scope-OpenCode%20Manager-00E5FF?style=for-the-badge&labelColor=0D1117" alt="OpenCode" />
+  <img src="https://img.shields.io/badge/Version-1.2.0-A855F7?style=for-the-badge&labelColor=1F2937" alt="Version" />
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3B82F6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=1F2937" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Runtime-Bun-FFFDF5?style=for-the-badge&logo=bun&logoColor=black&labelColor=1F2937" alt="Bun" />
+  <img src="https://img.shields.io/badge/TUI-Clack-FF5722?style=for-the-badge&labelColor=1F2937" alt="Clack TUI" />
+  <img src="https://img.shields.io/badge/Scope-OpenCode%20Manager-00E5FF?style=for-the-badge&labelColor=1F2937" alt="OpenCode" />
   <br/><br/>
   <img src="../../../docs/assets/gif/ocm-demo.gif" alt="ocm demo" width="800" />
   <br/>

@@ -5,18 +5,18 @@
   <strong>Pusat Komando & Arsenal CLI/TUI untuk Terminal Enthusiast</strong>
   <br/><br/>
   <a href="https://github.com/CivilHQ/goblin-vault/actions/workflows/ci.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/CivilHQ/goblin-vault/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI&color=00FF66&labelColor=0D1117" alt="CI Status" />
+    <img src="https://img.shields.io/github/actions/workflow/status/CivilHQ/goblin-vault/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI&color=10B981&labelColor=1F2937&logoColor=white" alt="CI Status" />
   </a>
-  <img src="https://img.shields.io/badge/License-MIT-00E5FF?style=for-the-badge&logo=open-source-initiative&logoColor=black&labelColor=0D1117" alt="License MIT" />
-  <img src="https://img.shields.io/badge/Version-0.3.19-A855F7?style=for-the-badge&labelColor=0D1117" alt="Version" />
-  <img src="https://img.shields.io/badge/Architecture-Three--Tier-EC4899?style=for-the-badge&labelColor=0D1117" alt="Architecture" />
+  <img src="https://img.shields.io/badge/License-MIT-00E5FF?style=for-the-badge&logo=open-source-initiative&logoColor=black&labelColor=1F2937" alt="License MIT" />
+  <img src="https://img.shields.io/badge/Version-0.3.19-A855F7?style=for-the-badge&labelColor=1F2937" alt="Version" />
+  <img src="https://img.shields.io/badge/Architecture-Three--Tier-EC4899?style=for-the-badge&labelColor=1F2937" alt="Architecture" />
   <br/><br/>
-  <img src="https://img.shields.io/badge/Bun-%E2%89%A5%201.0-FFFDF5?style=for-the-badge&logo=bun&logoColor=black&labelColor=0D1117" alt="Bun" />
-  <img src="https://img.shields.io/badge/Go-%E2%89%A5%201.22-00F0FF?style=for-the-badge&logo=go&logoColor=black&labelColor=0D1117" alt="Go" />
-  <img src="https://img.shields.io/badge/Node-%E2%89%A5%2020-22C55E?style=for-the-badge&logo=nodedotjs&logoColor=white&labelColor=0D1117" alt="Node" />
-  <img src="https://img.shields.io/badge/TypeScript-5.x-3B82F6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=0D1117" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Shell-Zsh%20%26%20Bash-10B981?style=for-the-badge&logo=gnu-bash&logoColor=white&labelColor=0D1117" alt="Shell" />
-  <img src="https://img.shields.io/badge/Tmux-Multiplexer-84CC16?style=for-the-badge&logo=tmux&logoColor=white&labelColor=0D1117" alt="Tmux" />
+  <img src="https://img.shields.io/badge/Bun-%E2%89%A5%201.0-FFFDF5?style=for-the-badge&logo=bun&logoColor=black&labelColor=1F2937" alt="Bun" />
+  <img src="https://img.shields.io/badge/Go-%E2%89%A5%201.22-00F0FF?style=for-the-badge&logo=go&logoColor=black&labelColor=1F2937" alt="Go" />
+  <img src="https://img.shields.io/badge/Node-%E2%89%A5%2020-22C55E?style=for-the-badge&logo=nodedotjs&logoColor=white&labelColor=1F2937" alt="Node" />
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3B82F6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=1F2937" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Shell-Zsh%20%26%20Bash-10B981?style=for-the-badge&logo=gnu-bash&logoColor=white&labelColor=1F2937" alt="Shell" />
+  <img src="https://img.shields.io/badge/Tmux-Multiplexer-84CC16?style=for-the-badge&logo=tmux&logoColor=black&labelColor=1F2937" alt="Tmux" />
 </p>
 
 ---

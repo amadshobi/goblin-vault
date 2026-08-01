@@ -11,10 +11,10 @@
   <br/><br/>
   <strong>GitHub Assistant TUI v1.0.0</strong>
   <br/><br/>
-  <img src="https://img.shields.io/badge/Version-1.0.0-A855F7?style=for-the-badge&labelColor=0D1117" alt="Version" />
-  <img src="https://img.shields.io/badge/Runtime-Node.js%20%E2%89%A5%2020-22C55E?style=for-the-badge&logo=nodedotjs&logoColor=white&labelColor=0D1117" alt="Node" />
-  <img src="https://img.shields.io/badge/TUI-Clack-FF5722?style=for-the-badge&labelColor=0D1117" alt="Clack TUI" />
-  <img src="https://img.shields.io/badge/CLI-GitHub%20CLI-00E5FF?style=for-the-badge&logo=github&logoColor=black&labelColor=0D1117" alt="GitHub CLI" />
+  <img src="https://img.shields.io/badge/Version-1.0.0-A855F7?style=for-the-badge&labelColor=1F2937" alt="Version" />
+  <img src="https://img.shields.io/badge/Runtime-Node.js%20%E2%89%A5%2020-22C55E?style=for-the-badge&logo=nodedotjs&logoColor=white&labelColor=1F2937" alt="Node" />
+  <img src="https://img.shields.io/badge/TUI-Clack-FF5722?style=for-the-badge&labelColor=1F2937" alt="Clack TUI" />
+  <img src="https://img.shields.io/badge/CLI-GitHub%20CLI-00E5FF?style=for-the-badge&logo=github&logoColor=black&labelColor=1F2937" alt="GitHub CLI" />
   <br/><br/>
   <img src="../../../docs/assets/screenshoot/fex-help.png" alt="gh-blin demo" width="800" />
   <br/>

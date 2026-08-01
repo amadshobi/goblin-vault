@@ -11,11 +11,11 @@
   <br/><br/>
   <strong>Goblin Nexus CLI (Control Center Core)</strong>
   <br/><br/>
-  <img src="https://img.shields.io/badge/Role-Control%20Plane-FF007F?style=for-the-badge&labelColor=0D1117" alt="Control Plane" />
-  <img src="https://img.shields.io/badge/Stack-Shell%20%7C%20TypeScript-3B82F6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=0D1117" alt="Stack" />
-  <img src="https://img.shields.io/badge/Runtime-Bun-FFFDF5?style=for-the-badge&logo=bun&logoColor=black&labelColor=0D1117" alt="Bun" />
-  <img src="https://img.shields.io/badge/Feature-AI%20Adapter%20Broker-A855F7?style=for-the-badge&labelColor=0D1117" alt="AI Broker" />
-  <img src="https://img.shields.io/badge/Security-Privacy%20Shield-10B981?style=for-the-badge&labelColor=0D1117" alt="Privacy Shield" />
+  <img src="https://img.shields.io/badge/Role-Control%20Plane-FF007F?style=for-the-badge&labelColor=1F2937" alt="Control Plane" />
+  <img src="https://img.shields.io/badge/Stack-Shell%20%7C%20TypeScript-3B82F6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=1F2937" alt="Stack" />
+  <img src="https://img.shields.io/badge/Runtime-Bun-FFFDF5?style=for-the-badge&logo=bun&logoColor=black&labelColor=1F2937" alt="Bun" />
+  <img src="https://img.shields.io/badge/Feature-AI%20Adapter%20Broker-A855F7?style=for-the-badge&labelColor=1F2937" alt="AI Broker" />
+  <img src="https://img.shields.io/badge/Security-Privacy%20Shield-10B981?style=for-the-badge&labelColor=1F2937" alt="Privacy Shield" />
   <br/><br/>
   <img src="../../../docs/assets/screenshoot/gn-help.png" alt="gn demo" width="800" />
   <br/>
