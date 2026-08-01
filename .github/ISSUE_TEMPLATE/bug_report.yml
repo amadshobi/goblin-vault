@@ -1,4 +1,4 @@
-name: 🐛 Bug Report
+name: "🐛 Bug Report"
 description: Laporkan bug atau kendala pada alat/script di Goblin Vault
 title: "[BUG]: "
 labels: ["bug"]
@@ -30,7 +30,7 @@ body:
     attributes:
       label: Deskripsi Masalah
       description: Jelaskan bug yang terjadi secara singkat dan jelas.
-      placeholder: Contoh: Saat menjalankan `sup all`, sudo prompt mengalami loop...
+      placeholder: "Contoh: Saat menjalankan `sup all`, sudo prompt mengalami loop..."
     validations:
       required: true
 
