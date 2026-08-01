@@ -14,6 +14,15 @@
 
 ---
 
+## [v0.3.21] - 2026-08-01
+
+- **`gh-blin` Automated AI PR Review Subsystem (v1.1.0)**: Peluncuran subcommand `gh-blin pr review <number>` & batch scheduled `--auto` / `--all`, penayangan review terminal box, dan dukungan `--publish` komentar resmi GitHub PR. → [detail](docs/CHANGELOG/gh-blin.md)
+- **Model Variant Presets (`high`, `medium`, `low`)**: Dukungan preset AI review (Default active variant: **`high`** — `claude-3-5-sonnet`), variant `medium` (`gemini-3.5-flash`), variant `low` (`gemini-2.5-flash`), serta short flags CLI (`--high`, `--medium`, `--low`, `--variant <name>`, dan `--model <name>`). → [detail](docs/CHANGELOG/gh-blin.md)
+- **Config Subsystem (`gh-blin config`)**: Subcommand configurator permanen `gh-blin config set/get/list` untuk mengatur active variant & custom model per variant. → [detail](docs/CHANGELOG/gh-blin.md)
+- **Token Usage Logging**: Pencatatan metadata model, variant, backend, dan perincian token (`prompt`, `completion`, `total`) secara atomik di `~/.config/goblin-vault/gh-blin-reviews.json` & footer ANSI-aware terminal. → [detail](docs/CHANGELOG/gh-blin.md)
+- **Shell-Injection Security Hardening**: Refactor total `ghExec`, `ghRaw`, dan `ghApi` dari `execSync` string concatenation ke `spawnSync` array argv verbatim di seluruh 44+ call-site. → [detail](docs/CHANGELOG/gh-blin.md)
+- **Dual-Level Help System & Practical Examples**: Penambahan section `Examples:` praktis pada `gh-blin --help` dan `gh-blin config --help`. → [detail](docs/CHANGELOG/gh-blin.md)
+
 ## [v0.3.20] - 2026-08-01
 
 - **UI & Documentation Polish**: Responsive SVG Neon Cyberpunk Banner (`docs/assets/banner.svg`), Vibrant Cyberpunk Neon Badges (`for-the-badge` style dengan `labelColor=0D1117`) di root README & 6 sub-README, folder media assets (`docs/assets/gif/` & `docs/assets/screenshoot/`), dan standalone per-tool READMEs dengan ASCII block headers. → [detail](docs/CHANGELOG/sup.md) · [detail](docs/CHANGELOG/fex.md) · [detail](docs/CHANGELOG/gn.md) · [detail](docs/CHANGELOG/ocm.md) · [detail](docs/CHANGELOG/zf.md) · [detail](docs/CHANGELOG/gh-blin.md)
