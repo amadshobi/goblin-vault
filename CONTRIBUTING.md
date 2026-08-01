@@ -35,7 +35,7 @@ Setiap kontribusi di repositori ini WAJIB mematuhi panduan teknis utama yang ada
 ### Langkah Setup
 1. Fork & clone repositori:
    ```bash
-   git clone https://github.com/USERNAME/goblin-vault.git
+   git clone https://github.com/amadshobi/goblin-vault.git
    cd goblin-vault
    ```
 2. Pasang Git hooks lokal (Wajib untuk syntax check otomatis):
@@ -92,6 +92,6 @@ Setiap kontribusi di repositori ini WAJIB mematuhi panduan teknis utama yang ada
 
 ## 🍻 Butuh Bantuan?
 
-Jika ada pertanyaan atau ide gila yang ingin didiskusikan terlebih dahulu, silakan buka [GitHub Discussions](https://github.com/CivilHQ/goblin-vault/discussions) atau laporkan via [Issue Tracker](https://github.com/CivilHQ/goblin-vault/issues).
+Jika ada pertanyaan atau ide gila yang ingin didiskusikan terlebih dahulu, silakan buka [GitHub Discussions](https://github.com/amadshobi/goblin-vault/discussions) atau laporkan via [Issue Tracker](https://github.com/amadshobi/goblin-vault/issues).
 
 Happy Hacking, Fellow Goblin! 👹🔥

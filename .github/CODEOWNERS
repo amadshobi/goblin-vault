@@ -1,19 +1,19 @@
 # 🛡️ CODEOWNERS — Goblin Vault Ownership Rules
 # https://docs.github.com/en/repositories/managing-repository-files-user-documentation/about-codeowners
 
-# Set default code owners to organization/maintainer
-*       @CivilHQ
+# Set default code owners to maintainer
+*       @amadshobi
 
 # CLI Tools Owners
-/tools-cli/src/fex/          @CivilHQ
-/tools-cli/src/sup/          @CivilHQ
-/tools-cli/src/ocm/          @CivilHQ
-/tools-cli/src/gn/           @CivilHQ
-/tools-cli/src/gh-blin/      @CivilHQ
-/tools-cli/bin/              @CivilHQ
+/tools-cli/src/fex/          @amadshobi
+/tools-cli/src/sup/          @amadshobi
+/tools-cli/src/ocm/          @amadshobi
+/tools-cli/src/gn/           @amadshobi
+/tools-cli/src/gh-blin/      @amadshobi
+/tools-cli/bin/              @amadshobi
 
 # Core Configurations & Rules
-/.github/                    @CivilHQ
-/scripts/                    @CivilHQ
-/docs/rules/                 @CivilHQ
-/AGENTS.md                   @CivilHQ
+/.github/                    @amadshobi
+/scripts/                    @amadshobi
+/docs/rules/                 @amadshobi
+/AGENTS.md                   @amadshobi
