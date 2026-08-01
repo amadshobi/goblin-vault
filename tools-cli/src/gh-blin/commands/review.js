@@ -117,10 +117,10 @@ async function reviewPR(prNumber, options = {}) {
     }
 
     const diff = getPRDiff(repo, n);
-    const { review, prompt, model, backend, tokens } = generateReview(prData, diff, options);
+    const { review, prompt, model, variant, backend, tokens } = generateReview(prData, diff, options);
 
     const result = {
-      ok: true, skipped: false, review, prompt, model, backend, tokens,
+      ok: true, skipped: false, review, prompt, model, variant, backend, tokens,
       prData, published: false, publishError: null,
     };
     if (options.publish) {
@@ -134,6 +134,7 @@ async function reviewPR(prNumber, options = {}) {
       status: prData.state,
       published: result.published,
       model,
+      variant,
       backend,
       tokens,
     };
@@ -196,6 +197,7 @@ async function showReviewResult(res) {
   }
   console.log(formatReview(res.review, res.prData, {
     model: res.model,
+    variant: res.variant,
     backend: res.backend,
     tokens: res.tokens,
   }));

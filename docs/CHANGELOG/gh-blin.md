@@ -10,6 +10,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [0.0.2] - 2026-08-01
 
 ### Added
+- **Model Variant Presets (`high`, `medium`, `low`)**:
+  - `DEFAULT_VARIANTS` preset terdefinisi di `utils/config.js`: `high` (Default Utama: `claude-3-5-sonnet`), `medium` (`goblin-nexus/gemini-3.5-flash`), `low` (`gemini-2.5-flash`).
+  - Helper `resolveVariantModel()` di `utils/config.js` untuk resolusi otomatis variant, active variant config (`config.variant`), dan custom model override per-variant (`variants.high`, `variants.medium`, `variants.low`).
+  - Subcommand `gh-blin config set variant <high|medium|low>` dan `gh-blin config set variants.<high|medium|low> <model_name>` dengan validasi input yang ketat.
+  - Opsi pengaturan `Set Active Variant` & `Set Custom Model Variant` di TUI interaktif `configMenu()`.
+  - Short flags `--high`, `--medium`, `--low`, serta `--variant <name>` di `runCli()` (`index.js`).
+  - Dokumentasi **`Examples:`** dan **`Contoh Penggunaan:`** pada `CLI_HELP` dan `CONFIG_HELP` untuk memudahkan akses perintah CLI.
+  - Penayangan tag variant pada terminal box `formatReview` (`Model: claude-3-5-sonnet (variant: high) · tokens: 2.150`) dan pencatatan atomik field `variant` di JSON review log `gh-blin-reviews.json`.
 - **Subcommand `config`** (CLI non-interaktif & TUI interaktif):
   - `gh-blin config set <key> <value>` — menyimpan konfigurasi (mis. `model`).
   - `gh-blin config get [key]` — mengambil nilai key (polos) atau seluruh config (JSON).

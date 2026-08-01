@@ -123,4 +123,47 @@ function resolveModel(cliFlag) {
   return null;
 }
 
-module.exports = { loadConfig, saveConfig, getConfig, setConfig, resolveModel };
+const DEFAULT_VARIANTS = {
+  high: 'claude-3-5-sonnet',
+  medium: 'goblin-nexus/gemini-3.5-flash',
+  low: 'gemini-2.5-flash',
+};
+
+/**
+ * Resolve variant name ('high', 'medium', 'low') atau model name ke object { model, variant }.
+ * Jika input variant/model kosong: mengambil active variant dari config (`config.variant`)
+ * atau fallback ke 'high'.
+ * Jika variant diset kustom di config (`variants.high`, `variants.medium`, `variants.low`
+ * atau `variants[v]`), menggunakan custom model tersebut.
+ *
+ * @param {string|null} [variantOrModelName] - Variant name ('high'|'medium'|'low') atau nama model langsung.
+ * @param {object} [cliOptions] - Options tambahan (future-proofing).
+ * @returns {{ model: string, variant: string|null }}
+ */
+function resolveVariantModel(variantOrModelName, cliOptions = {}) {
+  const cfg = loadConfig();
+  let target = (typeof variantOrModelName === 'string' && variantOrModelName.trim())
+    ? variantOrModelName.trim()
+    : (typeof cfg.variant === 'string' && cfg.variant.trim())
+      ? cfg.variant.trim()
+      : 'high';
+
+  const vKey = target.toLowerCase();
+
+  if (Object.prototype.hasOwnProperty.call(DEFAULT_VARIANTS, vKey)) {
+    const customFromObj = cfg.variants && typeof cfg.variants === 'object' ? cfg.variants[vKey] : undefined;
+    const customFromDot = cfg[`variants.${vKey}`];
+    const customModel = (typeof customFromObj === 'string' && customFromObj.trim())
+      ? customFromObj.trim()
+      : (typeof customFromDot === 'string' && customFromDot.trim())
+        ? customFromDot.trim()
+        : null;
+
+    const resolvedModel = customModel || DEFAULT_VARIANTS[vKey];
+    return { model: resolvedModel, variant: vKey };
+  }
+
+  return { model: target, variant: null };
+}
+
+module.exports = { loadConfig, saveConfig, getConfig, setConfig, resolveModel, DEFAULT_VARIANTS, resolveVariantModel };

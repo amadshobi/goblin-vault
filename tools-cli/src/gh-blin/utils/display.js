@@ -126,15 +126,17 @@ function formatReview(reviewText, prData = {}, meta = {}) {
     .map(line => `║ ${padVisual(truncateVisual(line, width - 2), width - 2)} ║`)
     .join('\n');
 
-  // Footer AI metadata (opsional): model + backend + total tokens
+  // Footer AI metadata (opsional): model + variant/backend + total tokens
   const footer = [];
   if (meta && (meta.model != null || meta.tokens?.total != null)) {
     const model = meta.model || '(default)';
-    const backend = meta.backend ? ` (${meta.backend})` : '';
+    const variantTag = meta.variant
+      ? ` (variant: ${meta.variant})`
+      : (meta.backend ? ` (${meta.backend})` : '');
     const tokens = meta.tokens?.total != null
       ? ` · tokens: ${meta.tokens.total.toLocaleString('id-ID')}`
       : '';
-    const footerText = truncateVisual(`Model: ${model}${backend}${tokens}`, width);
+    const footerText = truncateVisual(`Model: ${model}${variantTag}${tokens}`, width);
     footer.push(`║${color.dim(padVisual(footerText, width))}║`);
   }
 

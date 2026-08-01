@@ -13,6 +13,7 @@
  *       "status": "<review status>",
  *       "published": true,
  *       "model": "<model LLM yang dipakai>",
+ *       "variant": "<high|medium|low|null>",
  *       "backend": "<opencode|openai>",
  *       "tokens": { "prompt": <n>, "completion": <n>, "total": <n> },
  *       ...metadata lain
@@ -98,7 +99,7 @@ function hasBeenReviewed(repo, prNumber, headSha) {
  * lastReviewedAt selalu di-set otomatis.
  * @param {string} repo - Format owner/name.
  * @param {number|string} prNumber
- * @param {object} [metadata] - e.g. { headSha, status, model, backend, tokens: {prompt, completion, total} }.
+ * @param {object} [metadata] - e.g. { headSha, status, model, variant, backend, tokens: {prompt, completion, total} }.
  * @returns {object} Entry yang baru tersimpan.
  * @throws {Error} Kalau repo/prNumber tidak valid.
  */

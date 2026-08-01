@@ -130,18 +130,32 @@ async function main() {
 const CLI_HELP = `gh-blin — non-interactive mode
 
 Usage:
-  gh-blin pr review <number> [--publish] [--force] [--model <name>]   Review satu PR via AI
-  gh-blin pr review --auto [--publish] [--force] [--model <name>]     Review semua open PRs (batch)
-  gh-blin pr review --all [--publish]                                 (alias dari --auto)
-  gh-blin config set <key> <value>                                    Set config (e.g. model)
-  gh-blin config get [key]                                            Lihat config (satu key / seluruh JSON)
-  gh-blin config list                                                 Daftar seluruh config
-  gh-blin --help                                                      Tampilkan bantuan ini
+  gh-blin pr review <number> [flags]   Review satu PR via AI
+  gh-blin pr review --auto [flags]     Review semua open PRs (batch)
+  gh-blin pr review --all [flags]      (alias dari --auto)
+  gh-blin config set <key> <value>     Set config (e.g. variant, model, variants.high)
+  gh-blin config get [key]             Lihat config (satu key / seluruh JSON)
+  gh-blin config list                  Daftar seluruh config
+  gh-blin --help                       Tampilkan bantuan ini
 
 Flags:
-  --publish       Post hasil review sebagai komentar resmi GitHub PR
-  --force         Paksa review ulang meski commit SHA sudah tercatat
-  --model <name>  Override model LLM yang digunakan untuk review`;
+  --publish          Post hasil review sebagai komentar resmi GitHub PR
+  --force            Paksa review ulang meski commit SHA sudah tercatat
+  --high             Gunakan variant model 'high' (claude-3-5-sonnet) [Default Utama]
+  --medium           Gunakan variant model 'medium' (goblin-nexus/gemini-3.5-flash)
+  --low              Gunakan variant model 'low' (gemini-2.5-flash)
+  --variant <name>   Pilih variant model ('high', 'medium', atau 'low')
+  --model <name>     Override nama model LLM secara langsung (mis. 'gpt-4o')
+
+Examples:
+  gh-blin pr review 12                             Review PR #12 memakai default variant (high)
+  gh-blin pr review 12 --high                      Review PR #12 memakai variant high
+  gh-blin pr review 12 --medium --publish          Review PR #12 memakai variant medium & publish ke GitHub
+  gh-blin pr review 12 --low                       Review PR #12 memakai variant low
+  gh-blin pr review --auto --high                  Batch review semua open PRs dengan variant high
+  gh-blin pr review 12 --model gpt-4o              Override model secara langsung
+  gh-blin config set variant medium                Set default active variant ke medium
+  gh-blin config set variants.high claude-3-7     Set custom model untuk variant high`;
 
 const CONFIG_HELP = `gh-blin config — kelola config
 
@@ -150,11 +164,14 @@ Usage:
   gh-blin config get [key]           Tampilkan value key, atau seluruh config JSON
   gh-blin config list                Tampilkan seluruh config sebagai daftar
 
-Contoh:
-  gh-blin config set model gemini-2.5-flash
-  gh-blin config get model
-  gh-blin config get
-  gh-blin config list
+Contoh Penggunaan:
+  gh-blin config set variant medium               Set default active variant ke 'medium'
+  gh-blin config set variants.high claude-3-7    Set custom model untuk variant 'high'
+  gh-blin config set variants.low gemini-1.5-pro Set custom model untuk variant 'low'
+  gh-blin config set model gemini-2.5-flash       Set legacy model key
+  gh-blin config get variant                      Lihat active variant
+  gh-blin config get                              Lihat seluruh config (JSON)
+  gh-blin config list                             Daftar seluruh config
 
 Config disimpan di: ~/.config/goblin-vault/gh-blin-config.json
 (overridable via env XDG_CONFIG_HOME)`;
@@ -178,13 +195,27 @@ async function runCli(argv) {
   const modelFlagIndex = argv.indexOf('--model');
   const model = modelFlagIndex !== -1 ? argv[modelFlagIndex + 1] : undefined;
 
+  const variantFlagIndex = argv.indexOf('--variant');
+  const variantVal = variantFlagIndex !== -1 ? argv[variantFlagIndex + 1] : undefined;
+
+  let variant;
+  if (flags.includes('--low')) {
+    variant = 'low';
+  } else if (flags.includes('--medium')) {
+    variant = 'medium';
+  } else if (flags.includes('--high')) {
+    variant = 'high';
+  } else if (variantVal && typeof variantVal === 'string' && !variantVal.startsWith('--')) {
+    variant = variantVal;
+  }
+
   const [cmd, sub, ...rest] = positionals;
 
   if (cmd === 'pr' && sub === 'review') {
     const { reviewPR, autoReviewAll } = require('./commands/review');
 
     if (auto) {
-      const summary = await autoReviewAll({ publish, force, model });
+      const summary = await autoReviewAll({ publish, force, model, variant });
       printBatchSummary(summary);
       return summary.ok && summary.failed.length === 0 ? 0 : 1;
     }
@@ -196,7 +227,7 @@ async function runCli(argv) {
       return 1;
     }
 
-    const res = await reviewPR(prNumber, { publish, force, model });
+    const res = await reviewPR(prNumber, { publish, force, model, variant });
     if (!res.ok) {
       console.error(color.red(res.error));
       return 1;
@@ -207,6 +238,7 @@ async function runCli(argv) {
     }
     console.log(formatReview(res.review, res.prData, {
       model: res.model,
+      variant: res.variant,
       backend: res.backend,
       tokens: res.tokens,
     }));

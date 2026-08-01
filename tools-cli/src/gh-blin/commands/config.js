@@ -17,7 +17,7 @@
  */
 const p = require('@clack/prompts');
 const color = require('picocolors');
-const { loadConfig, setConfig } = require('../utils/config');
+const { loadConfig, setConfig, getConfig } = require('../utils/config');
 const { clearLastLines } = require('../utils/display');
 const { continuePrompt } = require('../utils/prompt');
 
@@ -29,7 +29,8 @@ function formatConfigValue(value) {
 }
 
 /**
- * Simpan satu key config.
+ * Simpan satu key config. Mendukung validasi khusus key `variant` (high|medium|low)
+ * dan `variants.<high|medium|low>` untuk custom model variant.
  * @param {string} key
  * @param {*} value
  * @returns {{ ok: true, key: string, value: * } | { ok: false, error: string }}
@@ -41,9 +42,26 @@ function configSet(key, value) {
   if (value === undefined) {
     return { ok: false, error: 'gh-blin: value config wajib diisi.' };
   }
+
+  const k = key.trim();
+  const kLower = k.toLowerCase();
+
+  if (kLower === 'variant') {
+    const valStr = String(value).trim().toLowerCase();
+    if (!['high', 'medium', 'low'].includes(valStr)) {
+      return { ok: false, error: 'gh-blin: variant tidak valid. Gunakan high, medium, atau low.' };
+    }
+    value = valStr;
+  } else if (kLower.startsWith('variants.')) {
+    const vKey = kLower.slice(9);
+    if (!['high', 'medium', 'low'].includes(vKey)) {
+      return { ok: false, error: 'gh-blin: variant key tidak valid. Gunakan variants.high, variants.medium, atau variants.low.' };
+    }
+  }
+
   try {
-    setConfig(key, value);
-    return { ok: true, key, value };
+    setConfig(k, value);
+    return { ok: true, key: k, value };
   } catch (err) {
     return { ok: false, error: err.message };
   }
@@ -151,6 +169,63 @@ async function setKeyInteractive() {
   p.note(color.green(`Config di-set: ${res.key} = ${res.value}`), 'Config');
 }
 
+/** Set active variant (high | medium | low) interaktif. */
+async function setVariantInteractive() {
+  const cfg = loadConfig();
+  const currentVariant = cfg.variant || 'high';
+  const vChoice = await p.select({
+    message: `Set Active Model Variant (Current: ${color.cyan(currentVariant)}):`,
+    options: [
+      { value: 'high', label: 'High (Default Utama)', hint: 'claude-3-5-sonnet' },
+      { value: 'medium', label: 'Medium', hint: 'goblin-nexus/gemini-3.5-flash' },
+      { value: 'low', label: 'Low', hint: 'gemini-2.5-flash' },
+    ],
+  });
+  if (p.isCancel(vChoice)) { clearLastLines(2); return; }
+  const res = configSet('variant', vChoice);
+  if (!res.ok) {
+    p.cancel(color.red(res.error));
+    clearLastLines(2);
+    return;
+  }
+  p.note(color.green(`Active variant di-set ke: ${res.value}`), 'Config');
+}
+
+/** Set custom model per variant (variants.high | medium | low) interaktif. */
+async function setCustomVariantInteractive() {
+  const vKeyChoice = await p.select({
+    message: 'Pilih Variant yang ingin di-set custom model-nya:',
+    options: [
+      { value: 'high', label: 'variants.high', hint: 'Custom model untuk variant high' },
+      { value: 'medium', label: 'variants.medium', hint: 'Custom model untuk variant medium' },
+      { value: 'low', label: 'variants.low', hint: 'Custom model untuk variant low' },
+    ],
+  });
+  if (p.isCancel(vKeyChoice)) { clearLastLines(2); return; }
+
+  const key = `variants.${vKeyChoice}`;
+  let currentVal = '';
+  try { currentVal = getConfig(key) || ''; } catch (_) {}
+
+  const modelName = await p.text({
+    message: `Nama custom model untuk ${color.cyan(key)}:`,
+    placeholder: 'e.g. claude-3-7-sonnet',
+    initialValue: typeof currentVal === 'string' ? currentVal : '',
+  });
+  if (p.isCancel(modelName)) { clearLastLines(2); return; }
+  if (!modelName.trim()) {
+    p.note(color.yellow('Nama model tidak boleh kosong.'), 'Config');
+    return;
+  }
+  const res = configSet(key, modelName.trim());
+  if (!res.ok) {
+    p.cancel(color.red(res.error));
+    clearLastLines(2);
+    return;
+  }
+  p.note(color.green(`Config di-set: ${res.key} = ${res.value}`), 'Config');
+}
+
 /**
  * Menu interaktif Config untuk dipanggil dari TUI.
  */
@@ -160,8 +235,10 @@ async function configMenu() {
       message: 'Config',
       options: [
         { value: 'view', label: 'Lihat Semua Config', hint: 'list' },
+        { value: 'variant', label: 'Set Active Variant', hint: 'high | medium | low' },
+        { value: 'customVariant', label: 'Set Custom Model Variant', hint: 'variants.<high|medium|low>' },
         { value: 'get', label: 'Lihat Key Tertentu', hint: 'get <key>' },
-        { value: 'set', label: 'Set Key', hint: 'set <key> <value>' },
+        { value: 'set', label: 'Set Key Sembarang', hint: 'set <key> <value>' },
         { value: 'back', label: 'Back' },
       ],
     });
@@ -169,6 +246,8 @@ async function configMenu() {
 
     switch (action) {
       case 'view': await showAllConfig(); break;
+      case 'variant': await setVariantInteractive(); break;
+      case 'customVariant': await setCustomVariantInteractive(); break;
       case 'get': await getKeyInteractive(); break;
       case 'set': await setKeyInteractive(); break;
     }

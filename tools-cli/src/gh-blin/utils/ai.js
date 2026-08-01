@@ -11,7 +11,7 @@
  *   > null (provider default).
  */
 const { spawnSync } = require('child_process');
-const { resolveModel } = require('./config');
+const { resolveModel, resolveVariantModel } = require('./config');
 
 /**
  * Build a review prompt for the LLM from PR data + diff.
@@ -168,18 +168,19 @@ function callOpenAIViaCurl(prompt, modelOverride) {
 }
 
 /**
- * Generate a review for a PR. Model di-resolve via hierarki config
- * (utils/config.js `resolveModel`). Menghitung estimasi token prompt,
+ * Generate a review for a PR. Model & variant di-resolve via hierarki config
+ * (utils/config.js `resolveVariantModel`). Menghitung estimasi token prompt,
  * completion, dan total untuk logging/pemantauan.
  * @param {object} prData
  * @param {string} [diff]
  * @param {object} [options]
  * @param {string} [options.model] - Nilai dari CLI flag `--model`.
- * @returns {{ review: string, prompt: string, model: string|null, backend: string,
+ * @param {string} [options.variant] - Nilai dari CLI flag `--variant`, `--high`, `--medium`, atau `--low`.
+ * @returns {{ review: string, prompt: string, model: string|null, variant: string|null, backend: string,
  *            tokens: { prompt: number, completion: number, total: number } }}
  */
 function generateReview(prData, diff, options = {}) {
-  const model = resolveModel(options.model);
+  const { model, variant } = resolveVariantModel(options.variant || options.model, options);
   const prompt = buildReviewPrompt(prData, diff);
   const { text, backend } = callLLM(prompt, { model });
   const review = stripAnsi(text);
@@ -189,6 +190,7 @@ function generateReview(prData, diff, options = {}) {
     review,
     prompt,
     model,
+    variant,
     backend,
     tokens: {
       prompt: promptTokens,
