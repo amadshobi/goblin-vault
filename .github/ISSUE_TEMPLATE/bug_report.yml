@@ -1,0 +1,78 @@
+name: 🐛 Bug Report
+description: Laporkan bug atau kendala pada alat/script di Goblin Vault
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Terima kasih telah melaporkan bug! Harap isi formulir ini dengan informasi yang lengkap agar tim Maintainer/Agent dapat mereproduksi dan memperbaikinya dengan cepat.
+
+  - type: dropdown
+    id: tool
+    attributes:
+      label: Component / Tool Terkait
+      description: Pilih tool yang mengalami kendala
+      options:
+        - "sup (Package Updater)"
+        - "fex (File Explorer TUI)"
+        - "gn (Goblin Nexus CLI)"
+        - "ocm (OpenCode Configurator)"
+        - "zf (Zoxide & Tmux Helper)"
+        - "gh-blin (GitHub Assistant)"
+        - "Scripts & Infrastructure"
+        - "Lainnya"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Deskripsi Masalah
+      description: Jelaskan bug yang terjadi secara singkat dan jelas.
+      placeholder: Contoh: Saat menjalankan `sup all`, sudo prompt mengalami loop...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Langkah Reproduksi (Steps to Reproduce)
+      description: Langkah-langkah untuk memicu bug tersebut.
+      placeholder: |
+        1. Jalankan `sup all`
+        2. Masukkan password sudo
+        3. Lihat error yang muncul...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ekspektasi Behavior
+      description: Apa yang seharusnya terjadi?
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Info
+      description: OS, Shell, versi Node/Bun/Go, dll.
+      placeholder: |
+        - OS: Ubuntu 24.04 LTS / macOS Sequoia
+        - Shell: Zsh / Bash
+        - Node/Bun Version: Bun 1.1.20 / Node 20.x
+        - Tool Version: 1.1.0
+      render: markdown
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Terminal Logs / Screenshots
+      description: Tempelkan terminal output atau error log jika ada.
+      render: shell
+    validations:
+      required: false

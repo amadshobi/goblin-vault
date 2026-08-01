@@ -1,0 +1,58 @@
+name: 💡 Feature Request
+description: Usulkan ide atau peningkatan fitur baru untuk Goblin Vault
+title: "[FEAT]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Punya ide gila atau perbaikan fitur untuk Goblin Vault? Sampaikan ide kamu di sini!
+
+  - type: dropdown
+    id: tool
+    attributes:
+      label: Target Component / Tool
+      description: Pilih tool yang ingin ditambahi/diubah fiturnya
+      options:
+        - "sup (Package Updater)"
+        - "fex (File Explorer TUI)"
+        - "gn (Goblin Nexus CLI)"
+        - "ocm (OpenCode Configurator)"
+        - "zf (Zoxide & Tmux Helper)"
+        - "gh-blin (GitHub Assistant)"
+        - "Core / Repositori / Scripts"
+        - "Tool Baru (New Utility)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Masalah / Latar Belakang
+      description: Masalah atau keterbatasan apa yang ingin diselesaikan dengan fitur ini?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solusi yang Diusulkan
+      description: Jelaskan gambaran fitur atau solusi ideal yang kamu harapkan.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatif Pertimbangan
+      description: Adakah solusi alternatif lain yang sempat terpikirkan?
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Konteks Tambahan
+      description: Contoh penggunaan, mockup terminal output, atau link referensi.
+    validations:
+      required: false
