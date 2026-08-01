@@ -14,6 +14,11 @@
 
 ---
 
+## [Unreleased]
+
+### Added
+- **Changelog Guardrail di Pre-Commit Checker (`scripts/check_syntax.sh`)**: Sistem deteksi otomatis yang memperingatkan developer jika ada perubahan kode source di `tools-cli/src/` tetapi lupa menyertakan update changelog. → [detail](docs/CHANGELOG/gh-blin.md)
+
 ## [v0.3.21] - 2026-08-01
 
 - **`gh-blin` Automated AI PR Review Subsystem (v1.1.0)**: Peluncuran subcommand `gh-blin pr review <number>` & batch scheduled `--auto` / `--all`, penayangan review terminal box, dan dukungan `--publish` komentar resmi GitHub PR. → [detail](docs/CHANGELOG/gh-blin.md)
