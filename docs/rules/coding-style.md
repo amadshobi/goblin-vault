@@ -205,7 +205,12 @@ Setiap alat CLI/TUI utama di Goblin Vault sebaiknya menyajikan header help / lan
 ## 10. Documentation & Changelog 🟠 SHOULD
 
 - Update dokumentasi kalau behavior user-facing berubah.
-- Update `CHANGELOG.md` untuk perubahan yang berdampak ke pengguna tools.
+- **Changelog modular**: detail perubahan per-tool dicatat di `docs/CHANGELOG/<tool>.md`
+  (e.g. `sup.md`, `fex.md`, `gn.md`, `ocm.md`, `zf.md`, `gh-blin.md`).
+- **Master `CHANGELOG.md`** hanya memuat poin makro tingkat tinggi per versi plus
+  navigasi link ke changelog per-tool — jangan menumpuk detail panjang di master.
+- Tool baru yang berdampak ke pengguna wajib punya file changelog sendiri di
+  `docs/CHANGELOG/` agar master tetap ramping.
 - Jangan menaruh audit report, backlog, atau status repo temporer di coding-style.
 - Catatan temuan spesifik sebaiknya masuk ke issue, `docs/history/`, atau dokumen planning
   yang memang lifecycle-nya sementara.
@@ -220,7 +225,7 @@ Setiap alat CLI/TUI utama di Goblin Vault sebaiknya menyajikan header help / lan
 - [ ] Shell script state-changing memakai `set -euo pipefail`.
 - [ ] Path dan argumen dinamis di-quote dengan aman.
 - [ ] Tidak ada secret/credential masuk repo.
-- [ ] Dokumentasi/changelog di-update bila behavior user-facing berubah.
+- [ ] Dokumentasi/changelog (`docs/CHANGELOG/<tool>.md` dan/atau master `CHANGELOG.md`) di-update bila behavior user-facing berubah.
 
 ---
 

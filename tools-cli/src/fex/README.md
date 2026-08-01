@@ -1,132 +1,135 @@
+<p align="center">
+  <br/>
+  <pre align="center">
+ ███████╗███████╗██╗  ██╗
+ ██╔════╝██╔════╝╚██╗██╔╝
+ █████╗  █████╗   ╚███╔╝ 
+ ██╔══╝  ██╔══╝   ██╔██╗ 
+ ██║     ███████╗██╔╝ ██╗
+ ╚═╝     ╚══════╝╚═╝  ╚═╝
+  </pre>
+  <br/><br/>
+  <strong>File Explorer TUI (Go Hybrid)</strong>
+  <br/><br/>
+  <img src="https://img.shields.io/badge/Language-Go%201.22-00F0FF?style=for-the-badge&logo=go&logoColor=black&labelColor=1F2937" alt="Go" />
+  <img src="https://img.shields.io/badge/CLI-Cobra-A855F7?style=for-the-badge&logo=go&logoColor=white&labelColor=1F2937" alt="Cobra" />
+  <img src="https://img.shields.io/badge/Engine-fzf-FF007F?style=for-the-badge&labelColor=1F2937" alt="fzf" />
+  <img src="https://img.shields.io/badge/Integration-Tmux-84CC16?style=for-the-badge&logo=tmux&logoColor=black&labelColor=1F2937" alt="Tmux" />
+  <img src="https://img.shields.io/badge/Editor-Neovim%20%7C%20Micro-10B981?style=for-the-badge&logo=neovim&logoColor=white&labelColor=1F2937" alt="Editor Neovim / Micro" />
+  <br/><br/>
+  <img src="../../../docs/assets/gif/fex.gif" alt="fex demo" width="800" />
+  <br/>
+</p>
 
-                                           ______ _____ __   __
-                                           |  ____|  ___|\ \ / /
-                                           | |__  | |__   \ V / 
-                                           |  __| |  __|   > <  
-                                           | |    | |___  / . \ 
-                                           |_|    |____| /_/ \_\            
+# fex — File Explorer TUI
 
-# fex — File Explorer (Go Hybrid)
-
-> **fzf + tmux split + micro** — VS Code goblin edition file explorer.
-> Karena `fe` udah diambil. Ini fex. Lebih cepet. Lebih goblin.
-
----
-
-## 🧠 What is fex?
-
-**fex** is a terminal-based file explorer / project browser built as a **Go hybrid**:
-
-- **Go core** — CLI, config, fzf dispatch, file ops, session state, tree navigation
-- **Bash helpers** — tmuz split/window management (karena shell masih king buat tmux)
-- **fzf** — interactive selection, preview, multi-select
-- **micro** — the actual editor (but fex is editor-agnostic)
-
-Born from the ashes of the original bash-only `fe` v1→v3. Migrated to Go because **pure bash for this complexity is a nightmare** (10x revisions for one bugfix — ask BOSS).
-
----
-
-## ✨ Features
-
-| Feature | Status |
-|---------|--------|
-| 📂 Browse files (fd/find) | ✅ |
-| 🔍 Text search (ripgrep) | ✅ |
-| 🌳 Tree navigation (folder explorer) | ✅ |
-| 📑 Bookmarks (add/remove/list) | ✅ |
-| 🗑️ Delete with confirmation | ✅ |
-| ✏️ Rename with dialog | ✅ |
-| 📄 New file / folder | ✅ |
-| 🖥️ Tmux split + open in right pane | ✅ |
-| 🔑 Git status / log | ✅ |
-| 📋 Copy path to clipboard | ✅ |
-| 🔎 Full-screen preview toggle | ✅ |
-| ⚙️ YAML config (`~/.config/fe/config.yaml`) | ✅ |
-| 🎨 File type icons (Nerd Font) | ✅ |
-| 🕐 Recent files | 🔜 |
-| 🎯 Filter presets (`--code`, `--docs`, ...) | 🔜 |
-| 📊 Sort options (`--sort=name|date|size`) | 🔜 |
-| 🖼️ Image preview | 🔜 |
-| 📦 Batch operations (move/copy/compress) | 🔜 |
+> **fzf + tmux split + micro** — File Explorer hibrida berkinerja tinggi, modular, dan ramah tmux untuk era terminal modern.
 
 ---
 
-## 🚀 Quick Start
+## 🧠 Deskripsi Singkat
+
+**fex** adalah pengelola berkas terminal (TUI) berbasis Go hibrida yang menggabungkan kecepatan pemrosesan statis Go dengan flesibilitas manajemen pane tmux via Bash helpers. Dibangun untuk menggantikan script shell `fe` yang lambat, `fex` menawarkan navigasi instan menggunakan mesin pencari `fzf`, integrasi penyunting kode favorit (default `micro`), pencarian teks secara menyeluruh (`ripgrep`), dan bookmark direktori.
+
+---
+
+## ✨ Fitur & Kelebihan Utama
+
+- 🚀 **Go Hybrid Architecture**: Otak logika, manajemen bookmark, status CLI, dan fzf dispatch ditangani oleh Go, sedangkan aksi manipulasi tmux window didistribusikan ke Bash helpers.
+- 🌳 **4 Mode Navigasi Utama**:
+  1. **Find Mode** — Mencari file berdasarkan nama dengan filter presisi.
+  2. **Tree Mode** — Navigasi hierarki folder yang interaktif.
+  3. **Search Mode** — Melakukan pencarian teks di dalam file menggunakan ripgrep (`rg`).
+  4. **Bookmarks Mode** — Akses instan ke direktori-direktori penting yang telah disimpan.
+- 🖥️ **Tmux Integration**: Mendukung pembukaan file secara langsung pada pane split tmux di sebelah kanan atau jendela baru.
+- ⚙️ **Dual-Level Help System**: Bantuan dasar via `fex --help` dan bantuan Command tingkat lanjut via subcommand.
+
+---
+
+## 🛠️ Level 1 & Level 2 Help System
+
+### Level 1 Help (`fex --help`)
+Menyajikan daftar global options, mode eksekusi utama, serta shortcut keyboard bawaan.
+
+### Level 2 Help
+Setiap subcommand pendukung (seperti `kill`, `editor`, `backup`) memiliki dokumentasi parameter internal tersendiri:
+```bash
+fex <subcommand> --help
+```
+
+---
+
+## ⌨️ Pintasan Keyboard (Di Dalam UI Fzf)
+
+| Key | Aksi |
+|-----|------|
+| `Enter` | Buka file di Editor default |
+| `Ctrl-d` | Hapus file (dengan konfirmasi aman) |
+| `Ctrl-r` | Ganti nama file / direktori |
+| `Ctrl-n` | Buat file baru (Tree mode) |
+| `Ctrl-k` | Buat folder baru (Tree mode) |
+| `Ctrl-g` | Tampilkan status/log git |
+| `Ctrl-y` | Salin path file ke clipboard |
+| `Ctrl-b` | Tambahkan direktori ke Bookmark |
+| `Ctrl-x` | Hapus direktori dari Bookmark |
+| `Ctrl-f` | Lakukan search ripgrep di dalam hasil |
+| `Ctrl-o` | Buka direktori di pane tmux baru |
+| `Ctrl-s` | Toggle tampilan preview ukuran penuh |
+| `Tab` | Pilih banyak file sekaligus (*multi-select*) |
+
+---
+
+## 📋 Penggunaan & Contoh Perintah
 
 ```bash
-# Build from source
-cd tools-cli/src/fex
-go build -o fex ./cmd/fex/
-./fex
+# Menjelajahi direktori saat ini
+fex
 
-# Or just use the launcher
-tools-cli/bin/fex
+# Menjelajahi path tertentu
+fex /var/log
 
-# Install to PATH
-cp fex ~/.local/bin/
+# Membuka dengan filter ekstensi file
+fex .go
+
+# Membuka dalam Tree Mode (Folder Explorer)
+fex --tree
+
+# Melakukan pencarian isi file secara instan
+fex --search "func main"
+
+# Mengakses daftar bookmark direktori
+fex --bookmarks
 ```
-
-### Usage
-
-```bash
-fex                    # Browse current directory
-fex /some/path         # Browse specific directory
-fex .go                # Browse with extension filter
-fex --tree             # Tree mode (folder explorer)
-fex --search           # Search file contents (ripgrep)
-fex --search "query"   # Search with query
-fex --bookmarks        # Browse bookmarks
-fex --help             # Full help
-```
-
-### Key Bindings (inside fzf)
-
-| Key | Action |
-|-----|--------|
-| `Enter` | Open file in micro |
-| `Ctrl-d` | Delete file (with confirm) |
-| `Ctrl-r` | Rename file |
-| `Ctrl-n` | New file (tree mode) |
-| `Ctrl-k` | New folder (tree mode) |
-| `Ctrl-g` | Git status / log |
-| `Ctrl-y` | Copy file path |
-| `Ctrl-b` | Add bookmark |
-| `Ctrl-x` | Remove bookmark |
-| `Ctrl-f` | Search (rg) within results |
-| `Ctrl-o` | Open directory in tmux pane |
-| `Ctrl-s` | Toggle fullscreen preview |
-| `Tab` | Multi-select |
 
 ---
 
-## 🏗️ Architecture
+## 📂 Struktur File & Arsitektur
 
 ```
-bin/fex               → Shell launcher (detek PATH → exec / build from source)
 src/fex/
-├── cmd/fex/main.go    → Entry point
-├── cmd/root.go       → Cobra CLI + 4 mode dispatcher
+├── cmd/
+│   └── fex/
+│       ├── main.go            # Entry point binary
+│       ├── root.go            # Root command & Cobra parser
+│       ├── search_mode.go     # Logika search mode (ripgrep)
+│       └── tree_mode.go       # Logika tree mode (folder explorer)
 ├── internal/
-│   ├── config/       → Viper YAML config loader
-│   ├── fzf/          → Generic fzf wrapper (RunFzf[T])
-│   ├── session/      → Session state + bookmarks (thread-safe)
-│   ├── tmux/         → Tmux split (Go → bash helpers bridge)
-│   ├── tree/         → Tree navigation + file listing
-│   └── ui/           → ANSI styling, icons, tool detection
-├── helpers/          → Bash scripts (tmux split/new-window)
+│   ├── config/                # Parser Viper YAML configuration
+│   ├── fzf/                   # Wrapper generic untuk fzf execution
+│   ├── session/               # Manajemen session statis & Bookmarks
+│   ├── tmux/                  # Jembatan IPC Go ke script tmux shell
+│   ├── tree/                  # File scanner & tree generator
+│   └── ui/                    # Render Nerd Font icons & ANSI styling
+├── helpers/                   # Script shell untuk manipulasi pane tmux
+├── docs/                      # Manual dan detail manual internal
 └── go.mod
 ```
 
-**Core philosophy:** 
-- Go handles state, logic, CLI, fzf dispatch — **the brain**
-- Bash helpers handle only tmux operations — **the muscle**
-- No npm, no pip, no cargo — **zero runtime deps besides Go stdlib + fzf + fd/rg**
-
 ---
 
-## ⚙️ Config
+## ⚙️ Konfigurasi (`~/.config/fe/config.yaml`)
 
-`~/.config/fe/config.yaml` — auto-generated on first run:
+File konfigurasi otomatis dibuat pada saat pertama kali `fex` dijalankan:
 
 ```yaml
 editor: micro
@@ -138,36 +141,10 @@ fd_binary: fd
 rg_binary: rg
 ```
 
-Override via env vars: `FE_EDITOR=nano fex`
-
 ---
 
-## 🧩 Dependencies
+## 🧩 Dependencies & Prasyarat
 
-| Tool | Required | Notes |
-|------|----------|-------|
-| fzf | ✅ Yes | Interactive selection + preview |
-| micro | ❌ No | Preferred editor (fallback: nano > vim > vi) |
-| fd | ❌ No | Fast file search (fallback: Go WalkFiles) |
-| rg | ❌ No | Text search (fallback: grep) |
-| bat | ❌ No | Syntax-highlighted preview (fallback: cat -n) |
-| tmux | ❌ No | Split-pane open (fallback: open inline) |
-
----
-
-## 🦫 Goblin Engineering Notes
-
-- **Workflow > hype.** System > tools. Provider bisa diganti.
-- **Bash untuk glue, Go untuk logic.** Jangan maksa salah satu ngelakuin sesuatu bukan takdirnya.
-- **No corporate BS.** Ini tool buat goblin, bukan buat enterprise dashboard.
-- **fex > fe.** Udah waktunya move on. Go lebih cepet, lebih aman, lebih maintainable.
-
----
-
-## 📜 License
-
-MIT — because even goblins believe in open source.
-
----
-
-*Dibuat dengan ☕, 🦫, dan rasa frustrasi terhadap bash scripting.*
+- **Compiler**: Go `1.22` atau versi lebih tinggi
+- **Required System Tools**: `fzf`
+- **Optional Tools (Rekomendasi)**: `fd` (find fallback), `rg` (ripgrep), `bat` (syntax highlight preview), `tmux` (split preview).

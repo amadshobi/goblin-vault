@@ -12,18 +12,22 @@ show_help() {
     echo "Usage: ./scripts/release.sh [target] <patch|minor|major|x.y.z>"
     echo ""
     echo "Targets:"
-    echo "  vault, all      🚀 Global Vault release (update VERSION, CHANGELOG, and create Git Tag)"
+    echo "  vault, all      🚀 Global Vault release (update VERSION, CHANGELOG.md, and create Git Tag)"
     echo "  fex             📂 Release version for fex (Go file explorer)"
     echo "  gn              🧙‍♂️ Release version for Goblin Nexus CLI"
     echo "  zf              ⚡ Release version for ZF Navigation Engine"
     echo "  ocm             ⚙️ Release version for OpenCode Configurator"
+    echo "  sup             🧹 Release version for Smart Universal Package Updater"
     echo "  gh-blin         🐙 Release version for GitHub Assistant TUI"
+    echo ""
+    echo "Setiap target per-tool otomatis me-refer changelog modular di docs/CHANGELOG/<tool>.md"
     echo ""
     echo "Examples:"
     echo "  ./scripts/release.sh vault minor   (0.3.0 -> 0.4.0 + Git Tag v0.4.0)"
     echo "  ./scripts/release.sh fex patch     (0.2.0 -> 0.2.1)"
     echo "  ./scripts/release.sh zf patch      (1.2.0 -> 1.2.1)"
     echo "  ./scripts/release.sh gn minor      (2.0.0 -> 2.1.0)"
+    echo "  ./scripts/release.sh sup patch     (1.1.0 -> 1.1.1)"
     exit 1
 }
 
@@ -92,9 +96,22 @@ case "$TARGET" in
         if [ -f CHANGELOG.md ]; then
             git add CHANGELOG.md
         fi
+        if [ -d docs/CHANGELOG ]; then
+            git add docs/CHANGELOG/
+        fi
         git commit -m "chore(release): bump vault to v$NEW_VER" || true
         TAG_NAME="v$NEW_VER"
         git tag -a "$TAG_NAME" -m "Vault Release $TAG_NAME" --force
+        
+        # Publish GitHub Release (if gh CLI is authenticated)
+        if command -v gh &>/dev/null && gh auth status &>/dev/null; then
+            echo "🚀 Publishing GitHub Release $TAG_NAME..."
+            gh release create "$TAG_NAME" \
+                --title "Goblin Vault $TAG_NAME — Release" \
+                --notes-file "$VAULT_DIR/CHANGELOG.md" \
+                --target main || echo "⚠️ Failed to create GitHub release via gh CLI, tag local created."
+        fi
+        
         echo "🎉 GLOBAL VAULT RELEASE SUCCESS! Tag: $TAG_NAME"
         ;;
 
@@ -111,6 +128,7 @@ case "$TARGET" in
         
         cd "$VAULT_DIR"
         git add "$FEX_ROOT_FILE"
+        git add docs/CHANGELOG/fex.md 2>/dev/null || true
         git commit -m "chore(release): bump fex to v$NEW_VER" || true
         echo "🎉 FEX RELEASE SUCCESS! Version: v$NEW_VER"
         ;;
@@ -124,6 +142,7 @@ case "$TARGET" in
         
         cd "$VAULT_DIR"
         git add "$GN_SH"
+        git add docs/CHANGELOG/gn.md 2>/dev/null || true
         git commit -m "chore(release): bump gn to v$NEW_VER" || true
         echo "🎉 GOBLIN NEXUS RELEASE SUCCESS! Version: v$NEW_VER"
         ;;
@@ -137,6 +156,7 @@ case "$TARGET" in
         
         cd "$VAULT_DIR"
         git add "$ZF_SH"
+        git add docs/CHANGELOG/zf.md 2>/dev/null || true
         git commit -m "chore(release): bump zf to v$NEW_VER" || true
         echo "🎉 ZF RELEASE SUCCESS! Version: v$NEW_VER"
         ;;
@@ -156,8 +176,49 @@ case "$TARGET" in
         
         cd "$VAULT_DIR"
         git add "$OCM_PKG"
+        git add docs/CHANGELOG/ocm.md 2>/dev/null || true
         git commit -m "chore(release): bump ocm to v$NEW_VER" || true
         echo "🎉 OCM RELEASE SUCCESS! Version: v$NEW_VER"
+        ;;
+
+    sup)
+        SUP_PKG="$VAULT_DIR/tools-cli/src/sup/package.json"
+        CURRENT_VER=$(node -e 'console.log(require("'"$SUP_PKG"'").version || "1.0.0")')
+        NEW_VER=$(calculate_next_version "$CURRENT_VER" "$BUMP_TYPE")
+        node -e '
+            const fs = require("fs");
+            const p = "'"$SUP_PKG"'";
+            const json = JSON.parse(fs.readFileSync(p, "utf8"));
+            json.version = "'"$NEW_VER"'";
+            fs.writeFileSync(p, JSON.stringify(json, null, 2) + "\n");
+        '
+        echo "🧹 Bumping SUP version: v$CURRENT_VER -> v$NEW_VER"
+        
+        cd "$VAULT_DIR"
+        git add "$SUP_PKG"
+        git add docs/CHANGELOG/sup.md 2>/dev/null || true
+        git commit -m "chore(release): bump sup to v$NEW_VER" || true
+        echo "🎉 SUP RELEASE SUCCESS! Version: v$NEW_VER"
+        ;;
+
+    gh-blin)
+        GH_BLIN_PKG="$VAULT_DIR/tools-cli/src/gh-blin/package.json"
+        CURRENT_VER=$(node -e 'console.log(require("'"$GH_BLIN_PKG"'").version || "1.0.0")')
+        NEW_VER=$(calculate_next_version "$CURRENT_VER" "$BUMP_TYPE")
+        node -e '
+            const fs = require("fs");
+            const p = "'"$GH_BLIN_PKG"'";
+            const json = JSON.parse(fs.readFileSync(p, "utf8"));
+            json.version = "'"$NEW_VER"'";
+            fs.writeFileSync(p, JSON.stringify(json, null, 2) + "\n");
+        '
+        echo "🐙 Bumping gh-blin version: v$CURRENT_VER -> v$NEW_VER"
+        
+        cd "$VAULT_DIR"
+        git add "$GH_BLIN_PKG"
+        git add docs/CHANGELOG/gh-blin.md 2>/dev/null || true
+        git commit -m "chore(release): bump gh-blin to v$NEW_VER" || true
+        echo "🎉 GH-BLIN RELEASE SUCCESS! Version: v$NEW_VER"
         ;;
 
     *)

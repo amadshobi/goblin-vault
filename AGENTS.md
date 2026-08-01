@@ -41,6 +41,7 @@ goblin-vault/
 ├── scripts/                # Utilities shell & js (doctor, install, worktree, dll)
 ├── configs/                # Konfigurasi editor & tooling (micro, nvim)
 ├── docs/                   # Rules, skills, update notes & history
+│   ├── CHANGELOG/          # Changelog modular per-tool (sup.md, fex.md, gn.md, ocm.md, zf.md, gh-blin.md)
 │   ├── history/            # Riwayat implementasi harian (YYYY-MM-DD_nama.md)
 │   ├── rules/              # Aturan coding & operasional
 ├── .github/                # CI workflows + git hooks
@@ -48,7 +49,7 @@ goblin-vault/
 │   └── hooks/              # pre-commit & pre-push hooks
 ├── AGENTS.md               # Panduan agent & kontributor
 ├── README.md               # Dokumentasi publik utama
-└── CHANGELOG.md            # Riwayat perubahan
+└── CHANGELOG.md            # Master macro changelog (navigasi per-tool)
 ```
 
 ---
@@ -126,8 +127,9 @@ Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
 ## Konvensi Repo
 
 - **Bahasa dokumentasi**: Indonesia (utama), English untuk istilah teknis.
-- **Changelog**: update `CHANGELOG.md` untuk setiap perubahan yang berdampak ke
-  pengguna tools.
+- **Changelog**: detail perubahan per-tool dicatat di `docs/CHANGELOG/<tool>.md`
+  (e.g. `sup.md`, `fex.md`, `gn.md`); master `CHANGELOG.md` hanya memuat poin
+  makro tingkat tinggi + navigasi ke changelog per-tool.
 - **README**: selalu sync dengan struktur & fitur aktual — jangan biarkan melenceng.
 - **Skills**: letakkan di `docs/skills/` (terdaftar di `kilo.jsonc`).
 - **Branch/Worktree**: gunakan `scripts/worktree.sh` untuk isolasi pekerjaan.
@@ -135,16 +137,23 @@ Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
   blocking) dan GitHub Actions `.github/workflows/ci.yml` (lint + build otomatis).
   - `pre-commit hook`: Menjalankan `scripts/check_syntax.sh --staged` (fast staged mode, hanya mengecek file yang di-`git add`).
   - `pre-push hook`: Menjalankan `scripts/check_syntax.sh` (full repo scan menyeluruh untuk Bash, Go, JS, dan TS).
-- **Prosedur Release**: gunakan `scripts/release.sh` untuk automated release (terintegrasi dengan health audit & git tagging).
-  - `./scripts/release.sh vault <patch|minor|major>` untuk rilis versi global repo.
-  - `./scripts/release.sh <tool_name> <patch|minor|major>` (e.g. `fex`, `gn`, `zf`, `ocm`) untuk rilis khusus per-tool.
+- **Prosedur Release & Branch Sync (PENTING)**: Gunakan `./scripts/release.sh` untuk automated release (terintegrasi dengan health audit, git tagging, dan GitHub Release).
+  - **Standard Workflow**: Semua perubahan wajib lahir di branch `dev` terlebih dahulu, kemudian lakukan Pull Request (PR) `dev -> main`. Eksekusi script release dilakukan setelah PR di-merge ke `main` atau langsung dari branch `main` lokal yang sudah ter-sync dengan remote.
+  - **Single Source of Truth**: Dilarang keras meng-edit atau membuat commit langsung di branch `main`.
+  - **Sync Back After Merge Rule (WAJIB)**: Setiap kali Pull Request (`dev -> main`) selesai di-merge ke branch `main`, maintainer/agent WAJIB segera menyinkronkan kembali branch `dev` dengan `main` terbaru menggunakan perintah:
+    ```bash
+    git checkout dev && git pull origin main && git push origin dev
+    ```
+    Tujuannya agar branch `dev` tidak tertinggal (*divergent*) dan menghindari terjadinya merge conflict yang menyebalkan di rilis berikutnya.
+  - **Global Release**: `./scripts/release.sh vault <patch|minor|major>` untuk merilis versi global repo vault (memperbarui `VERSION`, commit changelog, membuat git tag `vX.Y.Z`, dan otomatis mempublikasikan **GitHub Release resmi** via `gh release create` dengan menyertakan release notes dari `CHANGELOG.md`).
+  - **Modular Tool Release**: `./scripts/release.sh <tool_name> <patch|minor|major>` (e.g. `fex`, `gn`, `zf`, `ocm`, `sup`, `gh-blin`) untuk memperbarui versi internal tool dan menulis changelog modular di `docs/CHANGELOG/<tool>.md`.
 
 ---
 
 ## Do / Don't
 
 **Lakukan:**
-- Cek `README.md`, `CHANGELOG.md`, dan struktur `tools-cli/` sebelum mengubah.
+- Cek `README.md`, `CHANGELOG.md`, `docs/CHANGELOG/`, dan struktur `tools-cli/` sebelum mengubah.
 - Jalankan `scripts/doctor.sh` & `scripts/check_syntax.sh` sebelum anggap selesai.
 - Pertahankan kompatibilitas dengan tools yang sudah dipakai BOSS harian.
 - Tulis perubahan kecil, fokused, dan reversible.
