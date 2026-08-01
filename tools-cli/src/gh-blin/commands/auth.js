@@ -7,7 +7,7 @@ async function authStatus() {
   const s = p.spinner();
   s.start('Checking auth status...');
   try {
-    const status = ghRaw('auth status 2>&1', { silent: true });
+    const status = ghRaw(['auth', 'status'], { silent: true });
     s.stop(status ? 'Logged in' : 'Not logged in');
     if (status) {
       p.note(status, 'Auth Status');
@@ -25,7 +25,7 @@ async function authLogin() {
   const s = p.spinner();
   s.start('Opening browser for login...');
   try {
-    const out = ghRaw('auth login --web -h github.com 2>&1');
+    const out = ghRaw(['auth', 'login', '--web', '-h', 'github.com']);
     s.stop('Login process complete');
     p.note(out, 'Login Result');
     return true;
@@ -47,7 +47,7 @@ async function authLogout() {
   const s = p.spinner();
   s.start('Logging out...');
   try {
-    const out = ghRaw('auth logout -h github.com 2>&1');
+    const out = ghRaw(['auth', 'logout', '-h', 'github.com']);
     s.stop('Logged out');
     p.note(out, 'Logout');
     return true;
