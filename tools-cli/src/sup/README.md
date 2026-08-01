@@ -1,21 +1,21 @@
 <p align="center">
   <br/>
-  <code>
-   ███████╗██╗   ██╗██████╗ 
-   ██╔════╝██║   ██║██╔══██╗
-   ███████╗██║   ██║██████╔╝
-   ╚════██║██║   ██║██╔═══╝ 
-   ███████║╚██████╔╝██║     
-   ╚══════╝ ╚═════╝ ╚═╝     
-  </code>
+  <pre align="center">
+ ███████╗██╗   ██╗██████╗ 
+ ██╔════╝██║   ██║██╔══██╗
+ ███████╗██║   ██║██████╔╝
+ ╚════██║██║   ██║██╔═══╝ 
+ ███████║╚██████╔╝██║     
+ ╚══════╝ ╚═════╝ ╚═╝     
+  </pre>
   <br/><br/>
   <strong>Smart Universal Package Updater v1.1.0</strong>
   <br/><br/>
-  <img src="https://img.shields.io/badge/Version-1.1.0-007acc?style=for-the-badge" alt="Version" />
-  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Runtime-Bun-F9F1E1?style=for-the-badge&logo=bun&logoColor=black" alt="Bun" />
-  <img src="https://img.shields.io/badge/TUI-Clack-FF5722?style=for-the-badge" alt="Clack TUI" />
-  <img src="https://img.shields.io/badge/Support-NPM%20%7C%20PIP3%20%7C%20Rust%20%7C%20Bun%20%7C%20System-black?style=for-the-badge" alt="Package Managers" />
+  <img src="https://img.shields.io/badge/Version-1.1.0-A855F7?style=for-the-badge&labelColor=0D1117" alt="Version" />
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3B82F6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=0D1117" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Runtime-Bun-FFFDF5?style=for-the-badge&logo=bun&logoColor=black&labelColor=0D1117" alt="Bun" />
+  <img src="https://img.shields.io/badge/TUI-Clack-FF5722?style=for-the-badge&labelColor=0D1117" alt="Clack TUI" />
+  <img src="https://img.shields.io/badge/Support-NPM%20%7C%20PIP3%20%7C%20Rust%20%7C%20Bun%20%7C%20System-00E5FF?style=for-the-badge&labelColor=0D1117&color=00E5FF" alt="Package Managers" />
   <br/><br/>
   <img src="../../../docs/assets/gif/sup-demo.gif" alt="sup demo" width="800" />
   <br/>

@@ -1,20 +1,20 @@
 <p align="center">
   <br/>
-  <code>
-   ███████╗███████╗
-   ╚══███╔╝██╔════╝
-     ███╔╝ █████╗  
-    ███╔╝  ██╔══╝  
-   ███████╗██║     
-   ╚══════╝╚═╝     
-  </code>
+  <pre align="center">
+ ███████╗███████╗
+ ╚══███╔╝██╔════╝
+   ███╔╝ █████╗  
+  ███╔╝  ██╔══╝  
+ ███████╗██║     
+ ╚══════╝╚═╝     
+  </pre>
   <br/><br/>
   <strong>Zoxide & Tmux Helper (Pure Shell)</strong>
   <br/><br/>
-  <img src="https://img.shields.io/badge/Language-Zsh-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white" alt="Zsh" />
-  <img src="https://img.shields.io/badge/Navigation-Zoxide-orange?style=for-the-badge" alt="Zoxide" />
-  <img src="https://img.shields.io/badge/Multiplexer-Tmux-1BB91F?style=for-the-badge&logo=tmux&logoColor=white" alt="Tmux" />
-  <img src="https://img.shields.io/badge/Finder-fzf-red?style=for-the-badge" alt="fzf" />
+  <img src="https://img.shields.io/badge/Language-Zsh-10B981?style=for-the-badge&logo=gnu-bash&logoColor=white&labelColor=0D1117" alt="Zsh" />
+  <img src="https://img.shields.io/badge/Navigation-Zoxide-EC4899?style=for-the-badge&labelColor=0D1117" alt="Zoxide" />
+  <img src="https://img.shields.io/badge/Multiplexer-Tmux-84CC16?style=for-the-badge&logo=tmux&logoColor=white&labelColor=0D1117" alt="Tmux" />
+  <img src="https://img.shields.io/badge/Finder-fzf-FF007F?style=for-the-badge&labelColor=0D1117" alt="fzf" />
   <br/><br/>
   <img src="../../../docs/assets/gif/zf-demo.gif" alt="zf demo" width="800" />
   <br/>

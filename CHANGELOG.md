@@ -14,6 +14,12 @@
 
 ---
 
+## [v0.3.20] - 2026-08-01
+
+- **UI & Documentation Polish**: Responsive SVG Neon Cyberpunk Banner (`docs/assets/banner.svg`), Vibrant Cyberpunk Neon Badges (`for-the-badge` style dengan `labelColor=0D1117`) di root README & 6 sub-README, folder media assets (`docs/assets/gif/` & `docs/assets/screenshoot/`), dan standalone per-tool READMEs dengan ASCII block headers. → [detail](docs/CHANGELOG/sup.md) · [detail](docs/CHANGELOG/fex.md) · [detail](docs/CHANGELOG/gn.md) · [detail](docs/CHANGELOG/ocm.md) · [detail](docs/CHANGELOG/zf.md) · [detail](docs/CHANGELOG/gh-blin.md)
+- **Open-Source Hygiene Suite**: Penambahan panduan kontribusi (`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` v2.1, `SECURITY.md`, `CODEOWNERS`), form Issue GitHub Interaktif (bug report, feature request, config), Pull Request template terstandarisasi, dan konfigurasi Branch Protection Rules untuk `main`.
+- **Housekeeping & Maintenance**: Konsolidasi riwayat historis `fex` ke `docs/CHANGELOG/fex.md` (membersihkan duplicate file lama di source tree) dan perbaikan Git tracking untuk meng-untrack file config local `opencode.jsonc`. → [detail](docs/CHANGELOG/fex.md)
+
 ## [Unreleased]
 
 ### Added
