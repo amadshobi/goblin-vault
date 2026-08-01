@@ -1,6 +1,7 @@
 # Changelog — `fex`
 
-> Riwayat lengkap perubahan untuk tool **`fex`** (File Explorer — Go, fzf + tmux).
+> Riwayat lengkap perubahan dan evolusi untuk tool **`fex`** (File Explorer — Go, fzf + tmux).
+> Dari bash satu file, jadi Go hybrid. Perjalanan seorang goblin.  
 > Master changelog: [CHANGELOG.md](../../CHANGELOG.md)
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
@@ -29,7 +30,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **Tmux breakage**: panel kanan/terminal baru aneh pas fex jalan di tmux — hapus `SplitOnStartup` sepenuhnya, editor sekarang spawn di pane yang sama (bukan di panel kanan), hapus semua `tmux.InTmux()` conditional di `tree_mode.go`, `find_mode.go`, `bookmarks_mode.go`, `search_mode.go`.
 - **Keybinding conflicts tmux ↔ nvim**: tmux `bind -n C-n/C-k/C-w` bentrok sama nvim custom mappings — tmux `C-n` pindah ke `C-p`, tmux `C-k` pindah ke `C-d`, tmux `C-w` dihapus; nvim `C-q` pindah ke `C-x`, nvim `C-w` pindah ke `C-b`, nvim `C-d` duplicate line dihapus.
 
-## [0.1.0] - 2026-07-08
+## [v0.1.0] - 2026-07-08
 
 ### Fixed
 - `fex` tree mode: Esc/Ctrl-H now respects `$HOME` boundary — exits tree at root instead of navigating above home.
@@ -47,13 +48,40 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - `scripts/fe` — fully replaced by `fex` Go binary.
 - `scripts/fe.bak.*` — stale backup files.
 
-## [0.0.2] - 2026-07-07
+---
 
-### Changed
-- `fe` (file explorer) — refactored to modular architecture (v3.0) with popup-based rename/delete, search popup, quoting safety, keybinding overhaul.
-- `fe` helper scripts: simplified `popup_input.sh`, replaced temp helper with static `fe-helper.sh`.
+## 📜 Historic Milestones & Legacy Releases
 
-## [0.0.1] - 2026-07-06
+### v4.0 — Go Hybrid (Codename: `fex`)
+*Migrasi total dari bash ke Go hybrid. Reinkarnasi dari `fe`.*
+- 🦫 **Go core** — Cobra CLI, Viper config, proper error handling, concurrent-safe session.
+- 🎯 **4 modes**: find, tree, search, bookmarks — unified under `fex [mode] [args]`.
+- ⚙️ **YAML config** — `~/.config/fe/config.yaml` + env override (`FE_` prefix).
+- 🔧 **Tool auto-detect** — `bat > cat`, `micro > nano > vim`, `fd > WalkFiles`.
+- 🗑️ **Delete confirm** — fzf dialog, bukan `rm -i`.
+- ✏️ **Rename dialog** — interactive, bukan `read -p`.
+- 🆕 **New file / folder** dari tree mode.
+- 📋 **Copy path** to clipboard.
+- 🔍 **Full-screen preview** toggle.
+- 🎨 **File type icons** — Nerd Font per extension.
+- 📄 **Generic fzf wrapper** — `RunFzf[T]` dengan type params.
 
-### Added
-- `fe` — file explorer shell script (v1.0).
+### v3.0 — Modular Bash (Codename: `fe modular`)
+*Bash script dipecah dari 1 file → 8 modul terstruktur.*
+- 📦 **Modular source** — `config.sh`, `tmux.sh`, `ui.sh`, `find.sh`, `tree.sh`, `search.sh`, `bookmarks.sh`, `popup_input.sh`.
+- 🌳 **Tree mode** — folder explorer dengan inline fzf.
+- 📑 **Bookmarks mode** — dedicated bookmark browser.
+- 🔎 **Search mode** — ripgrep integration.
+- 🖥️ **Popup input** — tmux display-popup / fzf / read fallback.
+
+### v2.0 — +micro (Codename: `fe + editor`)
+*Single bash script (~198 lines) dengan micro editor & tmux split.*
+- 🖥️ **Tmux split** — auto split window, open file di right pane.
+- 📝 **Micro integration** — preferred editor (fallback nano/vim).
+- 📑 **Bookmarks** — add via Ctrl-b, file-backed.
+
+### v1.0 — Explorer OG (Codename: `fe original`)
+*The beginning. File explorer pakai fzf.*
+- 📂 **Browse files** — `fe [path]` → fzf.
+- 🔍 **Filter by extension** — `fe .js`.
+- 🚀 **Open in editor** — hardcoded micro (`find | fzf | micro`).
