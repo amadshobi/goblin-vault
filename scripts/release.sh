@@ -102,6 +102,16 @@ case "$TARGET" in
         git commit -m "chore(release): bump vault to v$NEW_VER" || true
         TAG_NAME="v$NEW_VER"
         git tag -a "$TAG_NAME" -m "Vault Release $TAG_NAME" --force
+        
+        # Publish GitHub Release (if gh CLI is authenticated)
+        if command -v gh &>/dev/null && gh auth status &>/dev/null; then
+            echo "🚀 Publishing GitHub Release $TAG_NAME..."
+            gh release create "$TAG_NAME" \
+                --title "Goblin Vault $TAG_NAME — Release" \
+                --notes-file "$VAULT_DIR/CHANGELOG.md" \
+                --target main || echo "⚠️ Failed to create GitHub release via gh CLI, tag local created."
+        fi
+        
         echo "🎉 GLOBAL VAULT RELEASE SUCCESS! Tag: $TAG_NAME"
         ;;
 

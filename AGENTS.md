@@ -137,9 +137,10 @@ Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
   blocking) dan GitHub Actions `.github/workflows/ci.yml` (lint + build otomatis).
   - `pre-commit hook`: Menjalankan `scripts/check_syntax.sh --staged` (fast staged mode, hanya mengecek file yang di-`git add`).
   - `pre-push hook`: Menjalankan `scripts/check_syntax.sh` (full repo scan menyeluruh untuk Bash, Go, JS, dan TS).
-- **Prosedur Release**: gunakan `scripts/release.sh` untuk automated release (terintegrasi dengan health audit & git tagging).
-  - `./scripts/release.sh vault <patch|minor|major>` untuk rilis versi global repo.
-  - `./scripts/release.sh <tool_name> <patch|minor|major>` (e.g. `fex`, `gn`, `zf`, `ocm`, `sup`, `gh-blin`) untuk rilis khusus per-tool.
+- **Prosedur Release**: Gunakan `./scripts/release.sh` untuk automated release (terintegrasi dengan health audit, git tagging, dan GitHub Release).
+  - **Standard Workflow**: Semua perubahan wajib di-commit di branch `dev` terlebih dahulu, kemudian lakukan Pull Request (PR) `dev -> main`. Eksekusi script release dilakukan setelah PR di-merge ke `main` atau langsung dari branch `main` lokal yang sudah ter-sync dengan remote.
+  - **Global Release**: `./scripts/release.sh vault <patch|minor|major>` untuk merilis versi global repo vault (memperbarui `VERSION`, commit changelog, membuat git tag `vX.Y.Z`, dan otomatis mempublikasikan **GitHub Release resmi** via `gh release create` dengan menyertakan release notes dari `CHANGELOG.md`).
+  - **Modular Tool Release**: `./scripts/release.sh <tool_name> <patch|minor|major>` (e.g. `fex`, `gn`, `zf`, `ocm`, `sup`, `gh-blin`) untuk memperbarui versi internal tool dan menulis changelog modular di `docs/CHANGELOG/<tool>.md`.
 
 ---
 
