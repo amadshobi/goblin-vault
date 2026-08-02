@@ -7,6 +7,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.0.4] - 2026-08-02
+
+### Added
+- **OMP File Reference `@file` Prompt Handling**: `callOmp()` di `utils/ai.js` kini menulis prompt review ke temporary file `/tmp/gh-blin-prompt-xxxx.txt` dan memanggil `omp -p "@${tmpFile}" --no-session --hide-thinking`. Ini secara mutlak menghapus limit OS `E2BIG` (Argument list too long) sehingga diff PR raksasa dapat di-review via `omp` tanpa crash.
+- **Accurate Model Reporting on Strategy Fallback**: `generateReview()` & `callLLM()` kini menyinkronkan nama model & backend aktual yang berhasil merespon ke metadata footer terminal box dan log JSON.
+- **Updated Default OMP Models (`models.json`)**: Default model `omp` untuk variant `high`, `medium`, `low`, dan `auto` diset ke `google-antigravity/gemini-3.6-flash`, sedangkan variant `none` diset ke `peezy/deepseek-v4-flash-0731`.
+
 ## [0.0.3] - 2026-08-02
 
 ### Added

@@ -10,6 +10,9 @@
  *   CLI flag `--model` > config file `model` > env `GH_BLIN_MODEL`/`OPENAI_MODEL`
  *   > null (provider default).
  */
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const { spawnSync } = require('child_process');
 const { resolveModel, resolveVariantModel, resolveBackendVariantModel } = require('./config');
 
@@ -92,15 +95,18 @@ function callLLM(prompt, options = {}) {
   // sebagai nilai resolveModel agar user tahu model yang terpilih.
   if (hasCmd('opencode')) {
     try {
-      const r = spawnSync('opencode', ['run', prompt], {
+      const r = spawnSync('opencode', ['run'], {
+        input: prompt,
         encoding: 'utf8',
-        maxBuffer: 20 * 1024 * 1024,
-        timeout: 120000, // opencode bisa lambat di diff besar
+        maxBuffer: 50 * 1024 * 1024,
+        timeout: 300000,
       });
       if (r.status === 0 && r.stdout && r.stdout.trim()) {
-        return { text: r.stdout.trim(), backend: 'opencode', model: options.model || null };
+        const { model: fallbackModel } = resolveVariantModel('opencode', options.variant);
+        return { text: r.stdout.trim(), backend: 'opencode', model: fallbackModel || options.model || null };
       }
-      lastError = r.stderr?.trim()?.split('\n')[0] || `opencode exit ${r.status}`;
+      const exitReason = r.error ? r.error.message : (r.status === null ? 'timeout (>5m)' : `exit ${r.status}`);
+      lastError = r.stderr?.trim()?.split('\n')[0] || `opencode ${exitReason}`;
     } catch (err) {
       lastError = err.message;
     }
@@ -195,34 +201,38 @@ function callOpenAIViaCurl(prompt, modelOverride) {
 const OMP_THINKING_VALUES = new Set(['high', 'medium', 'low', 'auto', 'off']);
 
 function callOmp(prompt, options = {}) {
-  const args = ['-p', prompt, '--no-session', '--hide-thinking'];
-  if (options.model) args.push(`--model=${options.model}`);
-  // Aman untuk semua nilai reasoning effort; nilai tak dikenal diabaikan
-  // daripada dikirim mentah ke subprocess.
-  if (options.thinking && OMP_THINKING_VALUES.has(options.thinking)) {
-    args.push(`--thinking=${options.thinking}`);
-  }
+  const tmpFile = path.join(os.tmpdir(), `gh-blin-prompt-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
+  try {
+    fs.writeFileSync(tmpFile, prompt, 'utf8');
+    const args = ['-p', `@${tmpFile}`, '--no-session', '--hide-thinking'];
+    if (options.model) args.push(`--model=${options.model}`);
+    if (options.thinking && OMP_THINKING_VALUES.has(options.thinking)) {
+      args.push(`--thinking=${options.thinking}`);
+    }
 
-  const r = spawnSync('omp', args, {
-    encoding: 'utf8',
-    maxBuffer: 50 * 1024 * 1024,
-    timeout: 120000,
-  });
+    const r = spawnSync('omp', args, {
+      encoding: 'utf8',
+      maxBuffer: 50 * 1024 * 1024,
+      timeout: 120000,
+    });
 
-  if (r.status === 0 && r.stdout && r.stdout.trim()) {
-    return { text: r.stdout.trim(), backend: 'omp', model: options.model || null };
-  }
+    if (r.status === 0 && r.stdout && r.stdout.trim()) {
+      return { text: r.stdout.trim(), backend: 'omp', model: options.model || null };
+    }
 
-  // Gagal: bungkus detail error (spawn / exit status / stdout kosong) supaya
-  // Strategy 1/2 di callLLM tahu penyebab kegagalan omp secara transparan.
-  if (r.error) {
-    throw new Error(`omp spawn error: ${r.error.message}`);
+    if (r.error) {
+      throw new Error(`omp spawn error: ${r.error.message}`);
+    }
+    if (r.status !== 0) {
+      const first = r.stderr?.trim()?.split('\n')[0] || r.stdout?.trim()?.split('\n')[0] || 'unknown error';
+      throw new Error(`omp exit ${r.status}: ${first}`);
+    }
+    throw new Error('omp exit 0 tapi menghasilkan stdout kosong');
+  } finally {
+    try {
+      if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
+    } catch (_) {}
   }
-  if (r.status !== 0) {
-    const first = r.stderr?.trim()?.split('\n')[0] || r.stdout?.trim()?.split('\n')[0] || 'unknown error';
-    throw new Error(`omp exit ${r.status}: ${first}`);
-  }
-  throw new Error('omp exit 0 tapi menghasilkan stdout kosong');
 }
 
 /**
@@ -247,7 +257,7 @@ function generateReview(prData, diff, options = {}) {
   const { model, variant, backend, thinking } = resolved;
 
   const prompt = buildReviewPrompt(prData, diff);
-  const { text, backend: usedBackend } = callLLM(prompt, {
+  const { text, backend: usedBackend, model: usedModel } = callLLM(prompt, {
     useOmp: backend === 'omp',
     backend,
     model,
@@ -260,7 +270,7 @@ function generateReview(prData, diff, options = {}) {
   return {
     review,
     prompt,
-    model,
+    model: usedModel || model,
     variant,
     backend: usedBackend,
     thinking,
