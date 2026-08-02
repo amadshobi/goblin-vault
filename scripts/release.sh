@@ -91,6 +91,11 @@ case "$TARGET" in
         echo "$NEW_VER" > "$VERSION_FILE"
         echo "📦 Bumping Global Vault version: v$CURRENT_VER -> v$NEW_VER"
         
+        TODAY=$(date +%Y-%m-%d)
+        if [ -f "$VAULT_DIR/CHANGELOG.md" ]; then
+            sed -i -E "0,/## \[Unreleased\]/s//## [v${NEW_VER}] - ${TODAY}/" "$VAULT_DIR/CHANGELOG.md"
+        fi
+
         cd "$VAULT_DIR"
         git add VERSION
         if [ -f CHANGELOG.md ]; then
