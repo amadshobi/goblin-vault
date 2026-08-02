@@ -14,7 +14,7 @@
 
 ---
 
-## [Unreleased]
+## [v0.3.24] - 2026-08-02
 
 ### Added
 - **`gh-blin` v1.1.1 (Magic `omp` Runner, `@file` Stdin Pipe, & 5 Reasoning Effort Variants)**: Integrasi backend `omp` (`--no-session`) via 3 huruf sakti `omp` di CLI, dukungan 5 reasoning effort variants (`high`, `medium`, `low`, `auto`, `none`), handling prompt `@file` untuk menghapus `E2BIG` limit, serta nested backend model mapping (`utils/models.json`). → [detail](docs/CHANGELOG/gh-blin.md)
