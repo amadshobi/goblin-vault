@@ -102,12 +102,13 @@ function formatRepo(repo) {
  */
 function formatReview(reviewText, prData = {}, meta = {}) {
   const width = 60;
+  const maxInnerWidth = width; // lebar konten antar border ║ ... ║
   const bar = color.dim('─'.repeat(width));
 
   // Header: #num + title
   const num = prData.number != null ? `#${prData.number}` : '';
   const title = truncate(prData.title || '(no title)', 40);
-  const headerLine = `║${color.bold(color.cyan(padVisual(truncateVisual(`${num} ${title}`.trim(), width), width)))}║`;
+  const headerLine = `║${color.bold(color.cyan(padVisual(truncateVisual(`${num} ${title}`.trim(), maxInnerWidth), maxInnerWidth)))}║`;
 
   // Stats: author, state, additions/deletions, files, created
   const stats = [];
@@ -117,16 +118,18 @@ function formatReview(reviewText, prData = {}, meta = {}) {
   if (typeof prData.deletions === 'number') stats.push(`-${prData.deletions}`);
   if (Array.isArray(prData.files)) stats.push(`files: ${prData.files.length}`);
   if (prData.createdAt) stats.push(`created: ${truncate(prData.createdAt, 10)}`);
-  const statsText = stats.length ? truncateVisual(stats.join('  '), width) : ' '.repeat(width);
-  const statsLine = `║${color.dim(padVisual(statsText, width))}║`;
+  const statsText = stats.length ? truncateVisual(stats.join('  '), maxInnerWidth) : ' '.repeat(maxInnerWidth);
+  const statsLine = `║${color.dim(padVisual(statsText, maxInnerWidth))}║`;
 
   // Review body boxed — ukur & pad berdasarkan lebar visual
   const bodyLines = String(reviewText || '(no review comment)').split('\n');
   const body = bodyLines
-    .map(line => `║ ${padVisual(truncateVisual(line, width - 2), width - 2)} ║`)
+    .map(line => `║ ${padVisual(truncateVisual(line, maxInnerWidth - 2), maxInnerWidth - 2)} ║`)
     .join('\n');
 
-  // Footer AI metadata (opsional): model + variant/backend + total tokens
+  // Footer AI metadata (opsional): model + variant/backend + total tokens.
+  // Selalu dibungkus truncateVisual agar footer TIDAK pernah melewati border
+  // kotak walau nama model/variant sangat panjang — isi persis maxInnerWidth.
   const footer = [];
   if (meta && (meta.model != null || meta.tokens?.total != null)) {
     const model = meta.model || '(default)';
@@ -136,8 +139,9 @@ function formatReview(reviewText, prData = {}, meta = {}) {
     const tokens = meta.tokens?.total != null
       ? ` · tokens: ${meta.tokens.total.toLocaleString('id-ID')}`
       : '';
-    const footerText = truncateVisual(`Model: ${model}${variantTag}${tokens}`, width);
-    footer.push(`║${color.dim(padVisual(footerText, width))}║`);
+    const footerStr = `Model: ${model}${variantTag}${tokens}`;
+    const footerText = truncateVisual(footerStr, maxInnerWidth);
+    footer.push(`║${color.dim(padVisual(footerText, maxInnerWidth))}║`);
   }
 
   return [

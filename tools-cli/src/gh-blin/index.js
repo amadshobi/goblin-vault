@@ -141,17 +141,24 @@ Usage:
 Flags:
   --publish          Post hasil review sebagai komentar resmi GitHub PR
   --force            Paksa review ulang meski commit SHA sudah tercatat
-  --high             Gunakan variant model 'high' (claude-3-5-sonnet) [Default Utama]
+--high             Gunakan variant model 'high' (claude-3-5-sonnet) [Default Utama]
   --medium           Gunakan variant model 'medium' (goblin-nexus/gemini-3.5-flash)
   --low              Gunakan variant model 'low' (gemini-2.5-flash)
-  --variant <name>   Pilih variant model ('high', 'medium', atau 'low')
+  --eff-auto         Gunakan variant model 'auto' (google/gemini-2.0-flash-001)
+  --none             Gunakan variant model 'none' (deepseek/deepseek-chat, thinking off)
+  --variant <name>   Pilih variant model ('high', 'medium', 'low', 'auto', atau 'none')
   --model <name>     Override nama model LLM secara langsung (mis. 'gpt-4o')
+
+Magic omp:
+  ... omp            Akhiri command dengan "omp" untuk pakai backend omp (prompt optimizer).
 
 Examples:
   gh-blin pr review 12                             Review PR #12 memakai default variant (high)
   gh-blin pr review 12 --high                      Review PR #12 memakai variant high
   gh-blin pr review 12 --medium --publish          Review PR #12 memakai variant medium & publish ke GitHub
   gh-blin pr review 12 --low                       Review PR #12 memakai variant low
+  gh-blin pr review 12 omp                         Review PR #12 pakai backend omp
+  gh-blin pr review 12 omp --eff-auto              Review PR #12 pakai backend omp dengan variant auto
   gh-blin pr review --auto --high                  Batch review semua open PRs dengan variant high
   gh-blin pr review 12 --model gpt-4o              Override model secara langsung
   gh-blin config set variant medium                Set default active variant ke medium
@@ -205,17 +212,43 @@ async function runCli(argv) {
     variant = 'medium';
   } else if (flags.includes('--high')) {
     variant = 'high';
+  } else if (flags.includes('--eff-auto')) {
+    variant = 'auto';
+  } else if (flags.includes('--none')) {
+    variant = 'none';
   } else if (variantVal && typeof variantVal === 'string' && !variantVal.startsWith('--')) {
     variant = variantVal;
   }
 
+  // M3: Precedence warning — flag --model dan flag variant diset bersamaan.
+  // Explicit --model SELALU meng-override preset variant (lihat ai.js).
+  const hasVariantFlag =
+    flags.includes('--high') || flags.includes('--medium') || flags.includes('--low') ||
+    flags.includes('--eff-auto') || flags.includes('--none') || variantFlagIndex !== -1;
+  if (model && hasVariantFlag) {
+    console.log(color.yellow(
+      `⚠️  Warning: Flag --model dan --variant diset bersamaan. ` +
+      `Flag --model '${model}' akan meng-override preset variant.`
+    ));
+  }
+
   const [cmd, sub, ...rest] = positionals;
+
+  // Deteksi "3 huruf sakti" `omp`: kalau argumen posisional terakhir setelah
+  // `pr review <number>` adalah 'omp', pop lalu aktifkan backend omp.
+  let useOmp = false;
+  let backend;
+  if (rest.length && rest[rest.length - 1] === 'omp') {
+    rest.pop();
+    useOmp = true;
+    backend = 'omp';
+  }
 
   if (cmd === 'pr' && sub === 'review') {
     const { reviewPR, autoReviewAll } = require('./commands/review');
 
     if (auto) {
-      const summary = await autoReviewAll({ publish, force, model, variant });
+      const summary = await autoReviewAll({ publish, force, model, variant, useOmp, backend });
       printBatchSummary(summary);
       return summary.ok && summary.failed.length === 0 ? 0 : 1;
     }
@@ -227,7 +260,7 @@ async function runCli(argv) {
       return 1;
     }
 
-    const res = await reviewPR(prNumber, { publish, force, model, variant });
+    const res = await reviewPR(prNumber, { publish, force, model, variant, useOmp, backend });
     if (!res.ok) {
       console.error(color.red(res.error));
       return 1;

@@ -17,6 +17,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+/** Mapping default model per backend & variant (dari models.json). */
+const MODELS_JSON = require('./models.json');
+
 /** Config folder: $XDG_CONFIG_HOME/goblin-vault atau ~/.config/goblin-vault */
 function configDir() {
   const base = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
@@ -166,4 +169,90 @@ function resolveVariantModel(variantOrModelName, cliOptions = {}) {
   return { model: target, variant: null };
 }
 
-module.exports = { loadConfig, saveConfig, getConfig, setConfig, resolveModel, DEFAULT_VARIANTS, resolveVariantModel };
+/** Daftar variant name yang dikenali system. */
+const VALID_VARIANTS = ['high', 'medium', 'low', 'auto', 'none'];
+
+/** Mapping nilai `thinking` per variant. */
+const THINKING_MAP = {
+  high: 'high',
+  medium: 'medium',
+  low: 'low',
+  auto: 'auto',
+  none: 'off',
+};
+
+/**
+ * Resolve model untuk backend tertentu ('opencode' | 'omp') berbasis variant.
+ *
+ * Hierarki penentuan target variant:
+ *   1. Argumen `variantOrModelName` (kalau string non-empty).
+ *   2. `config.variant` dari disk.
+ *   3. Default `'high'`.
+ *
+ * Hierarki resolusi model:
+ *   1. Jika `variantOrModelName` diset tapi BUKAN salah satu dari 5 variant
+ *      name ('high'|'medium'|'low'|'auto'|'none'), ia dianggap explicit model
+ *      override name dan langsung dipakai tanpa lookup.
+ *   2. Jika valid variant: custom override dari config user diprioritaskan:
+ *        - `config.variants[backend][variant]`
+ *        - `config.variants[variant]`
+ *   3. Fallback ke default di `MODELS_JSON.backends[backend][variant]`.
+ *
+ * @param {string} [backendName='opencode'] - Nama backend: 'opencode' atau 'omp'.
+ * @param {string|null} [variantOrModelName] - Variant name (5 opsi) atau nama model langsung.
+ * @param {object} [cliOptions] - Options tambahan (future-proofing).
+ * @returns {{ model: string, variant: string|null, backend: string, thinking: string }}
+ */
+function resolveBackendVariantModel(backendName = 'opencode', variantOrModelName = null, cliOptions = {}) {
+  const backend = (backendName === 'omp' || backendName === 'opencode') ? backendName : 'opencode';
+  const cfg = loadConfig();
+
+  const rawArg = (typeof variantOrModelName === 'string' && variantOrModelName.trim())
+    ? variantOrModelName.trim()
+    : null;
+
+  let target = rawArg;
+  if (!target) {
+    target = (typeof cfg.variant === 'string' && cfg.variant.trim())
+      ? cfg.variant.trim()
+      : 'high';
+  }
+
+  const cleanTarget = target.toLowerCase();
+  const isValidVariant = VALID_VARIANTS.includes(cleanTarget);
+
+  // Bukan variant → explicit model override name.
+  if (!isValidVariant) {
+    return { model: target, variant: null, backend, thinking: 'off' };
+  }
+
+  const variantsCfg = cfg.variants && typeof cfg.variants === 'object' ? cfg.variants : {};
+  const backendOverride =
+    variantsCfg[backend] && typeof variantsCfg[backend] === 'object'
+      ? variantsCfg[backend][cleanTarget]
+      : undefined;
+  const flatOverride = variantsCfg[cleanTarget];
+
+  const customModel = (typeof backendOverride === 'string' && backendOverride.trim())
+    ? backendOverride.trim()
+    : (typeof flatOverride === 'string' && flatOverride.trim())
+      ? flatOverride.trim()
+      : null;
+
+  const model = customModel || MODELS_JSON.backends[backend][cleanTarget] || null;
+
+  return { model, variant: cleanTarget, backend, thinking: THINKING_MAP[cleanTarget] };
+}
+
+module.exports = {
+  loadConfig,
+  saveConfig,
+  getConfig,
+  setConfig,
+  resolveModel,
+  DEFAULT_VARIANTS,
+  resolveVariantModel,
+  resolveBackendVariantModel,
+  VALID_VARIANTS,
+  THINKING_MAP,
+};

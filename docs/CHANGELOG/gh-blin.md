@@ -7,6 +7,40 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.0.3] - 2026-08-02
+
+### Added
+- **5 Reasoning Effort Variant Flags** (`--high`, `--medium`, `--low`, `--auto`, `--none`):
+  - Nested backend mapping default di `utils/models.json` (`models.backends[backend][variant]`) untuk dua backend: `opencode` dan `omp`.
+  - Backend-aware resolver `resolveBackendVariantModel(backendName, variantOrModelName, cliOptions)` di `utils/config.js`:
+    - Valid variant: `high` | `medium` | `low` | `auto` | `none`; fallback ke `config.variant`, default `high`.
+    - Resolusi model: explicit model override → custom config (`variants[backend][variant]` / `variants[variant]`) → default `models.json`.
+    - Return structured `{ model, variant, backend, thinking }` (mapping thinking: `high`/`medium`/`low`/`auto` → diri sendiri, `none` → `off`).
+- **Integrasi 3 Huruf Sakti `omp`** (prompt optimizer) sebagai backend:
+  - Runner `callOmp(prompt, options)` di `utils/ai.js` via `spawnSync('omp', ['-p', prompt, '--no-session', '--hide-thinking', ...])` (opsional `--model=...` & `--thinking=...`).
+  - `callLLM()` kini berpijak pada **Strategy 0: `omp`** bila `useOmp` / `backend === 'omp'`, lalu fallback ke `opencode` (Strategy 1) → `curl` (Strategy 2).
+  - `generateReview()` meresolve backend via `resolveBackendVariantModel()` dan meneruskan `useOmp`/`backend`/`model`/`thinking`.
+- **Subcommand `pr review` — magic `omp` CLI**:
+  - `gh-blin pr review <number> omp` → deteksi argumen posisional terakhir `omp`, di-`pop`, set `useOmp` / `backend = 'omp'`.
+  - Flag variabel `--auto` (variant `auto`) & `--none` (variant `none`) didukung di `runCli()` (`index.js`).
+  - `autoReviewAll()` meneruskan `model`, `variant`, `useOmp`, `backend` ke tiap `reviewPR()`.
+
+---
+
+## [0.0.3] - 2026-08-02
+
+### Added
+- **Backend `omp` Integration (Magic 3-Letter Syntax)**: Eksekusi AI review via runner `omp` (`omp -p ... --no-session --hide-thinking`) hanya dengan menambahkan kata `omp` di ujung perintah CLI (`gh-blin pr review <number> omp`). Sifatnya *stateless & ephemeral* (0 file sampah session tersimpan di disk).
+- **5 Reasoning Effort / Variant Presets**: Dukungan 5 tingkat reasoning effort pada `gh-blin` dan `omp`: `--high` (`claude-3-5-sonnet` / `high`), `--medium` (`gemini-3.5-flash` / `medium`), `--low` (`gemini-2.5-flash` / `low`), `--eff-auto` / `--variant auto` (`gemini-2.0-flash` / `auto`), dan `--none` (`deepseek-chat` / `off` / non-reasoning instan).
+- **Nested Backend Model Mapping (`utils/models.json`)**: Single source of truth yang memetakan model default dan variant presets secara terpisah antara backend `opencode` dan backend `omp`.
+
+### Fixed
+- **CLI Flag Collision Fix**: Memisahkan makna flag `--auto` (khusus batch review seluruh PRs) dari variant effort `auto` (`--eff-auto` / `--variant auto`) untuk menghindari tabrakan logika.
+- **Error Context Preservation**: Tangkap `stderr` & error status dari `omp` (`callOmp`) agar tidak gagal diam-diam (*silent null return*).
+- **Subprocess Cache**: Penambahan in-memory cache pada `hasCmd()` per-process lifetime untuk mencegah puluhan subprocess `--version` tak perlu di batch mode.
+- **Precedence Warning**: Peringatan ramah di CLI jika flag `--model` dan `--variant` diset bersamaan, menjamin explicit `--model` selalu meng-override preset.
+- **Visual Box Alignment**: Pembungkusan `truncateVisual` pada footer terminal box `formatReview` agar lebar border kotak tetap persis 62 karakter secara konsisten meski nama model/variant sangat panjang.
+
 ## [0.0.2] - 2026-08-01
 
 ### Added
