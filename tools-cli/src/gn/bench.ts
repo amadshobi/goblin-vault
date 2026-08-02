@@ -46,6 +46,10 @@ interface ModelItem {
   name: string;
   id: string;
   provider: string;
+  rawId?: string;
+  customEndpoint?: string;
+  customApiKey?: string;
+  apiType?: string;
 }
 
 interface AvailableModel {
@@ -113,32 +117,92 @@ function saveCache(act: string, tgt: string, available: AvailableModel[]) {
 async function getModels(targetFilter: string): Promise<ModelItem[]> {
   let allModels: ModelItem[] = [];
 
-  if (targetFilter === "config" || targetFilter === "cfg") {
-    const configPath = `${process.env.HOME}/.config/opencode/opencode.jsonc`;
-    if (fs.existsSync(configPath)) {
+  const configPath = `${process.env.HOME}/.config/opencode/opencode.jsonc`;
+  if (fs.existsSync(configPath)) {
+    try {
       const raw = fs.readFileSync(configPath, "utf8").replace(/^\s*\/\/.*/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
       const json = JSON.parse(raw);
-      const modelsObj = json.provider?.["goblin-nexus"]?.models || {};
-      allModels = Object.entries(modelsObj).map(([key, val]: [string, any]) => ({
-        name: val.name || key,
-        id: val.id,
-        provider: val.id.split("/")[0] || "goblin-nexus",
-      }));
-    }
-  } else {
+      const providersObj = json.provider || {};
+      for (const [pKey, pVal] of Object.entries(providersObj) as [string, any][]) {
+        if (pKey === "goblin-nexus") {
+          const modelsObj = pVal?.models || {};
+          for (const [key, val] of Object.entries(modelsObj) as [string, any][]) {
+            const fullId = val.id || key;
+            const provName = fullId.includes("/") ? fullId.split("/")[0] : "goblin-nexus";
+            allModels.push({
+              name: val.name || key,
+              id: fullId,
+              provider: provName,
+            });
+          }
+        } else if (pVal && typeof pVal === "object" && pVal.models) {
+          const baseURL = pVal.options?.baseURL;
+          const apiKey = pVal.options?.apiKey;
+          for (const [mKey, mVal] of Object.entries(pVal.models) as [string, any][]) {
+            const realId = mVal.id || mKey;
+            const fullId = `${pKey}/${realId}`;
+            allModels.push({
+              name: mVal.name || realId,
+              id: fullId,
+              rawId: realId,
+              provider: pKey,
+              customEndpoint: baseURL,
+              customApiKey: apiKey,
+              apiType: "openai-completions",
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  const modelsYmlPath = `${process.env.HOME}/.omp/agent/models.yml`;
+  if (fs.existsSync(modelsYmlPath)) {
+    try {
+      const content = fs.readFileSync(modelsYmlPath, "utf8");
+      const providerBlocks = content.matchAll(/([a-zA-Z0-9_-]+):\s*\n\s+name:\s*"([^"]+)"[\s\S]*?baseUrl:\s*"([^"]+)"[\s\S]*?apiKey:\s*"([^"]+)"[\s\S]*?api:\s*"([^"]+)"[\s\S]*?models:\s*\n([\s\S]*?)(?=\n\S|\n$)/g);
+      for (const match of providerBlocks) {
+        const pKey = match[1];
+        const baseUrl = match[3];
+        const apiKey = match[4];
+        const apiType = match[5];
+        const modelsSection = match[6];
+        const modelMatches = modelsSection.matchAll(/-\s+id:\s*"([^"]+)"/g);
+        for (const mMatch of modelMatches) {
+          const realId = mMatch[1];
+          const fullId = `${pKey}/${realId}`;
+          if (!allModels.some((m) => m.id === fullId)) {
+            allModels.push({
+              name: realId,
+              id: fullId,
+              rawId: realId,
+              provider: pKey,
+              customEndpoint: baseUrl,
+              customApiKey: apiKey,
+              apiType: apiType,
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (targetFilter !== "config" && targetFilter !== "cfg") {
     try {
       const res = await fetch(gatewayUrl("/models"));
       if (res.ok) {
         const data = (await res.json()) as { data?: Array<{ id: string }> };
-        allModels = (data.data || []).map((m) => ({
-          name: m.id.split("/").pop() || m.id,
-          id: m.id,
-          provider: m.id.split("/")[0] || "gateway",
-        }));
+        for (const m of data.data || []) {
+          if (!allModels.some((item) => item.id === m.id)) {
+            allModels.push({
+              name: m.id.split("/").pop() || m.id,
+              id: m.id,
+              provider: m.id.split("/")[0] || "gateway",
+            });
+          }
+        }
       }
-    } catch (e: any) {
-      console.log(`❌ Failed to connect to Gateway proxy (${GATEWAY_BASE_URL}): ${e.message}`);
-    }
+    } catch (e: any) {}
   }
 
   if (targetFilter && targetFilter !== "config" && targetFilter !== "cfg" && targetFilter !== "all") {
@@ -194,6 +258,91 @@ function writeSelectFile(available: AvailableModel[]) {
   fs.writeFileSync(filePath, JSON.stringify(available, null, 2));
 }
 
+async function safeFetch(urlStr: string, options: any) {
+  if (urlStr.includes("api.p0.systems")) {
+    const https = require("https");
+    const url = new URL(urlStr);
+    return new Promise<Response>((resolve, reject) => {
+      const req = https.request({
+        hostname: url.hostname,
+        port: 443,
+        path: url.pathname + url.search,
+        method: options.method || "POST",
+        family: 4,
+        headers: options.headers,
+      }, (res: any) => {
+        let chunks: any[] = [];
+        res.on("data", (c: any) => chunks.push(c));
+        res.on("end", () => {
+          const buf = Buffer.concat(chunks);
+          const r = new Response(buf, {
+            status: res.statusCode,
+            headers: res.headers,
+          });
+          resolve(r);
+        });
+      });
+      req.on("error", reject);
+      if (options.signal) {
+        options.signal.addEventListener("abort", () => {
+          req.destroy(new Error("TimeoutError"));
+        });
+      }
+      if (options.body) req.write(options.body);
+      req.end();
+    });
+  }
+  return await fetch(urlStr, options);
+}
+
+async function executeModelRequest(m: ModelItem, prompt: string, maxTokens: number, timeoutMs: number) {
+  const ctrl = new AbortController();
+  const timeoutId = setTimeout(() => ctrl.abort(), timeoutMs);
+
+  let url = gatewayUrl("/chat/completions");
+  let headers: Record<string, string> = { "Content-Type": "application/json", Authorization: "Bearer dummy" };
+  let body: any = {
+    model: m.id,
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: maxTokens,
+  };
+
+  if (m.customEndpoint && m.customApiKey) {
+    const cleanBase = m.customEndpoint.replace(/\/+$/, "");
+    if (m.apiType === "openai-responses") {
+      url = `${cleanBase}/responses`;
+      headers = { "Content-Type": "application/json", Authorization: `Bearer ${m.customApiKey}` };
+      body = {
+        model: m.rawId || m.id,
+        input: [{ role: "user", content: [{ type: "input_text", text: prompt }] }],
+        max_output_tokens: maxTokens,
+      };
+    } else {
+      url = cleanBase.endsWith("/v1") ? `${cleanBase}/chat/completions` : `${cleanBase}/v1/chat/completions`;
+      headers = { "Content-Type": "application/json", Authorization: `Bearer ${m.customApiKey}` };
+      body = {
+        model: m.rawId || m.id,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: maxTokens,
+      };
+    }
+  }
+
+  try {
+    const res = await safeFetch(url, {
+      method: "POST",
+      headers,
+      signal: ctrl.signal,
+      body: JSON.stringify(body),
+    });
+    clearTimeout(timeoutId);
+    return res;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
 async function runPing(models: ModelItem[], act: string, tgt: string) {
   const cached = loadCache(act, tgt);
   if (cached) {
@@ -222,19 +371,7 @@ async function runPing(models: ModelItem[], act: string, tgt: string) {
 
     const start = Date.now();
     try {
-      const ctrl = new AbortController();
-      const timeoutId = setTimeout(() => ctrl.abort(), PING_TIMEOUT_MS);
-      const res = await fetch(gatewayUrl("/chat/completions"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer dummy" },
-        signal: ctrl.signal,
-        body: JSON.stringify({
-          model: m.id,
-          messages: [{ role: "user", content: "ping" }],
-          max_tokens: 5,
-        }),
-      });
-      clearTimeout(timeoutId);
+      const res = await executeModelRequest(m, "ping", 5, PING_TIMEOUT_MS);
       const elapsed = Date.now() - start;
       if (isTTY && timer) { clearInterval(timer); process.stdout.write("\r\x1b[K"); }
 
@@ -253,7 +390,7 @@ async function runPing(models: ModelItem[], act: string, tgt: string) {
       if (isTimeout) {
         console.log(`  ⏱️  [TIMEOUT]  ${m.id.padEnd(41)}  ░░░░░░░░░░░░  >${PING_TIMEOUT_MS / 1000}s`);
       } else {
-        console.log(`  💥 [OFFLINE]  ${m.id.padEnd(41)}  ░░░░░░░░░░░░  Gateway Down`);
+        console.log(`  💥 [OFFLINE]  ${m.id.padEnd(41)}  ░░░░░░░░░░░░  ${e.message || "Gateway Down"}`);
       }
     }
   }
@@ -291,19 +428,7 @@ async function runBench(models: ModelItem[], act: string, tgt: string) {
 
     const start = Date.now();
     try {
-      const ctrl = new AbortController();
-      const timeoutId = setTimeout(() => ctrl.abort(), BENCH_TIMEOUT_MS);
-      const res = await fetch(gatewayUrl("/chat/completions"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer dummy" },
-        signal: ctrl.signal,
-        body: JSON.stringify({
-          model: m.id,
-          messages: [{ role: "user", content: BENCH_PROMPT }],
-          max_tokens: 150,
-        }),
-      });
-      clearTimeout(timeoutId);
+      const res = await executeModelRequest(m, BENCH_PROMPT, 150, BENCH_TIMEOUT_MS);
       const elapsed = Date.now() - start;
       if (isTTY && timer) { clearInterval(timer); process.stdout.write("\r\x1b[K"); }
 

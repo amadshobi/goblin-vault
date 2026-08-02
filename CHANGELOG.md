@@ -17,6 +17,7 @@
 ## [Unreleased]
 
 ### Added
+- **`gn` Custom Provider Sync & Network Fallback**: `gn export` mendukung ekspor provider custom dari `models.yml` (seperti `peezy`), dan `gn ping`/`gn bench` mendukung auto-discovery provider custom + IPv4 connection fallback. → [detail](docs/CHANGELOG/gn.md)
 - **Changelog Guardrail di Pre-Commit Checker (`scripts/check_syntax.sh`)**: Sistem deteksi otomatis yang memperingatkan developer jika ada perubahan kode source di `tools-cli/src/` tetapi lupa menyertakan update changelog. → [detail](docs/CHANGELOG/gh-blin.md)
 
 ## [v0.3.21] - 2026-08-01
