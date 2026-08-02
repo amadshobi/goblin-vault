@@ -47,7 +47,7 @@ fi
 
 # 1. Health Audit (Blocking)
 echo "🔍 Running pre-release fast health audit..."
-if [ "$TARGET" = "vault" ] || [ "$TARGET" = "all" ]; then
+if [[ "${TARGET:-}" == "vault" || "${TARGET:-}" == "all" ]]; then
     bash "$VAULT_DIR/scripts/check_syntax.sh" --full
 else
     bash "$VAULT_DIR/scripts/check_syntax.sh" --staged
