@@ -14,9 +14,9 @@
 
 ---
 
-## [v0.3.23] - 2026-08-02
+## [Unreleased]
 
-## [v0.3.22] - 2026-08-02
+## [v0.3.23] - 2026-08-02
 
 ### Added
 - **`gh-blin` v1.1.1 (Magic `omp` Runner, `@file` Stdin Pipe, & 5 Reasoning Effort Variants)**: Integrasi backend `omp` (`--no-session`) via 3 huruf sakti `omp` di CLI, dukungan 5 reasoning effort variants (`high`, `medium`, `low`, `auto`, `none`), handling prompt `@file` untuk menghapus `E2BIG` limit, serta nested backend model mapping (`utils/models.json`). → [detail](docs/CHANGELOG/gh-blin.md)
@@ -25,6 +25,11 @@
 
 ### Fixed
 - **`gh-blin` Flag Collision & Quality Patches**: Pemisahan flag `--auto` (batch) dari variant `auto` (`--eff-auto`), preservasi error context `callOmp`, caching `hasCmd` subprocess, warning precedence `--model` vs `--variant`, penanganan prompt besar via stdin pipe, dan visual box truncation footer terminal. → [detail](docs/CHANGELOG/gh-blin.md)
+- **Automated Release Engine (`scripts/release.sh`)**: Perbaikan skrip rilis otomatis agar men-substitusi header `## [Unreleased]` paling atas di `CHANGELOG.md` dan memicu `--full` syntax check saat rilis vault. → [detail](docs/CHANGELOG/gh-blin.md)
+
+## [v0.3.22] - 2026-08-02
+
+- **`gh-blin` Automated AI PR Review Subsystem & Security Hardening**: Patch rilis awal untuk integrasi sub-system review, `spawnSync` array argv injection proofing, dan atomic review logging. → [detail](docs/CHANGELOG/gh-blin.md)
 
 ## [v0.3.21] - 2026-08-01
 
