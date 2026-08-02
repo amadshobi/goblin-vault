@@ -117,6 +117,36 @@ fi
 
 echo "────────────────────────────────────────"
 
+# 3. Check Changelog Guardrail (Staged Mode Only)
+if ! $FULL_REPO; then
+    echo "📜 Checking Changelog Guardrail..."
+    staged_tools=$(git diff --cached --name-only 2>/dev/null | grep -E "^tools-cli/src/" | cut -d'/' -f3 | sort -u || true)
+    if [ -n "$staged_tools" ]; then
+        missing_changelogs=""
+        staged_all_changelogs=$(git diff --cached --name-only 2>/dev/null || true)
+        
+        while IFS= read -r tool; do
+            if [ -n "$tool" ]; then
+                modular_cl="docs/CHANGELOG/${tool}.md"
+                if ! echo "$staged_all_changelogs" | grep -qE "(${modular_cl}|CHANGELOG\.md)"; then
+                    missing_changelogs="${missing_changelogs} ${tool}"
+                fi
+            fi
+        done <<< "$staged_tools"
+
+        if [ -n "$missing_changelogs" ]; then
+            echo "   ⚠️  GOBLIN GUARDRAIL WARNING:"
+            echo "      BOSS ngubah source code tool:${missing_changelogs} tapi belum ng-stage update changelog-nya!"
+            echo "      Tolong update \`docs/CHANGELOG/<tool>.md\` atau \`CHANGELOG.md\` biar riwayat tidak kelupaan! 📝🔥"
+        else
+            echo "   ✅ Changelog per-tool updated & staged."
+        fi
+    else
+        echo "   ℹ️  No source code changes requiring changelog update."
+    fi
+    echo "────────────────────────────────────────"
+fi
+
 if [[ $errors -eq 0 ]]; then
     echo "🎉 Hore BOSS! Semua syntax valid! 🍻"
     exit 0

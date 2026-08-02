@@ -14,6 +14,16 @@
 
 ---
 
+## [Unreleased]
+
+### Added
+- **`gh-blin` v1.1.1 (Magic `omp` Runner & 5 Reasoning Effort Variants)**: Integrasi backend `omp` (`--no-session`) via 3 huruf sakti `omp` di CLI, dukungan 5 reasoning effort variants (`high`, `medium`, `low`, `auto`, `none`), serta nested backend model mapping (`utils/models.json`). → [detail](docs/CHANGELOG/gh-blin.md)
+- **`gn` Custom Provider Sync & Network Fallback**: `gn export` mendukung ekspor provider custom dari `models.yml` (seperti `peezy`), dan `gn ping`/`gn bench` mendukung auto-discovery provider custom + IPv4 connection fallback. → [detail](docs/CHANGELOG/gn.md)
+- **Changelog Guardrail Per-Tool (`scripts/check_syntax.sh`)**: Sistem pre-commit checker otomatis yang memperingatkan jika ada perubahan source code tool di `tools-cli/src/` tetapi belum ng-stage changelog per-tool (`docs/CHANGELOG/<tool>.md`) atau master `CHANGELOG.md`. → [detail](docs/CHANGELOG/gh-blin.md)
+
+### Fixed
+- **`gh-blin` Flag Collision & Quality Patches**: Pemisahan flag `--auto` (batch) dari variant `auto` (`--eff-auto`), preservasi error context `callOmp`, caching `hasCmd` subprocess, warning precedence `--model` vs `--variant`, dan visual box truncation footer terminal. → [detail](docs/CHANGELOG/gh-blin.md)
+
 ## [v0.3.21] - 2026-08-01
 
 - **`gh-blin` Automated AI PR Review Subsystem (v1.1.0)**: Peluncuran subcommand `gh-blin pr review <number>` & batch scheduled `--auto` / `--all`, penayangan review terminal box, dan dukungan `--publish` komentar resmi GitHub PR. → [detail](docs/CHANGELOG/gh-blin.md)

@@ -11,7 +11,7 @@
  *   > null (provider default).
  */
 const { spawnSync } = require('child_process');
-const { resolveModel, resolveVariantModel } = require('./config');
+const { resolveModel, resolveVariantModel, resolveBackendVariantModel } = require('./config');
 
 /**
  * Build a review prompt for the LLM from PR data + diff.
@@ -74,6 +74,18 @@ function callLLM(prompt, options = {}) {
   }
 
   let lastError = null;
+
+  // Strategy 0: `omp` (prompt optimizer) — dipakai sebagai backend utama kalau
+  // diminta via `useOmp: true` atau `backend === 'omp'`.
+  const wantsOmp = options.useOmp === true || options.backend === 'omp';
+  if (wantsOmp && hasCmd('omp')) {
+    try {
+      const r = callOmp(prompt, options);
+      if (r) return r;
+    } catch (err) {
+      lastError = err.message;
+    }
+  }
 
   // Strategy 1: opencode CLI (spawnSync -> array argv, bebas masalah shell quoting).
   // Model memakai konfigurasi opencode sendiri; field `model` tetap di-return
@@ -168,6 +180,52 @@ function callOpenAIViaCurl(prompt, modelOverride) {
 }
 
 /**
+ * Runner untuk CLI `omp` (prompt optimizer) sebagai Strategy 0.
+ *
+ * Argumen dibangun sebagai array argv (spawnSync) untuk menghindari masalah
+ * shell quoting. `maxBuffer` & `timeout` diset cukup besar untuk diff besar.
+ *
+ * @param {string} prompt
+ * @param {object} [options]
+ * @param {string} [options.model] - Model override (jika diset → `--model=...`).
+ * @param {string} [options.thinking] - Nilai thinking (jika diset → `--thinking=...`).
+ * @returns {{ text: string, backend: string, model: string|null }|null} Hasil, atau null kalau gagal.
+ */
+// Nilai `--thinking` yang didukung CLI `omp`. Hanya nilai valid yang dikirim.
+const OMP_THINKING_VALUES = new Set(['high', 'medium', 'low', 'auto', 'off']);
+
+function callOmp(prompt, options = {}) {
+  const args = ['-p', prompt, '--no-session', '--hide-thinking'];
+  if (options.model) args.push(`--model=${options.model}`);
+  // Aman untuk semua nilai reasoning effort; nilai tak dikenal diabaikan
+  // daripada dikirim mentah ke subprocess.
+  if (options.thinking && OMP_THINKING_VALUES.has(options.thinking)) {
+    args.push(`--thinking=${options.thinking}`);
+  }
+
+  const r = spawnSync('omp', args, {
+    encoding: 'utf8',
+    maxBuffer: 50 * 1024 * 1024,
+    timeout: 120000,
+  });
+
+  if (r.status === 0 && r.stdout && r.stdout.trim()) {
+    return { text: r.stdout.trim(), backend: 'omp', model: options.model || null };
+  }
+
+  // Gagal: bungkus detail error (spawn / exit status / stdout kosong) supaya
+  // Strategy 1/2 di callLLM tahu penyebab kegagalan omp secara transparan.
+  if (r.error) {
+    throw new Error(`omp spawn error: ${r.error.message}`);
+  }
+  if (r.status !== 0) {
+    const first = r.stderr?.trim()?.split('\n')[0] || r.stdout?.trim()?.split('\n')[0] || 'unknown error';
+    throw new Error(`omp exit ${r.status}: ${first}`);
+  }
+  throw new Error('omp exit 0 tapi menghasilkan stdout kosong');
+}
+
+/**
  * Generate a review for a PR. Model & variant di-resolve via hierarki config
  * (utils/config.js `resolveVariantModel`). Menghitung estimasi token prompt,
  * completion, dan total untuk logging/pemantauan.
@@ -176,13 +234,26 @@ function callOpenAIViaCurl(prompt, modelOverride) {
  * @param {object} [options]
  * @param {string} [options.model] - Nilai dari CLI flag `--model`.
  * @param {string} [options.variant] - Nilai dari CLI flag `--variant`, `--high`, `--medium`, atau `--low`.
+ * @param {boolean} [options.useOmp] - True kalau user memilih backend omp.
+ * @param {string} [options.backend] - Nama backend eksplisit ('opencode'|'omp').
  * @returns {{ review: string, prompt: string, model: string|null, variant: string|null, backend: string,
- *            tokens: { prompt: number, completion: number, total: number } }}
+ *            thinking: string, tokens: { prompt: number, completion: number, total: number } }}
  */
 function generateReview(prData, diff, options = {}) {
-  const { model, variant } = resolveVariantModel(options.variant || options.model, options);
+  const requestedBackend = options.useOmp === true ? 'omp' : (options.backend || 'opencode');
+  // Explicit `--model` SELALU meng-override preset variant model. Baru jika
+  // model tidak diset, fallback ke variant (`options.variant`), lalu config.
+  const resolved = resolveBackendVariantModel(requestedBackend, options.model || options.variant, options);
+  const { model, variant, backend, thinking } = resolved;
+
   const prompt = buildReviewPrompt(prData, diff);
-  const { text, backend } = callLLM(prompt, { model });
+  const { text, backend: usedBackend } = callLLM(prompt, {
+    useOmp: backend === 'omp',
+    backend,
+    model,
+    thinking,
+  });
+
   const review = stripAnsi(text);
   const promptTokens = estimateTokens(prompt);
   const completionTokens = estimateTokens(review);
@@ -191,7 +262,8 @@ function generateReview(prData, diff, options = {}) {
     prompt,
     model,
     variant,
-    backend,
+    backend: usedBackend,
+    thinking,
     tokens: {
       prompt: promptTokens,
       completion: completionTokens,
@@ -200,16 +272,34 @@ function generateReview(prData, diff, options = {}) {
   };
 }
 
+/**
+ * Cache in-memory per-process lifetime: hasil pengecekan kehadiran command
+ * di-cache supaya spawnSync ['--version'] hanya jalan 1x per command per CLI.
+ * Menghemat puluhan subprocess di batch mode (batch review / auto).
+ */
+const cmdCache = {};
+
+/**
+ * Cek apakah command tersedia di PATH. Hasil di-cache per-process.
+ * @param {string} cmd - Nama command.
+ * @returns {boolean} true kalau tersedia.
+ */
 function hasCmd(cmd) {
-  try {
-    return spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
-  } catch (_) {
-    return false;
+  if (Object.prototype.hasOwnProperty.call(cmdCache, cmd)) {
+    return cmdCache[cmd];
   }
+  let ok = false;
+  try {
+    ok = spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
+  } catch (_) {
+    ok = false;
+  }
+  cmdCache[cmd] = ok;
+  return ok;
 }
 
 function stripAnsi(str) {
   return String(str).replace(/\x1b\[[0-9;]*m/g, '');
 }
 
-module.exports = { buildReviewPrompt, estimateTokens, generateReview };
+module.exports = { buildReviewPrompt, estimateTokens, callOmp, callLLM, generateReview };

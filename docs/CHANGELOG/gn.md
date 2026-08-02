@@ -10,6 +10,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **`gn export / e` Multi-Source Credential Sync**: Ekspor credential `gn e` ditingkatkan — selain membaca SQLite database `agent.db`, ia kini otomatis menscan dan meng-export custom providers dari `~/.omp/agent/models.yml` (misal provider `peezy`) langsung ke `~/.shell/secret/<provider>/models_yml.json`.
+- **`gn ping / p` & `gn bench / b` Custom Provider Support & Network Fallback**:
+  - **Auto-Discovery Custom Models**: Mengenali model dari `~/.config/opencode/opencode.jsonc` dan `~/.omp/agent/models.yml` (misal `peezy/deepseek-v4-flash-0731`).
+  - **Protokol `openai-responses` Support**: Otomatis me-route payload ping/bench sesuai tipe API (`openai-responses` `/v1/responses` vs standard `openai-completions` `/v1/chat/completions`).
+  - **IPv4 Connection Fallback**: Node/Bun `family: 4` socket fallback untuk melewati kendala IPv6 `ENETUNREACH` / `ETIMEDOUT` pada gateway eksternal (seperti Peezy Gateway `api.p0.systems`).
 - **Auto Telemetry Logger di Goblin Shield** (`shield-interceptor.ts`): Setiap request LLM yang melewati interceptor (port 4002 → 4000) otomatis dicatat ke `telemetry.db`.
   - Extract `usage` dari response JSON (`prompt_tokens`, `completion_tokens`, `cache_tokens`) — support OpenAI `/v1/chat/completions` dan Anthropic `/v1/messages`.
   - Hitung `cost_usd` real-time via pricing engine (`calculateCost` dari `pricing.ts`).

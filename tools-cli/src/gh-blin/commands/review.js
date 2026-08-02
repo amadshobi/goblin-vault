@@ -170,7 +170,15 @@ async function autoReviewAll(options = {}) {
       summary.skipped.push(pr.number);
       continue;
     }
-    const res = await reviewPR(pr.number, { repo, publish: options.publish, force: options.force });
+    const res = await reviewPR(pr.number, {
+      repo,
+      publish: options.publish,
+      force: options.force,
+      model: options.model,
+      variant: options.variant,
+      useOmp: options.useOmp,
+      backend: options.backend,
+    });
     if (res.ok && !res.skipped) {
       summary.reviewed.push(pr.number);
       if (res.publishError) summary.publishFailed.push({ number: pr.number, error: res.publishError });

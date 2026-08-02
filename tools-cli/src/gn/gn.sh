@@ -197,37 +197,54 @@ case "${1:-}" in
         fi
         bun "$GN_DIR/price.ts" "$@"
         ;;
-    export|e)
-        _gn_header "DYNAMIC CREDENTIAL EXPORT"
-        _gn_info "Exporting active credentials from SQLite DB to $SECRET_DIR..."
-        bun -e '
-          const sqlite3 = require("bun:sqlite");
-          const fs = require("fs");
-          const path = require("path");
-          const dbPath = process.env.HOME + "/.omp/agent/agent.db";
-          if (!fs.existsSync(dbPath)) {
-            console.error("❌ Database agent.db tidak ditemukan!");
-            process.exit(1);
-          }
-          const db = new sqlite3.Database(dbPath);
-          const rows = db.query("SELECT * FROM auth_credentials;").all();
-          const baseSecretDir = process.env.HOME + "/.shell/secret";
-          rows.forEach(r => {
-            const provider = r.provider || "unknown";
-            const targetDir = path.join(baseSecretDir, provider);
-            if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-            let parsed = {};
-            try { parsed = JSON.parse(r.data); } catch (e) { parsed = { raw: r.data }; }
-            const identifier = parsed.email || parsed.username || (parsed.access ? parsed.access.slice(0, 12) : null) || "id-" + r.id;
-            const cleanId = String(identifier).replace(/[^a-zA-Z0-9_-]/g, "_");
-            const filename = cleanId + ".json";
-            const filePath = path.join(targetDir, filename);
-            const payload = { provider, id: r.id, ...parsed };
-            fs.writeFileSync(filePath, JSON.stringify(payload, null, 2));
-            console.log("✅ [" + provider + "] Exported -> " + filePath);
-          });
-        ' || _gn_roast_err "Gagal meng-export credential!"
-        ;;
+     export|e)
+         _gn_header "DYNAMIC CREDENTIAL EXPORT"
+         _gn_info "Exporting active credentials from SQLite DB & models.yml to $SECRET_DIR..."
+         bun -e '
+           const sqlite3 = require("bun:sqlite");
+           const fs = require("fs");
+           const path = require("path");
+           const baseSecretDir = process.env.HOME + "/.shell/secret";
+           const dbPath = process.env.HOME + "/.omp/agent/agent.db";
+
+           if (fs.existsSync(dbPath)) {
+             const db = new sqlite3.Database(dbPath);
+             const rows = db.query("SELECT * FROM auth_credentials;").all();
+             rows.forEach(r => {
+               const provider = r.provider || "unknown";
+               const targetDir = path.join(baseSecretDir, provider);
+               if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+               let parsed = {};
+               try { parsed = JSON.parse(r.data); } catch (e) { parsed = { raw: r.data }; }
+               const identifier = parsed.email || parsed.username || (parsed.access ? parsed.access.slice(0, 12) : null) || "id-" + r.id;
+               const cleanId = String(identifier).replace(/[^a-zA-Z0-9_-]/g, "_");
+               const filename = cleanId + ".json";
+               const filePath = path.join(targetDir, filename);
+               const payload = { provider, id: r.id, ...parsed };
+               fs.writeFileSync(filePath, JSON.stringify(payload, null, 2));
+               console.log("✅ [" + provider + "] Exported -> " + filePath);
+             });
+           }
+
+           const modelsYmlPath = process.env.HOME + "/.omp/agent/models.yml";
+           if (fs.existsSync(modelsYmlPath)) {
+             const content = fs.readFileSync(modelsYmlPath, "utf8");
+             const providerMatches = content.matchAll(/([a-zA-Z0-9_-]+):\s*\n\s+name:\s*"([^"]+)"[\s\S]*?baseUrl:\s*"([^"]+)"[\s\S]*?apiKey:\s*"([^"]+)"/g);
+             for (const match of providerMatches) {
+               const provider = match[1];
+               const name = match[2];
+               const baseUrl = match[3];
+               const apiKey = match[4];
+               const targetDir = path.join(baseSecretDir, provider);
+               if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+               const filePath = path.join(targetDir, "models_yml.json");
+               const payload = { provider, name, baseUrl, apiKey, source: "models.yml" };
+               fs.writeFileSync(filePath, JSON.stringify(payload, null, 2));
+               console.log("✅ [" + provider + "] (models.yml) Exported -> " + filePath);
+             }
+           }
+         ' || _gn_roast_err "Gagal meng-export credential!"
+         ;;
     restart|r)
         echo "🔄 [Goblin Nexus] Restarting OMP Proxy services..."
         systemctl --user restart omp-broker.service omp-gateway.service
