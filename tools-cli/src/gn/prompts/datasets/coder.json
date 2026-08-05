@@ -1,8 +1,0 @@
-[
-  {
-    "id": "lru_cache",
-    "prompt": "Implement a thread-safe LRU Cache with capacity limit, get(key), and put(key, value) operations. Include time/space complexity analysis in comments.",
-    "must_include": ["capacity", "get", "put", "complexity"],
-    "code_required": true
-  }
-]

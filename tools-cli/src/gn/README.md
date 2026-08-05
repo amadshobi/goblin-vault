@@ -12,6 +12,7 @@
   <strong>Goblin Nexus CLI (Control Center Core)</strong>
   <br/><br/>
   <img src="https://img.shields.io/badge/Role-Control%20Plane-FF007F?style=for-the-badge&labelColor=1F2937" alt="Control Plane" />
+  <img src="https://img.shields.io/badge/Version-v1.0.0-blue.svg?style=for-the-badge&labelColor=1F2937" alt="Version" />
   <img src="https://img.shields.io/badge/Stack-Shell%20%7C%20TypeScript-3B82F6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=1F2937" alt="Stack" />
   <img src="https://img.shields.io/badge/Runtime-Bun-FFFDF5?style=for-the-badge&logo=bun&logoColor=black&labelColor=1F2937" alt="Bun" />
   <img src="https://img.shields.io/badge/Feature-AI%20Adapter%20Broker-A855F7?style=for-the-badge&labelColor=1F2937" alt="AI Broker" />
@@ -35,17 +36,13 @@
 
 ## 🚀 Fitur Utama & Subsystems
 
-1. **AI Adapter Broker & Benchmarking**:
-   - `ping` — Uji kesehatan konektivitas endpoint API penyedia AI.
-   - `bench` — Mengukur metrik performa: Time-To-First-Token (TTFT), token/detik, dan total latensi request.
-2. **Quota & Telemetry Cost Tracking**:
+1. **Quota & Telemetry Cost Tracking**:
    - `usage` — Dashboard real-time untuk penggunaan kuota, sisa balance, dan token burn rate.
    - `price` — Pricing engine dinamis untuk mengkalkulasi biaya per 1 juta token (input & output) per model secara granular.
-3. **Security & Credential Management**:
-   - `quarantine` — Sistem karantina otomatis untuk mengisolasi API key/credential yang terdeteksi exhausted atau zombie.
-   - `export` — Sinkronisasi dan ekspor credential aktif dari database SQLite terenkripsi ke file JSON di storage vault lokal.
-4. **Shield & Service Daemon Control**:
+2. **Shield & Service Daemon Control**:
    - `restart`, `logs`, dan `doctor` untuk mengaudit seluruh tumpukan systemd services (`omp-broker`, `omp-gateway`).
+
+> **Catatan:** Subcommand `ping`, `bench`, `quarantine`, dan `export` telah **didepresiasi** dan hanya menampilkan warning saat dipanggil. Gunakan REST API OMP langsung (`/healthz`, `/v1/chat/completions`, `/v1/credential/:id/disable`, `/v1/snapshot`) atau CLI `omp`/`ocm` sebagai gantinya.
 
 ---
 
@@ -61,30 +58,9 @@ Mengaktifkan format bantuan mendalam (menggunakan layout parser `help-formatter.
 
 ## 📋 Penggunaan & Contoh Perintah
 
-### Menguji Koneksi Model AI (Ping)
-```bash
-gn ping
-# atau target spesifik
-gn ping google-antigravity
-```
-
-### Melakukan Benchmark Output Token
-```bash
-gn bench --provider google-antigravity --tokens 200
-```
-
 ### Dashboard Penggunaan Token & Sisa Kredit
 ```bash
 gn usage
-```
-
-### Karantina Credential Zombie
-```bash
-# Lihat daftar credential yang dikarantina
-gn q list
-
-# Karantina API key Google
-gn q add google-antigravity
 ```
 
 ### Memeriksa Kesehatan Sistem (System Doctor Audit)
@@ -108,16 +84,11 @@ gn logs
 ```
 src/gn/
 ├── gn.sh               # Bash Router Command entry-point
-├── agent.sh            # OMP Agent control plane wrapper
 ├── shield.sh           # Shield daemon monitor system
 ├── doctor.sh           # Script diagnostic system dependency & database
-├── quarantine.sh       # Script management isolasi credential API
 ├── help-formatter.sh   # Bash helper untuk rendering Level 2 Help Manual
 ├── usage.ts            # Engine TypeScript untuk tracking cost & kuota
-├── bench.ts            # Engine benchmark model (TTFT, tok/s)
 ├── price.ts            # Engine kalkulasi & setting model pricing
-├── config.ts           # Loader konfigurasi global goblin nexus
-├── pool-manager.ts     # Resource pool manager untuk backend routing
 ├── storage/            # Folder persisten history eksekusi dan database
 └── prompts/            # Kumpulan instruksi template/dataset untuk AI benchmark
     ├── roles/          # Role definer (coder, bugfix, planning, dll)

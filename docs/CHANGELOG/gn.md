@@ -7,6 +7,26 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v1.0.0] - 2026-08-05
+
+### Added
+- **TypeScript Native CLI Engine Architecture (Standalone v1.0.0 Release)**: Port total core `gn` dari Shell Script raksasa menjadi aplikasi TypeScript modular berbasis Bun/Node runtime di `tools-cli/src/gn/src/`.
+- **Pure Terminal Formatter Utilities** (`utils/formatter.ts`):
+  - Rendering fungsi murni tanpa side-effects untuk banner ASCII ANSI, visual quota bar, status badge (`🟢 OK`/`🟡 WARN`/`🔴 ERROR`), date formatter, dan dynamic align table.
+  - Perbaikan `visibleWidth` vs `visibleLength` untuk menghitung visual character padding tabel TUI secara akurat meskipun mengandung warna ANSI dan emoji.
+  - Presisi 4 desimal token cost USD pada `formatCost()`.
+- **Multi-Runtime Launcher** (`tools-cli/bin/gn`): Peningkatan launcher wrapper dengan auto-fallback runtime (Bun → Node.js/tsx → Deno) dan fail-fast hint.
+
+### Changed
+- **CLI Subcommand Router Refactor** (`src/index.ts`):
+  - Penataan ulang entry point CLI dengan dual-level help system (`<tool> --help` & `<tool> <command> --help`).
+  - Penyelarasan versi global `GN_VERSION` menjadi `v0.3.26`.
+
+### Removed
+- **Legacy Shell & Bench Scripts Cleanup**:
+  - Dihapus: `quarantine.sh`, `config.ts`, `bench.ts`, `bench-roles.ts`, `bench-storage.ts`, `pool-manager.ts`, `agent.sh`, `picker.sh`, `price.ts`, dan `doctor.sh`.
+  - Pembersihan total sisa rujukan dead code `price` dan `doctor.sh` dari `help-formatter.sh` & `gn.sh`.
+
 ## [Unreleased]
 
 ### Added
@@ -37,10 +57,33 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **`gn usage / u` routing** (`gn.sh`): Delegate langsung ke `usage.ts` — hapus pipe `omp usage --json | status-formatter.ts` dan panggilan `burn.ts`.
 - **`help-formatter.sh`**: Level 2 help `usage` di-update — ganti `--history`/sparkline dengan `--token` mode, deskripsi dual-mode, visual indicators baru.
 - **`gn bench`** (`bench.ts`): Hapus dependensi `bench-roles.ts` untuk role specialization. Benchmark sekarang menggunakan generic prompt tanpa system prompt complex, tanpa hybrid scoring.
+- **`OmpQuotaAdapter` fresh-window filter** (`adapters/omp-quota.ts`): Query `fetchData()` rewrite total — hanya mengembalikan snapshot dari **batch polling terbaru broker** (baris dengan `recorded_at` dalam 1 jam terakhir dari `MAX(recorded_at)`), bukan `MAX(id) GROUP BY` polos yang sebelumnya menyedot snapshot stale dari akun lama (seperti `umumsriatmaja516@gmail.com`) dan weekly window yang broker sudah tidak refresh. Output `gn u` sekarang **identik dengan `omp usage` native**: tidak ada lagi baris 100% "expired" dari akun mati, tidak ada lagi weekly stale, tidak ada lagi github-copilot lama.
+  - SQL: CTE `max_ts` meng-anchor batch terbaru, `WHERE recorded_at >= ts - 3600000 AND id IN (SELECT MAX(id) ... GROUP BY provider, account_key, limit_id)`.
+  - Post-filter: drop baris dengan `resets_at < now - 3600000` (pengaman untuk baris yang lolos fresh-window tapi `resets_at` sudah lama lewat).
+  - Post-dedup: safety-belt per `(provider, email, label)` — cegah duplikat visual saat broker menulis `limit_id` berbeda untuk quota user-facing yang sama.
+  - Konstanta `FRESH_WINDOW_MS` (1 jam) di-export & `freshWindowMs` constructor param untuk testability.
+- **`ollama-me.ts` Single Source of Truth refactor**: Credential akun Ollama Cloud sekarang dibaca **langsung dari SQLite `~/.omp/agent/agent.db` (tabel `auth_credentials`, `provider = 'ollama-cloud'`)**, BUKAN lagi gabungan file vault `~/.shell/secret/ollama-cloud/*.json` + DB (yang sebelumnya menghasilkan 6 entry duplikat/stale: `id-5.json`, `id-6.json`, `id-7.json` mirror DB + 3 file `*_gmail_com.json` legacy). Hasilnya: `gn u` & `gn om` sekarang murni menampilkan **3 Akun Utama** (satu per row di DB, urut by `id ASC`).
+  - **Read-only via helper** `withDb()` / `getOmpAgentDb()` dari `utils/db.ts` (sesuai architect invariant). Tidak ada import langsung `bun:sqlite`.
+  - **Exact match** `provider = 'ollama-cloud'` (sebelumnya `LIKE '%ollama%'`) — false-proof untuk provider baru seperti `ollama-cloud-pro`.
+  - **Live HTTP fetch tetap aktif**: `POST ollama.com/api/me` (Bearer) untuk email/plan/id, `GET ollama.com/settings` (cookie) untuk session/weekly % jika cookie tersedia. Cache 15-menit tidak berubah.
+  - **Type import**: `OllamaAccountMeta` interface duplicate di-import dari `types.ts` (canonical) — bukan lagi deklarasi lokal.
+  - **Help text** `gn om --help` di-update: SUMBER DATA section & TROUBLESHOOTING merujuk ke `auth_credentials` (bukan lagi file vault). Empty-state message juga disesuaikan.
 
 ### Removed
 - **`burn.ts`** & **`status-formatter.ts`**: File dihapus dari direktori. Keduanya sudah digantikan sepenuhnya oleh `usage.ts` — tidak ada routing yang memanggilnya lagi.
 - **`assumedTotal 100k` matematika rekaan**: `burn.ts` sebelumnya menggunakan estimasi 100k token untuk menghitung cost — sekarang `usage.ts` hanya menampilkan data real dari SQLite atau jujur mengatakan "0 tokens burned".
+- **Pembersihan Bom Waktu & Redundansi**:
+  - **`quarantine.sh`** (575 LoC) — Manipulasi langsung SQLite `auth_credentials` (`DELETE FROM ...`) + rename file JSON credential. Penyebab DB state inconsistency & secret vault corrupt. Dihapus.
+  - **`config.ts`** (~270 LoC) — Parser JSONC manual berbasis regex yang rapuh; penyebab utama `MALFORMED FUNCTION ERROR` & config corruption. Dihapus.
+  - **Inline `gn export` SQL block** (~46 baris di `gn.sh`) — Direct `SELECT * FROM auth_credentials` + dump `apiKey` plaintext ke `~/.shell/secret/`. Dihapus.
+  - **`bench.ts`** (487 LoC) — Redundan dengan REST API OMP `POST /v1/chat/completions`. Dihapus.
+  - **`pool-manager.ts`** (385 LoC) — Redundan dengan OMP Auth-Broker snapshot API. Dihapus.
+  - **`agent.sh`** (128 LoC) — Direct edit `opencode.jsonc` (raw sed) tanpa validasi; risiko malformed config. Dihapus.
+  - **`picker.sh`** (75 LoC) — Caller ke `config.ts` yang sudah mati. Dihapus.
+  - **Helper dead-code `_run_bench_action`** di `gn.sh` — Tidak ada caller setelah `bench.ts` dihapus. Dihapus.
+  - **Direct SQL credential query di `doctor.sh`** (section 6 "Credential Health") — Sudah di luar scope OMP, akses langsung `auth_credentials` SQLite. Dihapus.
+- **Deprecation Guard di `gn.sh`** (4 handler): `ping|p`, `bench|b`, `quarantine|q`, `export|e` sekarang hanya menampilkan warning + hint REST API OMP (`GET /healthz`, `POST /v1/chat/completions`, `POST /v1/credential/:id/disable`, `GET /v1/snapshot`) atau CLI `omp`/`ocm` sebagai gantinya. Level 1 help & `help-formatter.sh` Level 2 help untuk keempat command juga dihapus/di-update.
+- **`help-formatter.sh`**: Hapus block Level 2 help untuk `ping`, `bench`, `quarantine`, `export`. Update help `doctor` — drop point "Credential health".
 
 ## [v0.3.15] - 2026-07-28
 

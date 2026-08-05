@@ -1,8 +1,0 @@
-[
-  {
-    "id": "express_sql_injection",
-    "prompt": "Review this Express.js route for security and performance issues:\napp.get('/user', async (req, res) => {\n  const query = \"SELECT * FROM users WHERE id = \" + req.query.id;\n  const user = await db.query(query);\n  res.json(user);\n});",
-    "must_include": ["SQL injection", "parameterized", "security"],
-    "code_required": false
-  }
-]
