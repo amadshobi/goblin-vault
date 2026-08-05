@@ -14,6 +14,24 @@
 
 ---
 
+## [v0.3.26] - 2026-08-05
+
+### Added
+- **`gn` Standalone v1.0.0 TypeScript Engine Port**: Port total core `gn` dari Shell Script ke TypeScript modular (`tools-cli/src/gn/src/`) dengan pure terminal formatter (`utils/formatter.ts`) dan tabel TUI ANSI-aware alignment fix (`visibleWidth`). → [detail](docs/CHANGELOG/gn.md)
+
+### Removed
+- **`gn` Legacy Script & Dead-code Purge**: Pembersihan sisa script legacy (`quarantine.sh`, `bench.ts`, `doctor.sh`, `price.ts`, dll) dan penyelarasan router `gn.sh` & `help-formatter.sh`. → [detail](docs/CHANGELOG/gn.md)
+
+## [v0.3.25] - 2026-08-03
+
+### Removed
+- **`gn` Pembersihan Bom Waktu & Redundansi**: Penghapusan 6 file bermasalah dari `tools-cli/src/gn/`:
+  - `quarantine.sh` (575 LoC) & inline `gn export` SQL block di `gn.sh` — manipulasi langsung `auth_credentials` SQLite + dump API key plaintext.
+  - `config.ts` (~270 LoC) — JSONC parser manual berbasis regex yang rapuh.
+  - `bench.ts` (487 LoC), `pool-manager.ts` (385 LoC), `agent.sh` (128 LoC), `picker.sh` (75 LoC) — redundan dengan REST API OMP.
+  - Helper dead-code `_run_bench_action` di `gn.sh`, serta section "Credential Health" SQL query di `doctor.sh`.
+- **Deprecation Guard** di `gn.sh` untuk handler `ping|p`, `bench|b`, `quarantine|q`, `export|e` — sekarang hanya tampilkan warning + hint REST API OMP / CLI `omp` / `ocm`. Level 1 help & Level 2 help untuk keempat command dihapus/di-update. → [detail](docs/CHANGELOG/gn.md)
+
 ## [v0.3.24] - 2026-08-02
 
 ### Added

@@ -8,7 +8,7 @@
     <img src="https://img.shields.io/github/actions/workflow/status/amadshobi/goblin-vault/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI&color=10B981&labelColor=1F2937&logoColor=white" alt="CI Status" />
   </a>
   <img src="https://img.shields.io/badge/License-MIT-00E5FF?style=for-the-badge&logo=open-source-initiative&logoColor=black&labelColor=1F2937" alt="License MIT" />
-  <img src="https://img.shields.io/badge/Version-0.3.19-A855F7?style=for-the-badge&labelColor=1F2937" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-0.3.24-A855F7?style=for-the-badge&labelColor=1F2937" alt="Version" />
   <img src="https://img.shields.io/badge/Architecture-Three--Tier-EC4899?style=for-the-badge&labelColor=1F2937" alt="Architecture" />
   <br/><br/>
   <img src="https://img.shields.io/badge/Bun-%E2%89%A5%201.0-FFFDF5?style=for-the-badge&logo=bun&logoColor=black&labelColor=1F2937" alt="Bun" />
@@ -94,10 +94,10 @@ Filosofi inti:
 |:-----|:----------|:------|:--------|
 | **[`sup`](tools-cli/src/sup/)** `v1.1.0` | Smart Universal Package Updater — granular multi-select updater untuk NPM, PIP3, System, Rustup, Bun, OMP. Mode verbose streaming (`-v`), proactive sudo handling. | TypeScript, Bun, Clack TUI | `sup` |
 | **[`fex`](tools-cli/src/fex/)** | File Explorer TUI — navigasi super cepat dengan fzf + tmux split mode. Subcommand: `tree`, `search`, `create`, `editor`, `path`, `kill`. Bookmark & state-machine navigation. | Go 1.22, Cobra, fzf, tmux | `fex` |
-| **[`gn`](tools-cli/src/gn/)** | Goblin Nexus CLI — Control Center core, AI adapter broker, bench tools, price/telemetry tracking, quarantine & privacy shield daemon. | Shell, TypeScript, Bun | `gn` |
+| **[`gn`](tools-cli/src/gn/)** `v1.0.0` | Goblin Nexus CLI — Control Center core, AI adapter broker, bench tools, price/telemetry tracking, quarantine & privacy shield daemon. | Shell, TypeScript, Bun | `gn` |
 | **[`ocm`](tools-cli/src/ocm/)** `v1.2.0` | OpenCode Configurator TUI — dashboard & manager untuk opencode config, agents, MCP servers, dan providers. | TypeScript, Bun, Clack TUI | `ocm` |
 | **[`zf`](tools-cli/src/zf/)** | Zoxide & Tmux Helper — rapid directory navigation, session switcher, auto-launcher tools integration. | Pure Shell (Zsh) | `zf` |
-| **[`gh-blin`](tools-cli/src/gh-blin/)** `v1.0.0` | GitHub Assistant TUI — kelola Issue, PR, Auth, & Release GitHub langsung dari terminal. | Node.js, Clack TUI | `gh-blin` |
+| **[`gh-blin`](tools-cli/src/gh-blin/)** `v1.1.1` | GitHub Assistant TUI — kelola Issue, PR, Auth, & Release GitHub langsung dari terminal. | Node.js, Clack TUI | `gh-blin` |
 
 ---
 
@@ -169,6 +169,7 @@ goblin-vault/
 │       ├── gn/                 # Goblin Nexus CLI (Shell + TypeScript)
 │       ├── gh-blin/            # GitHub Assistant TUI (Node.js)
 │       ├── goblin-control/     # Control Center core (Node.js)
+│       ├── notes/              # Notes utility (Node.js)
 │       ├── ocm/                # OpenCode Configurator (TypeScript)
 │       ├── sup/                # Smart Package Updater (TypeScript + Bun)
 │       ├── zf/                 # Zoxide & Tmux Helper (Shell)

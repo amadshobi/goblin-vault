@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Wrapper executable for Goblin Nexus CLI (gn) inside Goblin Vault
-
+# ─────────────────────────────────────────────────────────────
+# Wrapper executable untuk Goblin Nexus CLI (gn)
+# Thin launcher — setup env lalu exec ke router TypeScript.
+# ─────────────────────────────────────────────────────────────
 BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export GOBLIN_VAULT_ROOT="$(cd "$BIN_DIR/../.." && pwd)"
 
-exec bash "$GOBLIN_VAULT_ROOT/tools-cli/src/gn/gn.sh" "$@"
+exec bun "$GOBLIN_VAULT_ROOT/tools-cli/src/gn/src/index.ts" "$@"
