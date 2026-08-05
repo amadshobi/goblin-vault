@@ -41,7 +41,7 @@
 
 ### Fixed
 - **`gh-blin` Flag Collision & Quality Patches**: Pemisahan flag `--auto` (batch) dari variant `auto` (`--eff-auto`), preservasi error context `callOmp`, caching `hasCmd` subprocess, warning precedence `--model` vs `--variant`, penanganan prompt besar via stdin pipe, dan visual box truncation footer terminal. → [detail](docs/CHANGELOG/gh-blin.md)
-- **Automated Release Engine (`scripts/release.sh`)**: Perbaikan skrip rilis otomatis agar men-substitusi header `## [Unreleased]` paling atas di `CHANGELOG.md`, memicu `--full` syntax check saat rilis vault, dan menggunakan guarded syntax `[[ "${TARGET:-}" == ... ]]`. → [detail](docs/CHANGELOG/gh-blin.md)
+- **Automated Release Engine (`scripts/release.sh`)**: Perbaikan skrip rilis otomatis agar men-substitusi header `## [v0.3.25] - 2026-08-05` paling atas di `CHANGELOG.md`, memicu `--full` syntax check saat rilis vault, dan menggunakan guarded syntax `[[ "${TARGET:-}" == ... ]]`. → [detail](docs/CHANGELOG/gh-blin.md)
 
 ## [v0.3.22] - 2026-08-02
 
