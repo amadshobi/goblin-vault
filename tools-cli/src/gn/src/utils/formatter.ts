@@ -79,9 +79,9 @@ export function formatCost(num: number): string {
   if (!Number.isFinite(num)) return `$${String(num)}`;
   const sign = num < 0 ? "-" : "";
   const abs = Math.abs(num);
-  // Round to 2dp, lalu format integer part dengan thousands separator.
+  // Round to 4dp, lalu format integer part dengan thousands separator.
   // Approach: pisah integer + fractional, format integer via formatNumber.
-  const fixed = abs.toFixed(2);
+  const fixed = abs.toFixed(4);
   const [intPart, fracPart] = fixed.split(".");
   return `${sign}$${formatNumber(Number(intPart))}.${fracPart}`;
 }

@@ -14,6 +14,8 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **Pure Terminal Formatter Utilities** (`utils/formatter.ts`):
   - Rendering fungsi murni tanpa side-effects untuk banner ASCII ANSI, visual quota bar, status badge (`🟢 OK`/`🟡 WARN`/`🔴 ERROR`), date formatter, dan dynamic align table.
   - Perbaikan `visibleWidth` vs `visibleLength` untuk menghitung visual character padding tabel TUI secara akurat meskipun mengandung warna ANSI dan emoji.
+  - Presisi 4 desimal token cost USD pada `formatCost()`.
+- **Multi-Runtime Launcher** (`tools-cli/bin/gn`): Peningkatan launcher wrapper dengan auto-fallback runtime (Bun → Node.js/tsx → Deno) dan fail-fast hint.
 
 ### Changed
 - **CLI Subcommand Router Refactor** (`src/index.ts`):

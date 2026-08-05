@@ -3,7 +3,20 @@
 # Wrapper executable untuk Goblin Nexus CLI (gn)
 # Thin launcher — setup env lalu exec ke router TypeScript.
 # ─────────────────────────────────────────────────────────────
+set -euo pipefail
+
 BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export GOBLIN_VAULT_ROOT="$(cd "$BIN_DIR/../.." && pwd)"
+TARGET_FILE="$GOBLIN_VAULT_ROOT/tools-cli/src/gn/src/index.ts"
 
-exec bun "$GOBLIN_VAULT_ROOT/tools-cli/src/gn/src/index.ts" "$@"
+if command -v bun &>/dev/null; then
+  exec bun "$TARGET_FILE" "$@"
+elif command -v node &>/dev/null; then
+  exec node --import tsx/esm "$TARGET_FILE" "$@" 2>/dev/null || exec npx tsx "$TARGET_FILE" "$@"
+elif command -v deno &>/dev/null; then
+  exec deno run -A "$TARGET_FILE" "$@"
+else
+  echo "❌ Error: Runtime JavaScript/TypeScript (bun, node/tsx, atau deno) tidak ditemukan!" >&2
+  echo "💡 Goblin Roast Hint: Install Bun via 'curl -fsSL https://bun.sh/install | bash' atau 'sup'!" >&2
+  exit 1
+fi
