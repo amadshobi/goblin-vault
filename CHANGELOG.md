@@ -14,6 +14,11 @@
 
 ---
 
+## [v0.3.31] - 2026-08-06
+
+### Changed
+- **`gb` v2.1.2 (Pure OMP Single-Engine Architecture)**: Simplifikasi LLM engine 100% berbasis OMP CLI (`omp --mode=json --no-session`), menghapus fallback `opencode` & `curl`, dan menjamin zero-session-trash di disk. → [detail](docs/CHANGELOG/gb.md)
+
 ## [v0.3.30] - 2026-08-06
 
 ### Changed

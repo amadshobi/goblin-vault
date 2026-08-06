@@ -1,14 +1,8 @@
 /**
- * llm.ts — LLM Provider service (TS)
+ * llm.ts — Pure OMP LLM Provider service (TS)
  *
- * Port dari `utils/ai.js` + sebagian `utils/config.js` (resolusi model/variant/
- * backend) yang di-inline agar service ini self-contained dan re-usable.
- *
- * Strategi callLLM (fallback):
- *   1. `omp`     (jika useOmp / backend=omp)
- *   2. `opencode` CLI (spawnSync -> array argv)
- *   3. `OPENAI_API_KEY` via `curl --data-binary @-` (payload stdin)
- *   4. Pelemparan error + Goblin Roast Hint yang actionable.
+ * Menggunakan 100% `omp` CLI runner sebagai single-engine LLM backend.
+ * Stateless, zero session-trash, real-time NDJSON stream parser.
  */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -23,13 +17,6 @@ import type { GHPullRequest } from "../types";
 
 const MODELS_JSON = {
   backends: {
-    opencode: {
-      high: "anthropic/claude-3.5-sonnet",
-      medium: "goblin-nexus/gemini-3.5-flash",
-      low: "gemini-2.5-flash",
-      auto: "google/gemini-2.0-flash-001",
-      none: "deepseek/deepseek-chat",
-    },
     omp: {
       high: "google-antigravity/gemini-3.6-flash",
       medium: "google-antigravity/gemini-3.6-flash",
@@ -52,21 +39,20 @@ const THINKING_MAP: Record<string, string> = {
 export interface ResolvedModel {
   model: string | null;
   variant: string | null;
-  backend: "opencode" | "omp";
+  backend: "omp";
   thinking: string;
 }
 
 export interface LLMOptions {
   model?: string | null;
   variant?: string | null;
-  useOmp?: boolean;
-  backend?: "opencode" | "omp" | string;
+  backend?: "omp" | string;
   thinking?: string;
 }
 
 export interface LLMResult {
   text: string;
-  backend: string;
+  backend: "omp";
   model: string | null;
 }
 
@@ -81,7 +67,7 @@ export interface GeneratedReview {
   prompt: string;
   model: string | null;
   variant: string | null;
-  backend: string;
+  backend: "omp";
   thinking: string;
   tokens: ReviewTokens;
 }
@@ -98,33 +84,12 @@ function loadConfig(): Record<string, unknown> {
   }
 }
 
-/** Port resolveVariantModel — untuk fallback model reporting opencode. */
-function resolveVariantModel(
-  variantOrModelName: string | null | undefined,
-  _cliOptions: Record<string, unknown> = {}
-): { model: string; variant: string | null } {
-  const cfg = loadConfig();
-  const targetRaw =
-    typeof variantOrModelName === "string" && variantOrModelName.trim()
-      ? variantOrModelName.trim()
-      : typeof cfg.variant === "string" && cfg.variant.trim()
-        ? cfg.variant.trim()
-        : "high";
-  const vKey = targetRaw.toLowerCase();
-  const defaultMap: Record<string, string> = MODELS_JSON.backends.opencode;
-  if (Object.prototype.hasOwnProperty.call(defaultMap, vKey)) {
-    return { model: defaultMap[vKey], variant: vKey };
-  }
-  return { model: targetRaw, variant: null };
-}
-
 /** Port resolveBackendVariantModel — hierarki variant + override config. */
 export function resolveBackendVariantModel(
-  backendName: string = "opencode",
+  _backendName: string = "omp",
   variantOrModelName: string | null = null,
   _cliOptions: Record<string, unknown> = {}
 ): ResolvedModel {
-  const backend = backendName === "omp" || backendName === "opencode" ? (backendName as "opencode" | "omp") : "opencode";
   const cfg = loadConfig();
 
   const rawArg =
@@ -140,25 +105,21 @@ export function resolveBackendVariantModel(
 
   // Bukan variant → explicit model override name.
   if (!isValidVariant) {
-    return { model: target, variant: null, backend, thinking: "off" };
+    return { model: target, variant: null, backend: "omp", thinking: "off" };
   }
 
   const variantsCfg = (cfg.variants && typeof cfg.variants === "object" ? cfg.variants : {}) as Record<string, unknown>;
-  const backendObj = variantsCfg[backend] as Record<string, unknown> | undefined;
-  const backendOverride = backendObj && typeof backendObj === "object" ? backendObj[cleanTarget] : undefined;
   const flatOverride = variantsCfg[cleanTarget];
 
   const customModel =
-    typeof backendOverride === "string" && backendOverride.trim()
-      ? backendOverride.trim()
-      : typeof flatOverride === "string" && flatOverride.trim()
-        ? flatOverride.trim()
-        : null;
+    typeof flatOverride === "string" && flatOverride.trim()
+      ? flatOverride.trim()
+      : null;
 
-  const defaultMap = MODELS_JSON.backends[backend] as Record<string, string>;
+  const defaultMap = MODELS_JSON.backends.omp as Record<string, string>;
   const model = customModel || defaultMap[cleanTarget] || null;
 
-  return { model, variant: cleanTarget, backend, thinking: THINKING_MAP[cleanTarget] || "off" };
+  return { model, variant: cleanTarget, backend: "omp", thinking: THINKING_MAP[cleanTarget] || "off" };
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -257,127 +218,37 @@ export function callOmp(prompt: string, options: LLMOptions = {}): LLMResult | n
   }
 }
 
-/** OpenAI-compatible chat completion via curl (payload via stdin). */
-export function callOpenAIViaCurl(prompt: string, modelOverride?: string | null): string {
-  const key = process.env.OPENAI_API_KEY;
-  const model = modelOverride || process.env.OPENAI_MODEL || "gpt-4o-mini";
-  const baseUrl = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
-  const url = `${baseUrl}/chat/completions`;
-  const body = JSON.stringify({
-    model,
-    messages: [{ role: "user", content: prompt }],
-    temperature: 0.3,
-  });
-
-  const r = spawnSync(
-    "curl",
-    [
-      "-sS", "-X", "POST", url,
-      "-H", `Authorization: Bearer ${key}`,
-      "-H", "Content-Type: application/json",
-      "--data-binary", "@-",
-    ],
-    { input: body, encoding: "utf8", maxBuffer: 20 * 1024 * 1024, timeout: 60_000 }
-  );
-
-  if (r.error) throw r.error;
-  if (r.status !== 0) {
-    throw new Error(`curl exit ${r.status}: ${r.stderr?.trim() || "unknown error"}`);
-  }
-
-  const raw = r.stdout || "";
-  let parsed: { choices?: Array<{ message?: { content?: string } }>; error?: { message?: string } };
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    const preview = raw.replace(/\s+/g, " ").trim().slice(0, 200);
-    throw new Error(
-      `OpenAI API mengembalikan response non-JSON (mungkin error 502/cloudflare). Preview: ${preview || "(stdout kosong)"}`
-    );
-  }
-
-  const content = parsed.choices?.[0]?.message?.content;
-  if (!content) {
-    const apiErr = parsed.error?.message || "unknown";
-    throw new Error(`OpenAI API tidak mengembalikan konten: ${String(apiErr).slice(0, 200)}`);
-  }
-  return content.trim();
-}
-
 /**
- * Call an LLM with fallback strategies.
- * @throws {Error} Kalau seluruh backend gagal.
+ * Call OMP LLM backend.
+ * @throws {Error} Kalau OMP CLI gagal atau tidak tersedia.
  */
 export function callLLM(prompt: string, options: LLMOptions = {}): LLMResult {
   if (!prompt || typeof prompt !== "string") {
     throw new Error("callLLM: prompt wajib berupa string non-empty.");
   }
 
-  let lastError: string | null = null;
-
-  // Strategy 0: `omp`
-  const wantsOmp = options.useOmp === true || options.backend === "omp";
-  if (wantsOmp && hasCmd("omp")) {
-    try {
-      const r = callOmp(prompt, options);
-      if (r) return r;
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : String(err);
-    }
+  if (!hasCmd("omp")) {
+    throw new Error("gb: CLI `omp` tidak ditemukan di system PATH. Tolong pastikan `omp` terpasang!");
   }
 
-  // Strategy 1: opencode CLI
-  if (hasCmd("opencode")) {
-    try {
-      const r = spawnSync("opencode", ["run"], {
-        input: prompt,
-        encoding: "utf8",
-        maxBuffer: 50 * 1024 * 1024,
-        timeout: 300_000,
-      });
-      if (r.status === 0 && r.stdout && r.stdout.trim()) {
-        const { model: fallbackModel } = resolveVariantModel("opencode", { variant: options.variant ?? undefined });
-        return { text: r.stdout.trim(), backend: "opencode", model: fallbackModel || options.model || null };
-      }
-      const exitReason = r.error ? r.error.message : r.status === null ? "timeout (>5m)" : `exit ${r.status}`;
-      lastError = r.stderr?.trim()?.split("\n")[0] || `opencode ${exitReason}`;
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : String(err);
-    }
-  }
+  const r = callOmp(prompt, options);
+  if (r) return r;
 
-  // Strategy 2: OPENAI_API_KEY via curl
-  if (process.env.OPENAI_API_KEY) {
-    try {
-      const review = callOpenAIViaCurl(prompt, options.model);
-      return { text: review, backend: "openai", model: options.model || null };
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : String(err);
-    }
-  }
-
-  // Strategy 3: clear error + actionable hint
-  const hint =
-    "Pasang CLI `opencode` (https://opencode.ai/docs/cli) ATAU export env OPENAI_API_KEY " +
-    "(opsional: OPENAI_MODEL, OPENAI_BASE_URL) lalu coba lagi.";
-  const detail = lastError ? ` (detail: ${lastError})` : "";
-  throw new Error(`gb: tidak ada LLM backend yang berhasil. ${hint}${detail}`);
+  throw new Error("gb: eksekusi `omp` gagal menghasilkan output.");
 }
 
 /**
- * Generate a review for a PR (sync). Resolves model/variant/backend, builds
- * prompt, calls LLM, computes token estimates.
+ * Generate a review for a PR (sync). Resolves model/variant, builds
+ * prompt, calls OMP LLM, computes token estimates.
  */
 export function generateReview(
   prData: GHPullRequest & { repo?: string },
   diff: string,
   options: LLMOptions = {}
 ): GeneratedReview {
-  const resolved = resolveBackendVariantModel("opencode", options.variant || options.model);
+  const resolved = resolveBackendVariantModel("omp", options.variant || options.model);
   const prompt = buildReviewPrompt(prData, diff);
-  const { text, backend: usedBackend, model: usedModel } = callLLM(prompt, {
-    useOmp: resolved.backend === "omp",
-    backend: resolved.backend,
+  const { text, model: usedModel } = callLLM(prompt, {
     model: resolved.model,
     variant: resolved.variant,
   });
@@ -389,40 +260,39 @@ export function generateReview(
     prompt,
     model: usedModel,
     variant: resolved.variant,
-    backend: usedBackend,
+    backend: "omp",
     thinking: resolved.thinking,
     tokens: { prompt: promptTokens, completion: completionTokens, total: promptTokens + completionTokens },
   };
 }
 
 /**
- * Stream LLM response token-by-token via MarkdownStreamFormatter.
+ * Stream LLM response token-by-token via MarkdownStreamFormatter using OMP NDJSON stream.
  */
 export async function streamLLM(prompt: string, options: LLMOptions = {}): Promise<string> {
   const startTime = Date.now();
-  const usesOmp =
-    options.useOmp === true ||
-    options.backend === "omp" ||
-    (options.useOmp !== false && options.backend !== "opencode" && hasCmd("omp"));
   const formatter = new MarkdownStreamFormatter();
   const textChunks: string[] = [];
   let hasStreamedText = false;
   const modelStr = options.model || "default";
-  const labelStr = usesOmp ? "omp/assistant" : "opencode/assistant";
+  const labelStr = "omp/assistant";
   console.log(`\x1b[90m┌─\x1b[0m \x1b[1;36m󰚩 ${labelStr}\x1b[0m \x1b[90m${"─".repeat(Math.max(10, 45 - labelStr.length))}\x1b[0m`);
   console.log(`\x1b[90m│\x1b[0m \x1b[90m󰅂 Model : ${modelStr}\x1b[0m`);
   console.log(`\x1b[90m└${"─".repeat(50)}\x1b[0m\n`);
 
   return new Promise<string>((resolvePromise, rejectPromise) => {
+    let tmpFile: string | null = null;
     let child: ReturnType<typeof spawn>;
-    if (usesOmp) {
+
+    try {
+      tmpFile = path.join(os.tmpdir(), `gb-live-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
+      fs.writeFileSync(tmpFile, prompt, "utf8");
+
       const ompArgs = [
-        "-p", prompt,
-        "--auto-approve",
-        "--approval-mode=yolo",
-        `--cwd=${process.cwd()}`,
+        "-p", `@${tmpFile}`,
         "--mode=json",
-        "--print-thoughts",
+        "--no-session",
+        "--hide-thinking",
       ];
       if (options.model) {
         ompArgs.push(`--model=${options.model}`);
@@ -435,10 +305,11 @@ export async function streamLLM(prompt: string, options: LLMOptions = {}): Promi
         cwd: process.cwd(),
         env: process.env,
       });
-    } else {
-      child = spawn("opencode", ["run"], { stdio: ["pipe", "pipe", "pipe"] });
-      child.stdin!.write(prompt);
-      child.stdin!.end();
+    } catch (err) {
+      if (tmpFile && fs.existsSync(tmpFile)) {
+        try { fs.unlinkSync(tmpFile); } catch {}
+      }
+      return rejectPromise(err);
     }
 
     const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];

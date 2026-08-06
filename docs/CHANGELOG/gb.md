@@ -7,6 +7,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v2.1.2] - 2026-08-06
+
+### Changed
+- **Pure OMP Single Engine Architecture**:
+  - Menyederhanakan seluruh LLM execution layer (`src/services/llm.ts`) menjadi 100% berbasis OMP CLI (`omp --mode=json --no-session --hide-thinking`).
+  - Menghapus ketergantungan fallback `opencode` & `curl` untuk menjamin zero-session-trash di disk dan respon yang ultra-fast & stateless.
+  - OMP NDJSON stream parser resmi mendukung visual live thinking process, tool usage indicators, serta token-by-token live markdown terminal formatting.
+
+---
+
 ## [v2.1.1] - 2026-08-06
 
 ### Changed

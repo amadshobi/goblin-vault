@@ -211,16 +211,13 @@ async function runCli(argv: string[]): Promise<number> {
     else if (flags.includes("--eff-auto")) variant = "auto";
     else if (flags.includes("--none")) variant = "none";
     else if (variantVal) variant = variantVal;
-    let useOmp = false;
-    let backend: string | undefined;
+    const backend = "omp";
     if (rest.length && rest[rest.length - 1] === "omp") {
       rest.pop();
-      useOmp = true;
-      backend = "omp";
     }
 
     if (auto) {
-      const summary = await autoReviewAll({ publish, force, model, variant, useOmp, backend, live });
+      const summary = await autoReviewAll({ publish, force, model, variant, backend, live });
       printBatchSummary(summary);
       return summary.ok && summary.failed.length === 0 ? 0 : 1;
     }
@@ -232,7 +229,7 @@ async function runCli(argv: string[]): Promise<number> {
       return 1;
     }
 
-    const res = await reviewPR(prNumber, { publish, force, model, variant, useOmp, backend, live });
+    const res = await reviewPR(prNumber, { publish, force, model, variant, backend, live });
     if (!res.ok) {
       console.error(color.red(res.error || "unknown error"));
       return 1;

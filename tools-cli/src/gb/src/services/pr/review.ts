@@ -164,7 +164,7 @@ export async function reviewPR(prNumber: number | string, options: ReviewOptions
         prompt: buildReviewPrompt(prData, diff),
         model: options.model || null,
         variant: options.variant || null,
-        backend: options.useOmp ? "omp" : "opencode",
+        backend: "omp",
         thinking: "",
         tokens: {
           prompt: Math.ceil(buildReviewPrompt(prData, diff).length / 4),
