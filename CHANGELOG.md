@@ -17,7 +17,7 @@
 ## [v0.3.32] - 2026-08-06
 
 ### Added
-- **`gb` v2.1.3 (FinOps Cost Logger, Hybrid Prompt Engine, & OMP Isolation)**: Integrasi FinOps Token & Cost Analytics Logger (`~/.config/gb/logs/` & `price.json`), Modular Hybrid Prompt System (`src/prompts/*.md` + `~/.config/gb/prompts/`), Simple Model/Variant Manager (`models.json`), Deep Issue Technical Analysis (`gb issue analyze <num>`), serta isolasi total `--system-prompt` OMP. → [detail](docs/CHANGELOG/gb.md)
+- **`gb` v2.1.3 (FinOps Cost Logger, Hybrid Prompt Engine, OMP Isolation, & Ultra-Clean TUI Streamer)**: Integrasi FinOps Token & Cost Analytics Logger (`~/.config/gb/logs/` & `price.json`), Modular Hybrid Prompt System (`src/prompts/*.md` + `~/.config/gb/prompts/`), Simple Model/Variant Manager (`models.json`), Deep Issue Technical Analysis (`gb issue analyze <num>`), isolasi total `--system-prompt` OMP, serta TUI streamer layout & syntax highlighter fix (`1;35` fix). → [detail](docs/CHANGELOG/gb.md)
 
 ## [v0.3.31] - 2026-08-06
 

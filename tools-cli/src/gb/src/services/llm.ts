@@ -2,7 +2,8 @@
  * llm.ts — Pure OMP LLM Provider service (TS)
  *
  * Menggunakan 100% `omp` CLI runner sebagai single-engine LLM backend.
- * Isolated System Prompt (--system-prompt), stateless, zero session-trash, real-time NDJSON stream parser.
+ * Isolated System Prompt (--system-prompt), clean tool-call status spinner,
+ * zero-leak Non-JSON streamer, real-time NDJSON stream parser, & Contextual Header/Footer.
  */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -10,11 +11,15 @@ import os from "node:os";
 import path from "node:path";
 import { MarkdownStreamFormatter, formatOpenCodeToolLabel } from "../core/renderer";
 import { resolveModel, type ModelPreset, type ModelResolutionFlags } from "../config/models";
+import { calculateCost } from "../config/price";
 
 export interface LLMStreamOptions extends ModelResolutionFlags {
   systemPrompt?: string;
   model?: string | null;
   variant?: string | null;
+  tools?: string;
+  label?: string;    // e.g. "omp/issue-summarize", "omp/pr-review"
+  taskName?: string; // e.g. "summarizer", "reviewer", "analyzer"
 }
 
 export interface LLMResult {
@@ -39,7 +44,21 @@ export interface GeneratedReview {
   tokens: ReviewTokens;
 }
 
-/** Estimate tokens (~4 chars per token). */
+const OMP_THINKING_VALUES = new Set(["high", "medium", "low", "auto", "off"]);
+
+/** Cached cmd availability. */
+const cmdCache: Record<string, boolean> = {};
+
+export function hasCmd(cmd: string): boolean {
+  if (Object.prototype.hasOwnProperty.call(cmdCache, cmd)) return cmdCache[cmd];
+  try {
+    cmdCache[cmd] = spawnSync(cmd, ["--version"], { stdio: "ignore" }).status === 0;
+  } catch {
+    cmdCache[cmd] = false;
+  }
+  return cmdCache[cmd];
+}
+
 export function estimateTokens(text: string | null | undefined): number {
   return Math.ceil(String(text ?? "").length / 4);
 }
@@ -48,7 +67,12 @@ export function stripAnsi(str: string | null | undefined): string {
   return String(str).replace(/\x1b\[[0-9;]*m/g, "");
 }
 
-/** Build review prompt fallback */
+function formatTokens(num: number): string {
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + "M";
+  if (num >= 1_000) return (num / 1_000).toFixed(1) + "k";
+  return String(num);
+}
+
 export function buildReviewPrompt(prData: any, diff?: string): string {
   const repo = prData.repo || "";
   const number = prData.number != null ? `#${prData.number}` : "";
@@ -73,7 +97,14 @@ export function callLLM(prompt: string, options: LLMStreamOptions = {}): LLMResu
   const tmpFile = path.join(os.tmpdir(), `gb-prompt-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
   try {
     fs.writeFileSync(tmpFile, prompt, "utf8");
-    const args = ["-p", `@${tmpFile}`, "--mode=json", "--no-session", "--no-tools", "--no-rules", "--no-skills"];
+    const args = [
+      "-p", `@${tmpFile}`,
+      "--mode=json",
+      "--no-session",
+      "--tools=read,glob,grep,bash",
+      "--approval-mode=yolo",
+      "--auto-approve",
+    ];
     if (options.systemPrompt) args.push(`--system-prompt=${options.systemPrompt}`);
     if (options.model) args.push(`--model=${options.model}`);
     const r = spawnSync("omp", args, { encoding: "utf8", timeout: 120_000 });
@@ -102,24 +133,8 @@ export function generateReview(prData: any, diff: string, options: LLMStreamOpti
   };
 }
 
-const OMP_THINKING_VALUES = new Set(["high", "medium", "low", "auto", "off"]);
-
-/** Cached cmd availability. */
-const cmdCache: Record<string, boolean> = {};
-
-export function hasCmd(cmd: string): boolean {
-  if (Object.prototype.hasOwnProperty.call(cmdCache, cmd)) return cmdCache[cmd];
-  try {
-    cmdCache[cmd] = spawnSync(cmd, ["--version"], { stdio: "ignore" }).status === 0;
-  } catch {
-    cmdCache[cmd] = false;
-  }
-  return cmdCache[cmd];
-}
-
 /**
  * Stream LLM response token-by-token via MarkdownStreamFormatter using OMP NDJSON stream.
- * Isolates system prompt with `--system-prompt` and disables OMP global rules/skills/tools.
  */
 export async function streamLLM(userPrompt: string, options: LLMStreamOptions = {}): Promise<string> {
   if (!hasCmd("omp")) {
@@ -129,12 +144,16 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
   const preset: ModelPreset = resolveModel(options);
   const selectedModel = options.model || preset.id;
   const selectedVariant = options.variant || preset.variant || "medium";
+  const toolsParam = options.tools || "read,glob,grep,bash";
+  const labelStr = options.label || "omp/assistant";
+  const taskName = options.taskName || "assistant";
 
   const startTime = Date.now();
   const formatter = new MarkdownStreamFormatter();
   const textChunks: string[] = [];
   let hasStreamedText = false;
-  const labelStr = "omp/assistant";
+  let inputTokens = estimateTokens(userPrompt);
+  let outputTokens = 0;
 
   console.log(`\x1b[90m┌─\x1b[0m \x1b[1;36m󰚩 ${labelStr}\x1b[0m \x1b[90m${"─".repeat(Math.max(10, 45 - labelStr.length))}\x1b[0m`);
   console.log(`\x1b[90m│\x1b[0m \x1b[90m󰅂 Model   : ${selectedModel}\x1b[0m`);
@@ -153,9 +172,9 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
         "-p", `@${tmpFile}`,
         "--mode=json",
         "--no-session",
-        "--no-tools",
-        "--no-rules",
-        "--no-skills",
+        `--tools=${toolsParam}`,
+        "--approval-mode=yolo",
+        "--auto-approve",
         `--model=${selectedModel}`,
       ];
 
@@ -194,10 +213,11 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
     let frameIdx = 0;
     let isSpinnerActive = true;
     let currentStatus = "Working";
-    let stepStartTime = Date.now();
     let activeToolSummary = "";
     let activeToolId = "";
     let toolCount = 0;
+
+    const activeToolMap = new Map<string, { summary: string }>();
 
     function clearSpinner() {
       if (isSpinnerActive && isRealTTY) {
@@ -213,7 +233,6 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
     function startSpinner(status: string, label = "") {
       currentStatus = status;
       activeToolSummary = label;
-      stepStartTime = Date.now();
       isSpinnerActive = true;
       if (isRealTTY) {
         process.stdout.write("\x1b[?25l");
@@ -227,7 +246,6 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
     const spinInterval = setInterval(() => {
       if (isSpinnerActive && isRealTTY) {
         const frame = SPINNER_FRAMES[frameIdx];
-        const elapsedSec = Math.floor((Date.now() - stepStartTime) / 1000);
         let displayText = "";
 
         if (currentStatus === "Working") {
@@ -239,7 +257,7 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
           displayText = `\x1b[33m${currentStatus}\x1b[0m`;
         }
 
-        const lineOutput = `\x1b[36m${frame}\x1b[0m ${displayText} \x1b[90m(${elapsedSec}s)\x1b[0m`;
+        const lineOutput = `\x1b[36m${frame}\x1b[0m ${displayText}`;
         process.stdout.write(`\r\x1b[K${lineOutput}`);
         frameIdx = (frameIdx + 1) % SPINNER_FRAMES.length;
       }
@@ -249,6 +267,10 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
     let lineBuffer = "";
 
     const processTextDelta = (delta: string) => {
+      if (delta.includes("<tool_call>") || delta.includes("<tool_response>") || delta.includes("<shell_metadata>")) {
+        return;
+      }
+
       clearSpinner();
       hasStreamedText = true;
       textChunks.push(delta);
@@ -269,24 +291,43 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
           const data = JSON.parse(line);
           const eventType = data?.type;
 
+          const usage = data?.usage || data?.message?.usage;
+          if (usage) {
+            if (typeof usage.input === "number") inputTokens = usage.input;
+            if (typeof usage.output === "number") outputTokens = usage.output;
+          }
+
           if (eventType === "tool_execution_start" || eventType === "tool_start") {
             clearSpinner();
             hasStreamedText = false;
             const toolName = data.toolName || data.name || data.tool || "tool";
-            const toolId = data.toolCallId || data.id || `${toolName}_${Date.now()}`;
-            if (activeToolId === toolId) continue;
-            activeToolId = toolId;
+            const toolId = String(data.toolCallId || data.id || `${toolName}_${Date.now()}`);
+            if (activeToolMap.has(toolId)) continue;
+
             const toolArgs = data.args || data.arguments || {};
             const toolLabel = formatOpenCodeToolLabel(toolName, toolArgs);
+
+            activeToolId = toolId;
+            activeToolMap.set(toolId, { summary: toolLabel });
+
             startSpinner("tool", toolLabel);
           } else if (eventType === "tool_execution_end" || eventType === "tool_end") {
             clearSpinner();
-            toolCount++;
-            const isErr = Boolean(data.isError || data.error);
-            const icon = isErr ? "\x1b[31m󰅚\x1b[0m" : "\x1b[32m󰄬\x1b[0m";
-            const durSec = ((Date.now() - stepStartTime) / 1000).toFixed(1);
-            console.log(`${icon} \x1b[1m${activeToolSummary}\x1b[0m \x1b[32m(${durSec}s)\x1b[0m`);
-            activeToolId = "";
+            const toolName = data.toolName || data.name || data.tool || "tool";
+            const toolId = String(data.toolCallId || data.id || activeToolId);
+            const toolMeta = activeToolMap.get(toolId);
+
+            const summary = toolMeta?.summary || activeToolSummary;
+            if (summary && summary.trim()) {
+              toolCount++;
+              const isErr = Boolean(data.isError || data.error);
+              const icon = isErr ? "\x1b[31mx\x1b[0m" : "•";
+
+              console.log(`\x1b[90m│\x1b[0m  ${icon} ${summary}`);
+            }
+
+            activeToolMap.delete(toolId);
+            if (activeToolId === toolId) activeToolId = "";
             startSpinner("Working");
           } else if (eventType === "message_update") {
             const evt = data.assistantMessageEvent;
@@ -329,7 +370,17 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
             startSpinner("Working");
           }
         } catch {
-          if (!line.trim().startsWith("{") && !line.trim().startsWith("[")) {
+          const rawTrim = line.trim();
+          if (
+            rawTrim.startsWith("<tool_call>") ||
+            rawTrim.startsWith("<tool_response>") ||
+            rawTrim.startsWith("<shell_metadata>") ||
+            rawTrim.includes("</tool_call>") ||
+            rawTrim.includes("</tool_response>")
+          ) {
+            continue;
+          }
+          if (!rawTrim.startsWith("{") && !rawTrim.startsWith("[")) {
             processTextDelta(line + "\n");
           }
         }
@@ -338,7 +389,10 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
 
     child.stderr!.on("data", (data: Buffer) => {
       clearSpinner();
-      process.stderr.write(data);
+      const errStr = data.toString();
+      if (!errStr.includes("<tool_call>") && !errStr.includes("No API key found")) {
+        process.stderr.write(data);
+      }
     });
 
     child.on("error", (err) => {
@@ -362,7 +416,13 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
             processTextDelta(data.delta.text);
           }
         } catch {
-          processTextDelta(lineBuffer + "\n");
+          const rawTrim = lineBuffer.trim();
+          if (
+            !rawTrim.startsWith("<tool_call>") &&
+            !rawTrim.startsWith("<tool_response>")
+          ) {
+            processTextDelta(lineBuffer + "\n");
+          }
         }
       }
 
@@ -370,14 +430,20 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
       if (flushed) process.stdout.write(flushed);
 
       const totalDurSec = Math.max(0.1, Number(((Date.now() - startTime) / 1000).toFixed(1)));
-      const toolsStr = toolCount > 0 ? ` \x1b[90m󰇙\x1b[0m 󰆧 ${toolCount} tool${toolCount === 1 ? "" : "s"}` : "";
-
       const raw = textChunks.join("").trim();
+      if (outputTokens === 0) outputTokens = estimateTokens(raw);
+      const totalTok = inputTokens + outputTokens;
+      const costUSD = calculateCost(selectedModel, inputTokens, outputTokens);
+      const costStr = costUSD > 0 ? ` ($${costUSD.toFixed(4)})` : "";
+
+      const toolsStr = toolCount > 0 ? ` \x1b[90m󰇙\x1b[0m 󰆧 ${toolCount} tool${toolCount === 1 ? "" : "s"}` : "";
+      const tokensStr = ` \x1b[90m󰇙\x1b[0m 🪙 ${formatTokens(totalTok)} tokens${costStr}`;
+
       if (raw || code === 0) {
-        console.log(`\n\x1b[90m└─\x1b[0m \x1b[32m󰄬 assistant completed\x1b[0m \x1b[90m(${totalDurSec}s)${toolsStr} ${"─".repeat(20)}\x1b[0m\n`);
+        console.log(`\n\x1b[90m└─\x1b[0m \x1b[32m󰄬 ${taskName} completed\x1b[0m \x1b[90m(${totalDurSec}s)${toolsStr}${tokensStr} ${"─".repeat(15)}\x1b[0m\n`);
         resolvePromise(raw);
       } else {
-        console.log(`\n\x1b[90m└─\x1b[0m \x1b[31m󰅚 assistant failed (${code})\x1b[0m \x1b[90m(${totalDurSec}s)${toolsStr} ${"─".repeat(20)}\x1b[0m\n`);
+        console.log(`\n\x1b[90m└─\x1b[0m \x1b[31m󰅚 ${taskName} failed (${code})\x1b[0m \x1b[90m(${totalDurSec}s)${toolsStr}${tokensStr} ${"─".repeat(15)}\x1b[0m\n`);
         rejectPromise(new Error(`LLM live backend exit ${code}`));
       }
     });

@@ -14,10 +14,18 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
   - Otomatis mencatat metadata pemanggilan LLM, total token (input & output), timestamp, dan kalkulasi estimasi biaya dalam USD ke file JSON terpisah (`pr-review.json`, `issue-summarize.json`, `issue-analyze.json`).
   - **Token Price Config (`~/.config/gb/price.json`)**: Konfigurasi harga token independen per model (USD/1M tokens) dengan fallback rate `$0` jika model belum terdaftar.
 - **Modular Hybrid Prompt System (`src/prompts/` & `~/.config/gb/prompts/`)**:
-  - Memisahkan built-in system prompt ke file Markdown terpisah (`pr-review.md`, `issue-summarize.md`, `issue-analyze.md`).
+  - Memisahkan built-in system prompt ke file Markdown terpisah (`pr-review.md`, `issue-summarize.md`, `issue-analyze.md`) dengan instruksi eksplisit output Bahasa Indonesia yang profesional dan tajam.
   - Menghadirkan *Hybrid Prompt Engine*: User dapat meng-override system prompt per-fitur via `~/.config/gb/prompts/<name>.md`.
 - **Simple Model & Variant Manager (`~/.config/gb/models.json`)**:
   - Konfigurasi simpel `models.default` (id + variant) serta mapping preset `high`, `medium`, `low`.
+  - Terintegrasi dengan CLI flags `--high`, `--medium`, `--low` di seluruh subcommand AI.
+- **Deep AI Technical Analysis Issue (`gb issue analyze <number>`)**: Subcommand analisis teknis mendalam per-issue.
+
+### Changed
+- **OMP System Prompt Isolation & Smart Tool Usage**: Memanggil OMP CLI dengan `--system-prompt="<CUSTOM_PROMPT>"` ditambah `--tools=read,glob,grep,bash --approval-mode=yolo` untuk mengabaikan `~/.omp/SYSTEM.md` global 100%, menghemat token hingga 70%, serta menginstruksikan LLM untuk menggunakan tool secara efisien tanpa loop.
+- **Ultra-Clean TUI Streamer Layout & Syntax Highlighter Fix**:
+  - Menyempurnakan layout TUI dengan header kontekstual (`omp/issue-summarize`, `omp/pr-review`), footer sejajar (`token count` + `cost USD`), serta penggantian ikon tool ke bullet `•` (sukses) dan `x` merah (gagal) tanpa fake micro-timer.
+  - Memperbaiki bug regex ANSI syntax highlighter yang sebelumnya menyebabkan string `1;35` bocor ke layar terminal.
   - Terintegrasi dengan CLI flags `--high`, `--medium`, `--low` di seluruh subcommand AI.
 - **Deep AI Technical Analysis Issue (`gb issue analyze <number>`)**: Subcommand analisis teknis mendalam per-issue.
 

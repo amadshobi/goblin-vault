@@ -1,5 +1,5 @@
 import { existsSync, statSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, relative } from "node:path";
 import { spawnSync } from "node:child_process";
 
 export function renderGitDiff(cwd: string, filesFilter?: string[]): string | null {
@@ -104,19 +104,22 @@ export function renderGitDiff(cwd: string, filesFilter?: string[]): string | nul
     return null;
   }
 }
+
 function highlightSyntaxLine(line: string): string {
   if (line.trim().startsWith("//") || line.trim().startsWith("#")) {
     return `\x1b[3;90m${line}\x1b[0m`;
   }
 
-  let code = line;
-  code = code.replace(/(["'`])(?:(?=(\\?))\2[\s\S])*?\1/g, "\x1b[32m$&\x1b[0m");
-
+  // 1. Keyword syntax highlighting
   const keywords = /\b(const|let|var|function|def|return|import|export|from|async|await|class|if|else|for|while|try|catch|new|type|interface)\b/g;
-  code = code.replace(keywords, "\x1b[1;35m$1\x1b[0m");
+  let code = line.replace(keywords, "\x1b[1;35m$1\x1b[0m");
 
-  const constants = /\b(true|false|null|undefined|NaN|Infinity|\d+)\b/g;
+  // 2. Constants & Booleans (tanpa regex \d+ agar tidak merusak ANSI escape sequence)
+  const constants = /\b(true|false|null|undefined|NaN|Infinity)\b/g;
   code = code.replace(constants, "\x1b[36m$1\x1b[0m");
+
+  // 3. String literals
+  code = code.replace(/(["'`])(?:(?=(\\?))\2[\s\S])*?\1/g, "\x1b[32m$&\x1b[0m");
 
   return code;
 }
@@ -226,53 +229,74 @@ export function formatMarkdownTerminal(raw: string): string {
   return (res + flushed).trimEnd();
 }
 
+function toRelativePath(rawPath: string): string {
+  if (!rawPath) return "";
+  if (rawPath.startsWith("memory://")) {
+    return rawPath.replace("memory://root/", "");
+  }
+  const cwd = process.cwd();
+  try {
+    const resolved = resolve(rawPath);
+    const rel = relative(cwd, resolved);
+    return rel && !rel.startsWith("..") && !isAbsolute(rel) ? rel : rawPath;
+  } catch {
+    return rawPath;
+  }
+}
+
+function isAbsolute(p: string): boolean {
+  return p.startsWith("/");
+}
+
 export function formatOpenCodeToolLabel(name: string, args: Record<string, unknown>): string {
   if (!args || typeof args !== "object") return name;
   if (name === "read") {
-    const targetPath = String(args.path || "");
+    const rawTarget = String(args.path || "");
+    const targetPath = toRelativePath(rawTarget);
+
     if (targetPath.includes(".db") || targetPath.includes(".sqlite")) {
-      return `󰆼 Inspect DB ${targetPath}`;
+      return `Inspect DB ${targetPath}`;
     }
     if (targetPath.endsWith(".zip") || targetPath.endsWith(".tar.gz") || targetPath.endsWith(".tgz")) {
-      return `󰿺 Archive ${targetPath}`;
+      return `Archive ${targetPath}`;
     }
 
     try {
-      const resolved = resolve(targetPath);
+      const resolved = resolve(rawTarget);
       if (existsSync(resolved) && statSync(resolved).isDirectory()) {
-        return `󰉋 List ${targetPath}`;
+        return `List ${targetPath}`;
       }
     } catch {}
 
     if (targetPath === "." || targetPath === ".." || targetPath.endsWith("/")) {
-      return `󰉋 List ${targetPath}`;
+      return `List ${targetPath}`;
     }
 
-    return `󰈙 Read ${targetPath}`;
+    return `Read ${targetPath}`;
   }
   if (name === "write") {
-    return `󰏫 Write ${args.path || ""}`.trim();
+    return `Write ${toRelativePath(String(args.path || ""))}`.trim();
   }
   if (name === "edit") {
-    return `󰏫 Edit ${args.path || ""}`.trim();
+    return `Edit ${toRelativePath(String(args.path || ""))}`.trim();
   }
   if (name === "bash") {
     const cmd = String(args.command || "").replace(/\n/g, " ");
-    const shortCmd = cmd.length > 50 ? cmd.slice(0, 47) + "..." : cmd;
-    return `󰞷 $ ${shortCmd}`.trim();
+    const shortCmd = cmd.length > 40 ? cmd.slice(0, 37) + "..." : cmd;
+    return `$ ${shortCmd}`.trim();
   }
   if (name === "glob") {
-    return `󰈞 Glob "${args.pattern || args.path || ""}"`.trim();
+    return `Glob "${toRelativePath(String(args.pattern || args.path || ""))}"`.trim();
   }
   if (name === "grep") {
-    return `󰈞 Grep "${args.pattern || args.path || ""}"`.trim();
+    return `Grep "${toRelativePath(String(args.pattern || args.path || ""))}"`.trim();
   }
   if (name === "web_search" || name === "websearch") {
-    return `󰍉 Web Search "${args.query || ""}"`.trim();
+    return `Web Search "${args.query || ""}"`.trim();
   }
   if (name === "task") {
-    return `│ ↳ Task ${args.agent || ""} ${args.task || ""}`.trim();
+    return `Task ${args.agent || ""} ${args.task || ""}`.trim();
   }
   const raw = JSON.stringify(args);
-  return `󰆧 ${name} ${raw.length > 40 ? raw.slice(0, 37) + "..." : raw}`.trim();
+  return `${name} ${raw.length > 30 ? raw.slice(0, 27) + "..." : raw}`.trim();
 }
