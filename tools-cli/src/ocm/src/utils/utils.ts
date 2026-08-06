@@ -424,13 +424,14 @@ export function saveModelsFile(parsedLines: ModelReferenceItem[]): void {
  * 2. Di dalam provider, cari heading status.
  * 3. Sisipkan model setelah model terakhir di status tersebut.
  *
- * @param parsedLines - Array item hasil parsing (di-mutasi langsung).
+ * @param parsedLines - Array item hasil parsing (tidak dimutasi; array baru dikembalikan).
  * @param provider    - Nama provider untuk model baru.
  * @param status      - Status model (`Stabil`, `Error`, dsb).
  * @param modelId     - ID model lengkap (misal `google/gemini-2.0-flash`).
  * @param alias       - Nama tampilan alias (opsional).
+ * @returns Array baru dengan model yang sudah disisipkan (urutan tetap terjaga).
  */
-export function insertModel(parsedLines: ModelReferenceItem[], provider: string, status: string, modelId: string, alias: string): void {
+export function insertModel(parsedLines: ModelReferenceItem[], provider: string, status: string, modelId: string, alias: string): ModelReferenceItem[] {
   const newLineText = `- [x] \`${modelId}\`${alias ? ` # ${alias}` : ''}`;
   const newItem: ModelReferenceItem = {
     type: 'model',
@@ -440,17 +441,19 @@ export function insertModel(parsedLines: ModelReferenceItem[], provider: string,
     modelId,
     alias
   };
-  
-  let providerIdx = parsedLines.findIndex(l => l.type === 'heading' && l.provider === provider);
+
+  const providerIdx = parsedLines.findIndex(l => l.type === 'heading' && l.provider === provider);
   if (providerIdx === -1) {
-    // Provider belum ada — buat section baru di akhir
-    parsedLines.push({ type: 'text', text: '' });
-    parsedLines.push({ type: 'heading', text: `## ${provider}`, provider });
-    parsedLines.push({ type: 'heading', text: `### ${status}`, status });
-    parsedLines.push(newItem);
-    return;
+    // Provider belum ada — buat section baru di akhir (return array baru)
+    return [
+      ...parsedLines,
+      { type: 'text', text: '' },
+      { type: 'heading', text: `## ${provider}`, provider },
+      { type: 'heading', text: `### ${status}`, status },
+      newItem
+    ];
   }
-  
+
   // Cari heading status di dalam blok provider
   let statusIdx = -1;
   for (let i = providerIdx + 1; i < parsedLines.length; i++) {
@@ -461,21 +464,29 @@ export function insertModel(parsedLines: ModelReferenceItem[], provider: string,
       break;
     }
   }
-  
+
   if (statusIdx !== -1) {
     // Status ditemukan — sisipkan setelah model terakhir di status tsb
     let insertAt = statusIdx + 1;
     while (insertAt < parsedLines.length && parsedLines[insertAt].type === 'model') {
       insertAt++;
     }
-    parsedLines.splice(insertAt, 0, newItem);
+    return [
+      ...parsedLines.slice(0, insertAt),
+      newItem,
+      ...parsedLines.slice(insertAt)
+    ];
   } else {
     // Status belum ada — buat heading status baru setelah provider
     let insertAt = providerIdx + 1;
     while (insertAt < parsedLines.length && !(parsedLines[insertAt].type === 'heading' && parsedLines[insertAt].provider && parsedLines[insertAt].provider !== provider)) {
       insertAt++;
     }
-    parsedLines.splice(insertAt, 0, { type: 'heading', text: `### ${status}`, status });
-    parsedLines.splice(insertAt + 1, 0, newItem);
+    return [
+      ...parsedLines.slice(0, insertAt),
+      { type: 'heading', text: `### ${status}`, status },
+      newItem,
+      ...parsedLines.slice(insertAt)
+    ];
   }
 }
