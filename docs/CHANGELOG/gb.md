@@ -7,8 +7,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
-## [v2.1.0] - 2026-08-06
+## [v2.1.1] - 2026-08-06
 
+### Changed
+- **NDJSON LLM Streaming Engine & OMP Auto-Selection**:
+  - `streamLLM` di `tools-cli/src/gb/src/services/llm.ts` kini otomatis mendeteksi keberadaan CLI `omp` (`hasCmd("omp")`) sebagai backend streaming non-TUI utama.
+  - Memasang flag `--mode=json` dan `--print-thoughts` saat memanggil `omp` sehingga event `thinking_start`, `thinking_delta`, `thinking_end`, dan `tool_execution` diparsing secara real-time.
+  - Menghapus bottleneck line-buffering dan fallback non-streaming ke `opencode run`, memberikan pengalaman streaming LLM token-by-token yang serealistis `sub` (`~/.shell/core/sub`).
+  - Pembaruan label header visual terminal box menjadi `omp/assistant` saat mode OMP aktif.
+
+## [v2.1.0] - 2026-08-06
 ### Changed
 - **Full TypeScript Porting & Sub Core Engine Adoption (`tools-cli/src/gb/src/`)**:
   - Porting 100% codebase `gb` dari JavaScript CJS mentah ke ESM TypeScript terstruktur di bawah `src/`.
