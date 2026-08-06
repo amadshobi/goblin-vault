@@ -7,6 +7,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v0.1.0] - 2026-08-06
+
+### Added
+- **Subcommand Baru `gh-blin profile` (View & Edit GitHub Profile via API)**:
+  - Subcommand `gh-blin profile view` / `gh-blin profile` dengan tampilan visual **ANSI Box Card** yang rapi & presisi.
+  - Interactive Edit Mode berbasis `@clack/prompts` untuk memperbarui Bio, Display Name, Company, Location, & Blog URL.
+  - Fast CLI Flags support (`gh-blin profile --name "..." --bio "..." --company "..." --location "..." --blog "..."`).
+  - Compliance **Dual-Level Help Standard**: Level 1 help di `gh-blin --help` dan Level 2 help mendalam di `gh-blin profile --help` / `gh-blin help profile`. (Issue #12)
+
+---
+
 ## [0.0.4] - 2026-08-02
 
 ### Added

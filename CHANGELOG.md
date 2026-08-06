@@ -14,6 +14,11 @@
 
 ---
 
+## [v0.3.28] - 2026-08-06
+
+### Added
+- **`gh-blin` v0.1.0 (GitHub Profile Management Subcommand `gh-blin profile`)**: Menambahkan subcommand `profile` untuk melihat profil GitHub dalam format ANSI Box Card serta mengedit Bio, Name, Company, Location, & Blog secara interaktif maupun via CLI Flags (`--bio`, `--name`, dll). Terintegrasi dengan Dual-Level Help system. (Issue #12) → [detail](docs/CHANGELOG/gh-blin.md)
+
 ## [v0.3.27] - 2026-08-06
 
 ### Fixed

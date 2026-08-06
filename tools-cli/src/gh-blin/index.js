@@ -9,6 +9,7 @@ const { repoMenu } = require('./commands/repo');
 const { releaseMenu } = require('./commands/release');
 const { authMenu } = require('./commands/auth');
 const { configMenu } = require('./commands/config');
+const { profileMenu } = require('./commands/profile');
 const { clearLastLines, formatReview } = require('./utils/display');
 const { continuePrompt } = require('./utils/prompt');
 
@@ -61,6 +62,7 @@ async function main() {
         { value: 'repos', label: 'Repos' },
         { value: 'auth', label: 'Auth' },
         { value: 'config', label: 'Config', hint: 'model & settings' },
+        { value: 'profile', label: 'Profile', hint: 'view & edit GitHub profile' },
         { value: 'switchRepo', label: 'Switch Repo', hint: activeRepo ? 'change repo' : 'set repo' },
         { value: 'repoInfo', label: 'Repo Info', hint: activeRepo || 'pilih repo' },
         { value: 'openRepo', label: 'Open in Browser', hint: activeRepo || 'pilih repo' },
@@ -104,6 +106,9 @@ async function main() {
       case 'config':
         await configMenu();
         break;
+      case 'profile':
+        await profileMenu();
+        break;
       case 'switchRepo': {
         const newRepo = await selectRepo('Pilih repository:');
         if (newRepo) {
@@ -136,12 +141,14 @@ Usage:
   gh-blin config set <key> <value>     Set config (e.g. variant, model, variants.high)
   gh-blin config get [key]             Lihat config (satu key / seluruh JSON)
   gh-blin config list                  Daftar seluruh config
+  gh-blin profile                      Lihat & edit GitHub profile
+  gh-blin profile --help               Bantuan profile (opsi flags & contoh)
   gh-blin --help                       Tampilkan bantuan ini
 
 Flags:
   --publish          Post hasil review sebagai komentar resmi GitHub PR
   --force            Paksa review ulang meski commit SHA sudah tercatat
---high             Gunakan variant model 'high' (claude-3-5-sonnet) [Default Utama]
+  --high             Gunakan variant model 'high' (claude-3-5-sonnet) [Default Utama]
   --medium           Gunakan variant model 'medium' (goblin-nexus/gemini-3.5-flash)
   --low              Gunakan variant model 'low' (gemini-2.5-flash)
   --eff-auto         Gunakan variant model 'auto' (google/gemini-2.0-flash-001)
@@ -162,7 +169,9 @@ Examples:
   gh-blin pr review --auto --high                  Batch review semua open PRs dengan variant high
   gh-blin pr review 12 --model gpt-4o              Override model secara langsung
   gh-blin config set variant medium                Set default active variant ke medium
-  gh-blin config set variants.high claude-3-7     Set custom model untuk variant high`;
+  gh-blin config set variants.high claude-3-7     Set custom model untuk variant high
+  gh-blin profile view                             Lihat profil GitHub
+  gh-blin profile --name "Nama"                    Update display name`;
 
 const CONFIG_HELP = `gh-blin config — kelola config
 
@@ -183,6 +192,43 @@ Contoh Penggunaan:
 Config disimpan di: ~/.config/goblin-vault/gh-blin-config.json
 (overridable via env XDG_CONFIG_HOME)`;
 
+const PROFILE_HELP = `gh-blin profile — lihat & edit GitHub profile
+
+Usage:
+  gh-blin profile                      Mode interaktif (TUI menu)
+  gh-blin profile view                 Lihat profil GitHub saat ini
+  gh-blin profile edit                 Edit profil secara interaktif
+  gh-blin profile --help               Tampilkan bantuan ini
+
+Fast CLI Flags (langsung update tanpa interaksi):
+  gh-blin profile --name "Nama"        Update display name
+  gh-blin profile --bio "Bio Baru"     Update bio
+  gh-blin profile --company "PT. XYZ"  Update company
+  gh-blin profile --location "Jakarta" Update location
+  gh-blin profile --blog "https://…"   Update blog/website URL
+
+Fields yang bisa diupdate:
+  --name             Display name / full name
+  --bio              Bio / deskripsi singkat
+  --company          Nama perusahaan / organisasi
+  --location         Lokasi (kota, negara)
+  --blog             Blog atau website URL
+  --twitter_username Twitter/X handle (hanya interactive mode)
+
+Contoh Penggunaan:
+  gh-blin profile view                           Lihat profil
+  gh-blin profile                                Menu interaktif
+  gh-blin profile edit                           Edit interaktif
+  gh-blin profile --name "Bambang"               Langsung ubah nama
+  gh-blin profile --bio "Builder goblin"         Langsung ubah bio
+  gh-blin profile --company "Goblin Corp"        Langsung ubah company
+  gh-blin profile --blog "https://blog.example"  Langsung ubah website
+
+Notes:
+  - Interactive mode menampilkan profil saat ini, lalu memilih field untuk diedit.
+  - Fast flags mode langsung PATCH ke GitHub tanpa konfirmasi.
+  - Gunakan 'gh-blin profile view' untuk memeriksa profil sebelum edit.`;
+
 async function runCli(argv) {
   const flags = argv.filter(a => a.startsWith('--'));
   const positionals = argv.filter(a => !a.startsWith('--'));
@@ -190,6 +236,10 @@ async function runCli(argv) {
   if (flags.includes('-h') || flags.includes('--help')) {
     if (positionals[0] === 'config') {
       console.log(CONFIG_HELP);
+      return 0;
+    }
+    if (positionals[0] === 'profile') {
+      console.log(PROFILE_HELP);
       return 0;
     }
     console.log(CLI_HELP);
@@ -341,6 +391,64 @@ async function runCli(argv) {
 
     console.error(color.red(`Subcommand config tidak dikenal: ${op || '(kosong)'}`));
     console.log(CONFIG_HELP);
+    return 1;
+  }
+
+  // --- Help subcommand (gh-blin help <topic>) ---
+  if (cmd === 'help') {
+    if (sub === 'profile') {
+      console.log(PROFILE_HELP);
+      return 0;
+    }
+    if (sub === 'config') {
+      console.log(CONFIG_HELP);
+      return 0;
+    }
+    console.log(CLI_HELP);
+    return 0;
+  }
+
+  // --- Profile subcommand ---
+  if (cmd === 'profile') {
+    const { viewProfile, editProfile, profileCliFlags } = require('./commands/profile');
+
+    // Detect CLI flags mode: --name, --bio, --company, --location, --blog
+    const hasProfileFlags = flags.some(f =>
+      ['--name', '--bio', '--company', '--location', '--blog'].includes(f)
+    );
+
+    if (hasProfileFlags) {
+      const getFlag = (name) => {
+        const idx = argv.indexOf(name);
+        return idx !== -1 ? argv[idx + 1] : undefined;
+      };
+      return await profileCliFlags({
+        name: getFlag('--name'),
+        bio: getFlag('--bio'),
+        company: getFlag('--company'),
+        location: getFlag('--location'),
+        blog: getFlag('--blog'),
+      });
+    }
+
+    // Subcommands: view, edit
+    if (sub === 'view') {
+      return await viewProfile();
+    }
+
+    if (sub === 'edit') {
+      return await editProfile();
+    }
+
+    // Default: interactive TUI menu (no subcommand / no flags)
+    if (!sub) {
+      const { profileMenu } = require('./commands/profile');
+      await profileMenu();
+      return 0;
+    }
+
+    console.error(color.red(`Subcommand profile tidak dikenal: ${sub}`));
+    console.log(PROFILE_HELP);
     return 1;
   }
 
