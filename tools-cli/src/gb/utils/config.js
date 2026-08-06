@@ -1,7 +1,7 @@
 /**
- * gh-blin config — persistent user config dalam JSON.
+ * gb config — persistent user config dalam JSON.
  *
- * Config file: ~/.config/goblin-vault/gh-blin-config.json
+ * Config file: ~/.config/goblin-vault/gb-config.json
  * (lokasi bisa di-override via env XDG_CONFIG_HOME).
  *
  * Shape config:
@@ -27,7 +27,7 @@ function configDir() {
 }
 
 function configFilePath() {
-  return path.join(configDir(), 'gh-blin-config.json');
+  return path.join(configDir(), 'gb-config.json');
 }
 
 /**
@@ -42,7 +42,7 @@ function loadConfig() {
     raw = fs.readFileSync(file, 'utf8');
   } catch (err) {
     if (err.code === 'ENOENT') return {};
-    throw new Error(`gh-blin: gagal membaca config ${file}: ${err.message}`);
+    throw new Error(`gb: gagal membaca config ${file}: ${err.message}`);
   }
   try {
     const parsed = JSON.parse(raw);
@@ -51,7 +51,7 @@ function loadConfig() {
     }
     throw new Error('root config bukan object');
   } catch (err) {
-    throw new Error(`gh-blin: config corrupt di ${file}: ${err.message}`);
+    throw new Error(`gb: config corrupt di ${file}: ${err.message}`);
   }
 }
 
@@ -64,7 +64,7 @@ function loadConfig() {
  */
 function saveConfig(config) {
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
-    throw new Error('gh-blin: saveConfig membutuhkan plain object config.');
+    throw new Error('gb: saveConfig membutuhkan plain object config.');
   }
   const file = configFilePath();
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -82,7 +82,7 @@ function saveConfig(config) {
  */
 function getConfig(key) {
   if (typeof key !== 'string' || !key.trim()) {
-    throw new Error('gh-blin: getConfig membutuhkan key (string non-empty).');
+    throw new Error('gb: getConfig membutuhkan key (string non-empty).');
   }
   return loadConfig()[key];
 }
@@ -97,7 +97,7 @@ function getConfig(key) {
  */
 function setConfig(key, value) {
   if (typeof key !== 'string' || !key.trim()) {
-    throw new Error('gh-blin: setConfig membutuhkan key (string non-empty).');
+    throw new Error('gb: setConfig membutuhkan key (string non-empty).');
   }
   const current = loadConfig();
   const next = { ...current, [key]: value };
@@ -108,7 +108,7 @@ function setConfig(key, value) {
  * Resolve model LLM dengan hierarki prioritas:
  *   1. CLI flag `--model` (via cliFlag)
  *   2. Config file key `model`
- *   3. Env `GH_BLIN_MODEL` atau `OPENAI_MODEL`
+ *   3. Env `GB_MODEL` atau `OPENAI_MODEL`
  *   4. null → biarkan provider memakai default-nya sendiri.
  *
  * @param {string} [cliFlag] - Nilai dari CLI flag `--model` (boleh undefined).
@@ -120,7 +120,7 @@ function resolveModel(cliFlag) {
   const fromConfig = loadConfig().model;
   if (typeof fromConfig === 'string' && fromConfig.trim()) return fromConfig.trim();
 
-  const envModel = process.env.GH_BLIN_MODEL || process.env.OPENAI_MODEL;
+  const envModel = process.env.GB_MODEL || process.env.OPENAI_MODEL;
   if (typeof envModel === 'string' && envModel.trim()) return envModel.trim();
 
   return null;

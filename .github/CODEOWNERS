@@ -9,7 +9,7 @@
 /tools-cli/src/sup/          @amadshobi
 /tools-cli/src/ocm/          @amadshobi
 /tools-cli/src/gn/           @amadshobi
-/tools-cli/src/gh-blin/      @amadshobi
+/tools-cli/src/gb/           @amadshobi
 /tools-cli/bin/              @amadshobi
 
 # Core Configurations & Rules

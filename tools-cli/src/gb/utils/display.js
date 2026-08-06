@@ -161,7 +161,7 @@ function formatReview(reviewText, prData = {}, meta = {}) {
 function showInPager(content, title = '') {
   const fs = require('fs');
   const path = require('path');
-  const tmpFile = path.join('/tmp', `gh-blin-${Date.now()}.tmp`);
+  const tmpFile = path.join('/tmp', `gb-${Date.now()}.tmp`);
   const header = title ? `${title}\n${'-'.repeat(60)}\n\n` : '';
   fs.writeFileSync(tmpFile, header + content, 'utf8');
 

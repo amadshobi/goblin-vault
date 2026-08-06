@@ -16,11 +16,11 @@
   <img src="https://img.shields.io/badge/TUI-Clack-FF5722?style=for-the-badge&labelColor=1F2937" alt="Clack TUI" />
   <img src="https://img.shields.io/badge/CLI-GitHub%20CLI-00E5FF?style=for-the-badge&logo=github&logoColor=black&labelColor=1F2937" alt="GitHub CLI" />
   <br/><br/>
-  <img src="../../../docs/assets/screenshoot/fex-help.png" alt="gh-blin demo" width="800" />
+  <img src="../../../docs/assets/screenshoot/fex-help.png" alt="gb demo" width="800" />
   <br/>
 </p>
 
-# gh-blin — GitHub Assistant TUI `v1.0.0`
+# gb — GitHub Assistant TUI `v1.0.0`
 
 > **TUI GitHub Client** — Pengelola interaktif berbasis terminal untuk Pull Request, Issues, Releases, dan autentikasi GitHub.
 
@@ -28,7 +28,7 @@
 
 ## 🧠 Deskripsi Singkat
 
-**gh-blin** adalah antarmuka terminal interaktif (TUI) berbasis Node.js yang membungkus command-line interface GitHub resmi (`gh`). Menggunakan Clack TUI, `gh-blin` mengotomatiskan pengelolaan alur kerja harian (issues, pull requests, release tagging, auth status) tanpa perlu mengetik parameter CLI yang panjang atau membuka web browser.
+**gb** adalah antarmuka terminal interaktif (TUI) berbasis Node.js yang membungkus command-line interface GitHub resmi (`gh`). Menggunakan Clack TUI, `gb` mengotomatiskan pengelolaan alur kerja harian (issues, pull requests, release tagging, auth status) tanpa perlu mengetik parameter CLI yang panjang atau membuka web browser.
 
 ---
 
@@ -44,7 +44,7 @@
 
 ## 🛠️ Level 1 & Level 2 Help System
 
-### Level 1 Help (`gh-blin --help` atau `gh-blin -h`)
+### Level 1 Help (`gb --help` atau `gb -h`)
 Menampilkan ringkasan fungsi utama serta dependency yang diperlukan di sistem.
 
 ---
@@ -53,7 +53,7 @@ Menampilkan ringkasan fungsi utama serta dependency yang diperlukan di sistem.
 
 ### Menjalankan TUI Utama
 ```bash
-gh-blin
+gb
 ```
 
 ### Navigasi Menu
@@ -64,7 +64,7 @@ Gunakan tombol **Panah Atas / Bawah** untuk navigasi opsi menu utama, **Space/En
 ## 📂 Struktur File & Arsitektur
 
 ```
-src/gh-blin/
+src/gb/
 ├── index.js            # Entry-point utama & Main Loop TUI
 ├── commands/           # Modul sub-menu command handlers
 │   ├── auth.js         # Wrapper setup login/logout GitHub CLI

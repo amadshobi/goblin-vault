@@ -1,10 +1,10 @@
 /**
- * gh-blin config command — kelola persistent config (utils/config.js).
+ * gb config command — kelola persistent config (utils/config.js).
  *
  * Subcommand CLI:
- *   gh-blin config set <key> <value>   — simpan key/value
- *   gh-blin config get [key]           — tampilkan value key, atau seluruh config
- *   gh-blin config list                — tampilkan seluruh config sebagai daftar
+ *   gb config set <key> <value>   — simpan key/value
+ *   gb config get [key]           — tampilkan value key, atau seluruh config
+ *   gb config list                — tampilkan seluruh config sebagai daftar
  *
  * Public API:
  *   configSet(key, value)  — simpan satu key
@@ -37,10 +37,10 @@ function formatConfigValue(value) {
  */
 function configSet(key, value) {
   if (typeof key !== 'string' || !key.trim()) {
-    return { ok: false, error: 'gh-blin: key config harus string non-empty.' };
+    return { ok: false, error: 'gb: key config harus string non-empty.' };
   }
   if (value === undefined) {
-    return { ok: false, error: 'gh-blin: value config wajib diisi.' };
+    return { ok: false, error: 'gb: value config wajib diisi.' };
   }
 
   const k = key.trim();
@@ -49,13 +49,13 @@ function configSet(key, value) {
   if (kLower === 'variant') {
     const valStr = String(value).trim().toLowerCase();
     if (!['high', 'medium', 'low'].includes(valStr)) {
-      return { ok: false, error: 'gh-blin: variant tidak valid. Gunakan high, medium, atau low.' };
+      return { ok: false, error: 'gb: variant tidak valid. Gunakan high, medium, atau low.' };
     }
     value = valStr;
   } else if (kLower.startsWith('variants.')) {
     const vKey = kLower.slice(9);
     if (!['high', 'medium', 'low'].includes(vKey)) {
-      return { ok: false, error: 'gh-blin: variant key tidak valid. Gunakan variants.high, variants.medium, atau variants.low.' };
+      return { ok: false, error: 'gb: variant key tidak valid. Gunakan variants.high, variants.medium, atau variants.low.' };
     }
   }
 
@@ -78,7 +78,7 @@ function configGet(key) {
       return { ok: true, config: loadConfig() };
     }
     if (typeof key !== 'string') {
-      return { ok: false, error: 'gh-blin: key config harus string.' };
+      return { ok: false, error: 'gb: key config harus string.' };
     }
     const cfg = loadConfig();
     return { ok: true, found: hasOwn(cfg, key), value: cfg[key] };

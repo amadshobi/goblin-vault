@@ -14,7 +14,7 @@ const { clearLastLines, formatReview } = require('./utils/display');
 const { continuePrompt } = require('./utils/prompt');
 
 process.on('SIGINT', () => {
-  p.cancel('gh-blin terminated.');
+  p.cancel('gb terminated.');
   clearLastLines(2);
   process.exit(0);
 });
@@ -22,7 +22,7 @@ process.on('SIGINT', () => {
 function showBrand() {
   console.log(`
 ${color.bold(color.cyan('+----------------------------------+'))}
-${color.bold(color.cyan('|'))}  ${color.bold('gh-blin')} — ${color.dim('GitHub TUI')}   ${color.bold(color.cyan('|'))}
+${color.bold(color.cyan('|'))}  ${color.bold('gb')} — ${color.dim('GitHub TUI')}   ${color.bold(color.cyan('|'))}
 ${color.bold(color.cyan('+----------------------------------+'))}
 ${color.dim('   Your goblin GitHub assistant')}
   `);
@@ -73,7 +73,7 @@ async function main() {
 
     if (p.isCancel(mainMenu) || mainMenu === 'exit') {
       clearLastLines(2);
-      p.outro(color.green('gh-blin selesai!'));
+      p.outro(color.green('gb selesai!'));
       process.exit(0);
     }
 
@@ -132,18 +132,18 @@ async function main() {
   }
 }
 
-const CLI_HELP = `gh-blin — non-interactive mode
+const CLI_HELP = `gb — non-interactive mode
 
 Usage:
-  gh-blin pr review <number> [flags]   Review satu PR via AI
-  gh-blin pr review --auto [flags]     Review semua open PRs (batch)
-  gh-blin pr review --all [flags]      (alias dari --auto)
-  gh-blin config set <key> <value>     Set config (e.g. variant, model, variants.high)
-  gh-blin config get [key]             Lihat config (satu key / seluruh JSON)
-  gh-blin config list                  Daftar seluruh config
-  gh-blin profile                      Lihat & edit GitHub profile
-  gh-blin profile --help               Bantuan profile (opsi flags & contoh)
-  gh-blin --help                       Tampilkan bantuan ini
+  gb pr review <number> [flags]   Review satu PR via AI
+  gb pr review --auto [flags]     Review semua open PRs (batch)
+  gb pr review --all [flags]      (alias dari --auto)
+  gb config set <key> <value>     Set config (e.g. variant, model, variants.high)
+  gb config get [key]             Lihat config (satu key / seluruh JSON)
+  gb config list                  Daftar seluruh config
+  gb profile                      Lihat & edit GitHub profile
+  gb profile --help               Bantuan profile (opsi flags & contoh)
+  gb --help                       Tampilkan bantuan ini
 
 Flags:
   --publish          Post hasil review sebagai komentar resmi GitHub PR
@@ -160,52 +160,52 @@ Magic omp:
   ... omp            Akhiri command dengan "omp" untuk pakai backend omp (prompt optimizer).
 
 Examples:
-  gh-blin pr review 12                             Review PR #12 memakai default variant (high)
-  gh-blin pr review 12 --high                      Review PR #12 memakai variant high
-  gh-blin pr review 12 --medium --publish          Review PR #12 memakai variant medium & publish ke GitHub
-  gh-blin pr review 12 --low                       Review PR #12 memakai variant low
-  gh-blin pr review 12 omp                         Review PR #12 pakai backend omp
-  gh-blin pr review 12 omp --eff-auto              Review PR #12 pakai backend omp dengan variant auto
-  gh-blin pr review --auto --high                  Batch review semua open PRs dengan variant high
-  gh-blin pr review 12 --model gpt-4o              Override model secara langsung
-  gh-blin config set variant medium                Set default active variant ke medium
-  gh-blin config set variants.high claude-3-7     Set custom model untuk variant high
-  gh-blin profile view                             Lihat profil GitHub
-  gh-blin profile --name "Nama"                    Update display name`;
+  gb pr review 12                             Review PR #12 memakai default variant (high)
+  gb pr review 12 --high                      Review PR #12 memakai variant high
+  gb pr review 12 --medium --publish          Review PR #12 memakai variant medium & publish ke GitHub
+  gb pr review 12 --low                       Review PR #12 memakai variant low
+  gb pr review 12 omp                         Review PR #12 pakai backend omp
+  gb pr review 12 omp --eff-auto              Review PR #12 pakai backend omp dengan variant auto
+  gb pr review --auto --high                  Batch review semua open PRs dengan variant high
+  gb pr review 12 --model gpt-4o              Override model secara langsung
+  gb config set variant medium                Set default active variant ke medium
+  gb config set variants.high claude-3-7     Set custom model untuk variant high
+  gb profile view                             Lihat profil GitHub
+  gb profile --name "Nama"                    Update display name`;
 
-const CONFIG_HELP = `gh-blin config — kelola config
+const CONFIG_HELP = `gb config — kelola config
 
 Usage:
-  gh-blin config set <key> <value>   Set key config
-  gh-blin config get [key]           Tampilkan value key, atau seluruh config JSON
-  gh-blin config list                Tampilkan seluruh config sebagai daftar
+  gb config set <key> <value>   Set key config
+  gb config get [key]           Tampilkan value key, atau seluruh config JSON
+  gb config list                Tampilkan seluruh config sebagai daftar
 
 Contoh Penggunaan:
-  gh-blin config set variant medium               Set default active variant ke 'medium'
-  gh-blin config set variants.high claude-3-7    Set custom model untuk variant 'high'
-  gh-blin config set variants.low gemini-1.5-pro Set custom model untuk variant 'low'
-  gh-blin config set model gemini-2.5-flash       Set legacy model key
-  gh-blin config get variant                      Lihat active variant
-  gh-blin config get                              Lihat seluruh config (JSON)
-  gh-blin config list                             Daftar seluruh config
+  gb config set variant medium               Set default active variant ke 'medium'
+  gb config set variants.high claude-3-7    Set custom model untuk variant 'high'
+  gb config set variants.low gemini-1.5-pro Set custom model untuk variant 'low'
+  gb config set model gemini-2.5-flash       Set legacy model key
+  gb config get variant                      Lihat active variant
+  gb config get                              Lihat seluruh config (JSON)
+  gb config list                             Daftar seluruh config
 
-Config disimpan di: ~/.config/goblin-vault/gh-blin-config.json
+Config disimpan di: ~/.config/goblin-vault/gb-config.json
 (overridable via env XDG_CONFIG_HOME)`;
 
-const PROFILE_HELP = `gh-blin profile — lihat & edit GitHub profile
+const PROFILE_HELP = `gb profile — lihat & edit GitHub profile
 
 Usage:
-  gh-blin profile                      Mode interaktif (TUI menu)
-  gh-blin profile view                 Lihat profil GitHub saat ini
-  gh-blin profile edit                 Edit profil secara interaktif
-  gh-blin profile --help               Tampilkan bantuan ini
+  gb profile                      Mode interaktif (TUI menu)
+  gb profile view                 Lihat profil GitHub saat ini
+  gb profile edit                 Edit profil secara interaktif
+  gb profile --help               Tampilkan bantuan ini
 
 Fast CLI Flags (langsung update tanpa interaksi):
-  gh-blin profile --name "Nama"        Update display name
-  gh-blin profile --bio "Bio Baru"     Update bio
-  gh-blin profile --company "PT. XYZ"  Update company
-  gh-blin profile --location "Jakarta" Update location
-  gh-blin profile --blog "https://…"   Update blog/website URL
+  gb profile --name "Nama"        Update display name
+  gb profile --bio "Bio Baru"     Update bio
+  gb profile --company "PT. XYZ"  Update company
+  gb profile --location "Jakarta" Update location
+  gb profile --blog "https://…"   Update blog/website URL
 
 Fields yang bisa diupdate:
   --name             Display name / full name
@@ -216,18 +216,18 @@ Fields yang bisa diupdate:
   --twitter_username Twitter/X handle (hanya interactive mode)
 
 Contoh Penggunaan:
-  gh-blin profile view                           Lihat profil
-  gh-blin profile                                Menu interaktif
-  gh-blin profile edit                           Edit interaktif
-  gh-blin profile --name "Bambang"               Langsung ubah nama
-  gh-blin profile --bio "Builder goblin"         Langsung ubah bio
-  gh-blin profile --company "Goblin Corp"        Langsung ubah company
-  gh-blin profile --blog "https://blog.example"  Langsung ubah website
+  gb profile view                           Lihat profil
+  gb profile                                Menu interaktif
+  gb profile edit                           Edit interaktif
+  gb profile --name "Bambang"               Langsung ubah nama
+  gb profile --bio "Builder goblin"         Langsung ubah bio
+  gb profile --company "Goblin Corp"        Langsung ubah company
+  gb profile --blog "https://blog.example"  Langsung ubah website
 
 Notes:
   - Interactive mode menampilkan profil saat ini, lalu memilih field untuk diedit.
   - Fast flags mode langsung PATCH ke GitHub tanpa konfirmasi.
-  - Gunakan 'gh-blin profile view' untuk memeriksa profil sebelum edit.`;
+  - Gunakan 'gb profile view' untuk memeriksa profil sebelum edit.`;
 
 async function runCli(argv) {
   const flags = argv.filter(a => a.startsWith('--'));
@@ -305,7 +305,7 @@ async function runCli(argv) {
 
     const prNumber = rest[0];
     if (!prNumber) {
-      console.error(color.red('Nomor PR wajib diisi. Contoh: gh-blin pr review 12 [--publish]'));
+      console.error(color.red('Nomor PR wajib diisi. Contoh: gb pr review 12 [--publish]'));
       console.error(color.dim('Atau gunakan --auto / --all untuk semua open PRs.'));
       return 1;
     }
@@ -340,8 +340,8 @@ async function runCli(argv) {
     if (op === 'set') {
       const [key, value] = rest;
       if (!key || value === undefined) {
-        console.error(color.red('Penggunaan: gh-blin config set <key> <value>'));
-        console.error(color.dim('Contoh: gh-blin config set model gemini-2.5-flash'));
+        console.error(color.red('Penggunaan: gb config set <key> <value>'));
+        console.error(color.dim('Contoh: gb config set model gemini-2.5-flash'));
         return 1;
       }
       const res = configSet(key, value);
@@ -394,7 +394,7 @@ async function runCli(argv) {
     return 1;
   }
 
-  // --- Help subcommand (gh-blin help <topic>) ---
+  // --- Help subcommand (gb help <topic>) ---
   if (cmd === 'help') {
     if (sub === 'profile') {
       console.log(PROFILE_HELP);

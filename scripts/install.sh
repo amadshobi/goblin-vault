@@ -53,7 +53,7 @@ if [[ -d "$HOME/.opencode/node_modules" ]]; then
     echo -e "  [${GREEN}OK${NC}] global node_modules ditemukan di ~/.opencode"
 else
     echo -e "  [${YELLOW}WARN${NC}] ~/.opencode/node_modules tidak ditemukan!"
-    echo "         Untuk menjalankan 'ocm' dan 'gh-blin', dibutuhkan packages seperti @clack/prompts."
+    echo "         Untuk menjalankan 'ocm' dan 'gb', dibutuhkan packages seperti @clack/prompts."
     echo "         Jalankan 'ocm doctor' jika ada error dependensi."
 fi
 

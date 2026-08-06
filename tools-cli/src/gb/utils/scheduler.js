@@ -1,7 +1,7 @@
 /**
- * gh-blin review scheduler — track PR review history in a local JSON log.
+ * gb review scheduler — track PR review history in a local JSON log.
  *
- * Log file: ~/.config/goblin-vault/gh-blin-reviews.json
+ * Log file: ~/.config/goblin-vault/gb-reviews.json
  * (lokasi bisa di-override via env XDG_CONFIG_HOME).
  *
  * Shape log:
@@ -32,7 +32,7 @@ function configDir() {
 }
 
 function logFilePath() {
-  return path.join(configDir(), 'gh-blin-reviews.json');
+  return path.join(configDir(), 'gb-reviews.json');
 }
 
 /**
@@ -47,7 +47,7 @@ function loadReviewLog() {
     raw = fs.readFileSync(file, 'utf8');
   } catch (err) {
     if (err.code === 'ENOENT') return {};
-    throw new Error(`gh-blin: gagal membaca review log ${file}: ${err.message}`);
+    throw new Error(`gb: gagal membaca review log ${file}: ${err.message}`);
   }
   try {
     const parsed = JSON.parse(raw);
@@ -56,7 +56,7 @@ function loadReviewLog() {
     }
     throw new Error('root log bukan object');
   } catch (err) {
-    throw new Error(`gh-blin: review log corrupt di ${file}: ${err.message}`);
+    throw new Error(`gb: review log corrupt di ${file}: ${err.message}`);
   }
 }
 
@@ -68,7 +68,7 @@ function loadReviewLog() {
  */
 function saveReviewLog(log) {
   if (!log || typeof log !== 'object' || Array.isArray(log)) {
-    throw new Error('gh-blin: saveReviewLog membutuhkan plain object log.');
+    throw new Error('gb: saveReviewLog membutuhkan plain object log.');
   }
   const file = logFilePath();
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -105,10 +105,10 @@ function hasBeenReviewed(repo, prNumber, headSha) {
  */
 function recordReview(repo, prNumber, metadata = {}) {
   if (!repo || typeof repo !== 'string') {
-    throw new Error('gh-blin: recordReview membutuhkan repo (format owner/name).');
+    throw new Error('gb: recordReview membutuhkan repo (format owner/name).');
   }
   if (prNumber == null) {
-    throw new Error('gh-blin: recordReview membutuhkan prNumber.');
+    throw new Error('gb: recordReview membutuhkan prNumber.');
   }
 
   const log = loadReviewLog();

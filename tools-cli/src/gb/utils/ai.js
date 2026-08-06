@@ -1,5 +1,5 @@
 /**
- * gh-blin AI helpers — LLM-backed PR review generation.
+ * gb AI helpers — LLM-backed PR review generation.
  *
  * callLLM fallback strategy:
  *   1. `opencode run` (CLI opencode)
@@ -7,7 +7,7 @@
  *   3. Throw error + actionable hint
  *
  * Model dipilih via utils/config.js `resolveModel()` — hierarki:
- *   CLI flag `--model` > config file `model` > env `GH_BLIN_MODEL`/`OPENAI_MODEL`
+ *   CLI flag `--model` > config file `model` > env `GB_MODEL`/`OPENAI_MODEL`
  *   > null (provider default).
  */
 const fs = require('fs');
@@ -127,7 +127,7 @@ function callLLM(prompt, options = {}) {
     'Pasang CLI `opencode` (https://opencode.ai/docs/cli) ATAU export env OPENAI_API_KEY ' +
     '(opsional: OPENAI_MODEL, OPENAI_BASE_URL) lalu coba lagi.';
   const detail = lastError ? ` (detail: ${lastError})` : '';
-  throw new Error(`gh-blin: tidak ada LLM backend yang berhasil. ${hint}${detail}`);
+  throw new Error(`gb: tidak ada LLM backend yang berhasil. ${hint}${detail}`);
 }
 
 /**
@@ -201,7 +201,7 @@ function callOpenAIViaCurl(prompt, modelOverride) {
 const OMP_THINKING_VALUES = new Set(['high', 'medium', 'low', 'auto', 'off']);
 
 function callOmp(prompt, options = {}) {
-  const tmpFile = path.join(os.tmpdir(), `gh-blin-prompt-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
+  const tmpFile = path.join(os.tmpdir(), `gb-prompt-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
   try {
     fs.writeFileSync(tmpFile, prompt, 'utf8');
     const args = ['-p', `@${tmpFile}`, '--no-session', '--hide-thinking'];

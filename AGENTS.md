@@ -25,14 +25,14 @@ berjalan, bukan sekadar menambah fitur demi keren-kerenan.
 ```
 goblin-vault/
 ├── tools-cli/              # Pusat persenjataan CLI
-│   ├── bin/                # Executable binaries/wrappers siap pakai (fe, ocm, gh-blin)
+│   ├── bin/                # Executable binaries/wrappers siap pakai (fe, ocm, gb)
 │   ├── src/                # Source code mentah aplikasi CLI
 │   │   ├── fex/            # File Explorer (Go) — fzf + tmux
 │   │   │   ├── cmd/        # Command handlers (root.go, search_mode.go, tree_mode.go)
 │   │   │   ├── docs/       # Dokumentasi fex
 │   │   │   ├── helpers/    # Helper utilities (fzf-pick.sh, tmux-split.sh, dll)
 │   │   │   └── internal/   # Internal packages (config, fzf, session, tmux, tree, ui, util)
-│   │   ├── gh-blin/        # GitHub Assistant TUI (Node.js)
+│   │   ├── gb/             # GitHub Assistant TUI (Node.js)
 │   │   ├── goblin-control/ # Control center core (Node.js)
 │   │   ├── notes/          # Notes utility (Node.js)
 │   │   └── ocm/            # OpenCode Configurator TUI (Node.js)
@@ -41,7 +41,7 @@ goblin-vault/
 ├── scripts/                # Utilities shell & js (doctor, install, worktree, dll)
 ├── configs/                # Konfigurasi editor & tooling (micro, nvim)
 ├── docs/                   # Rules, skills, update notes & history
-│   ├── CHANGELOG/          # Changelog modular per-tool (sup.md, fex.md, gn.md, ocm.md, zf.md, gh-blin.md)
+│   ├── CHANGELOG/          # Changelog modular per-tool (sup.md, fex.md, gn.md, ocm.md, zf.md, gb.md)
 │   ├── history/            # Riwayat implementasi harian (YYYY-MM-DD_nama.md)
 │   ├── rules/              # Aturan coding & operasional
 ├── .github/                # CI workflows + git hooks
@@ -146,7 +146,7 @@ Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
     ```
     Tujuannya agar branch `dev` tidak tertinggal (*divergent*) dan menghindari terjadinya merge conflict yang menyebalkan di rilis berikutnya.
   - **Global Release**: `./scripts/release.sh vault <patch|minor|major>` untuk merilis versi global repo vault (memperbarui `VERSION`, commit changelog, membuat git tag `vX.Y.Z`, dan otomatis mempublikasikan **GitHub Release resmi** via `gh release create` dengan menyertakan release notes dari `CHANGELOG.md`).
-  - **Modular Tool Release**: `./scripts/release.sh <tool_name> <patch|minor|major>` (e.g. `fex`, `gn`, `zf`, `ocm`, `sup`, `gh-blin`) untuk memperbarui versi internal tool dan menulis changelog modular di `docs/CHANGELOG/<tool>.md`.
+  - **Modular Tool Release**: `./scripts/release.sh <tool_name> <patch|minor|major>` (e.g. `fex`, `gn`, `zf`, `ocm`, `sup`, `gb`) untuk memperbarui versi internal tool dan menulis changelog modular di `docs/CHANGELOG/<tool>.md`.
 
 ---
 

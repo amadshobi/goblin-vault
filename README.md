@@ -97,7 +97,7 @@ Filosofi inti:
 | **[`gn`](tools-cli/src/gn/)** `v1.0.0` | Goblin Nexus CLI — Control Center core, AI adapter broker, bench tools, price/telemetry tracking, quarantine & privacy shield daemon. | Shell, TypeScript, Bun | `gn` |
 | **[`ocm`](tools-cli/src/ocm/)** `v1.2.0` | OpenCode Configurator TUI — dashboard & manager untuk opencode config, agents, MCP servers, dan providers. | TypeScript, Bun, Clack TUI | `ocm` |
 | **[`zf`](tools-cli/src/zf/)** | Zoxide & Tmux Helper — rapid directory navigation, session switcher, auto-launcher tools integration. | Pure Shell (Zsh) | `zf` |
-| **[`gh-blin`](tools-cli/src/gh-blin/)** `v1.1.1` | GitHub Assistant TUI — kelola Issue, PR, Auth, & Release GitHub langsung dari terminal. | Node.js, Clack TUI | `gh-blin` |
+| **[`gb`](tools-cli/src/gb/)** `v2.0.0` | GitHub Assistant TUI — kelola Issue, PR, Auth, & Release GitHub langsung dari terminal. | Node.js, Clack TUI | `gb` |
 
 ---
 
@@ -132,10 +132,10 @@ bash scripts/install-hooks.sh
 cd tools-cli/src/fex && go build -o ~/.local/bin/fex .
 cd -
 
-# 5. Install dependencies sup & gh-blin
+# 5. Install dependencies sup & gb
 cd tools-cli/src/sup && bun install && bun run build
 cd -
-cd tools-cli/src/gh-blin && bun install
+cd tools-cli/src/gb && bun install
 cd -
 
 # 6. Deploy config editor (micro & nvim)
@@ -153,7 +153,7 @@ fex --help       # File explorer TUI
 gn --help        # Goblin Nexus CLI
 ocm --help       # OpenCode configurator
 zf --help        # Zoxide navigation
-gh-blin --help   # GitHub assistant
+gb --help        # GitHub assistant
 ```
 
 ---
@@ -163,11 +163,11 @@ gh-blin --help   # GitHub assistant
 ```
 goblin-vault/
 ├── tools-cli/                  # Pusat persenjataan CLI
-│   ├── bin/                    # Executable wrappers (sup, fex, gn, ocm, zf, gh-blin)
+│   ├── bin/                    # Executable wrappers (sup, fex, gn, ocm, zf, gb)
 │   └── src/                    # Source code per-tool
 │       ├── fex/                # File Explorer (Go + Cobra)
 │       ├── gn/                 # Goblin Nexus CLI (Shell + TypeScript)
-│       ├── gh-blin/            # GitHub Assistant TUI (Node.js)
+│       ├── gb/                 # GitHub Assistant TUI (Node.js)
 │       ├── goblin-control/     # Control Center core (Node.js)
 │       ├── notes/              # Notes utility (Node.js)
 │       ├── ocm/                # OpenCode Configurator (TypeScript)
@@ -240,7 +240,7 @@ bash scripts/check_syntax.sh    # Lint Bash, Go, JS, TS
 | [`AGENTS.md`](AGENTS.md) | Struktur repo, guideline engineering, coding standards, do/don't |
 | [`docs/rules/coding-style.md`](docs/rules/coding-style.md) | Immutability, file organization, error handling, input validation |
 | [`CHANGELOG.md`](CHANGELOG.md) | Master changelog + navigasi ke changelog per-tool |
-| [`docs/CHANGELOG/`](docs/CHANGELOG/) | Detail changelog per-tool (`sup.md`, `fex.md`, `gn.md`, `ocm.md`, `zf.md`, `gh-blin.md`) |
+| [`docs/CHANGELOG/`](docs/CHANGELOG/) | Detail changelog per-tool (`sup.md`, `fex.md`, `gn.md`, `ocm.md`, `zf.md`, `gb.md`) |
 
 **Highlights:**
 - Bahasa dokumentasi: **Indonesia** (utama), English untuk istilah teknis.

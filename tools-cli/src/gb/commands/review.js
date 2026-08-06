@@ -1,5 +1,5 @@
 /**
- * gh-blin AI review command — orchestrate PR review flow:
+ * gb AI review command — orchestrate PR review flow:
  *   fetch metadata + diff (gh / ghApi) → generate AI review (utils/ai.js)
  *   → record log (utils/scheduler.js) → display (utils/display.js).
  *
