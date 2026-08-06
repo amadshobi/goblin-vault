@@ -14,6 +14,11 @@
 
 ---
 
+## [v0.3.29] - 2026-08-06
+
+### Changed
+- **`gb` v2.1.0 (Full TypeScript Migration, Sub Engine Adoption, & Issue Suite)**: Porting 100% codebase `gb` ke TypeScript modular, adopsi Live Streaming LLM Engine dari `sub`, penambahan `gb issue summarize` & `gb issue analyze`, serta pembersihan total (purge) file JS legacy. → [detail](docs/CHANGELOG/gb.md)
+
 ## [v0.3.28] - 2026-08-06
 
 ### Added

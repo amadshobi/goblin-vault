@@ -7,6 +7,22 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v2.1.0] - 2026-08-06
+
+### Changed
+- **Full TypeScript Porting & Sub Core Engine Adoption (`tools-cli/src/gb/src/`)**:
+  - Porting 100% codebase `gb` dari JavaScript CJS mentah ke ESM TypeScript terstruktur di bawah `src/`.
+  - Adopsi core engine dari `sub` (`renderer.ts`, `stream.ts`, `scanner.ts`, `session.ts`) untuk mendukung **Live Streaming LLM Output** real-time.
+  - Arsitektur **Modular Domain Services**: `services/profile/`, `services/pr/`, `services/issue/`, `services/auth/`, `services/config/`, `services/release/`, `services/repo/`.
+  - Pembersihan total (purge) 100% file JS legacy lama di `commands/`, `utils/`, dan `index.js`.
+
+### Added
+- **Subcommand Baru `gb issue summarize <number>` & `gb issue analyze`**:
+  - `gb issue summarize`: Meringkas thread issue & komentar secara cerdas berbasis LLM dengan output Markdown streaming.
+  - `gb issue analyze`: Mengkalkulasi severity & statistik backlog issue secara instant.
+
+---
+
 ## [v2.0.0] - 2026-08-06
 
 ### Changed

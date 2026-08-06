@@ -1,2 +1,38 @@
 #!/usr/bin/env node
-require('../src/gb/index.js');
+/**
+ * gb — GitHub TUI & CLI entrypoint
+ *
+ * Mengeksekusi router TypeScript (`tools-cli/src/gb/src/index.ts`):
+ *   - Prefer hasil build di `dist/index.js` (CJS emit, runtime utama).
+ *   - Fallback ke `tsx` (dev) bila `dist/` belum dibangun.
+ */
+const path = require('path');
+const fs = require('fs');
+const { pathToFileURL } = require('url');
+
+const gbRoot = path.join(__dirname, '../src/gb');
+const distEntry = path.join(gbRoot, 'dist/index.js');
+const srcEntry = path.join(gbRoot, 'src/index.ts');
+
+(async () => {
+  // Runtime: compiled CJS build (paling cepat & stabil).
+  if (fs.existsSync(distEntry)) {
+    try {
+      await import(pathToFileURL(distEntry).href);
+      return;
+    } catch (err) {
+      // dist ada tapi gagal di-load — coba dev fallback
+      console.error('[gb] dist/index.js gagal dijalankan, mencoba mode dev (tsx)...');
+      console.error(err);
+    }
+  }
+
+  // Dev: jalankan source TS langsung via tsx dari node_modules gb.
+  const tsxBin = path.join(gbRoot, 'node_modules/.bin/tsx');
+  const { spawnSync } = require('child_process');
+  const r = spawnSync(tsxBin, [srcEntry, ...process.argv.slice(2)], {
+    stdio: 'inherit',
+  });
+  // propagate exit code (atau default 1)
+  process.exit(r.status ?? 1);
+})();
