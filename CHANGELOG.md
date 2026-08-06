@@ -14,6 +14,11 @@
 
 ---
 
+## [v0.3.27] - 2026-08-06
+
+### Fixed
+- **`ocm` v0.3.16 (Immutability Refactor & Splice Elimination)**: Menghapus semua mutasi in-place `Array.prototype.splice` di `tools-cli/src/ocm/src/utils/utils.ts` dan `commands/reference.ts`. Logika insert dan delete model kini 100% immutable (Issue #3). → [detail](docs/CHANGELOG/ocm.md)
+
 ## [v0.3.26] - 2026-08-05
 
 ### Added

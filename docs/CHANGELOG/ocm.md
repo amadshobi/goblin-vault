@@ -7,6 +7,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v0.3.16] - 2026-08-06
+
+### Fixed
+- **Immutability Refactor pada `insertModel` & Delete Logic (Issue #3)**:
+  - Menghapus semua penggunaan `Array.prototype.splice` dan mutasi array in-place di `tools-cli/src/ocm/src/utils/utils.ts`.
+  - Fungsi `insertModel()` sekarang mengembalikan salinan baru array (`ModelReferenceItem[]`) menggunakan slice dan spread operator `[...]`.
+  - Refactor logika penghapusan model pada `tools-cli/src/ocm/src/commands/reference.ts` menggunakan `.filter()` yang immutable.
+
 ## [v0.3.15] - 2026-07-28
 
 ### Added
