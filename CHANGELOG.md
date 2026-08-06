@@ -14,8 +14,12 @@
 
 ---
 
-## [v0.3.29] - 2026-08-06
+## [v0.3.30] - 2026-08-06
 
+### Changed
+- **`gb` v2.1.1 (NDJSON LLM Streaming Engine & OMP Auto-Selection)**: Mengubah `streamLLM` di `gb` agar otomatis menggunakan backend `omp` dengan flag `--mode=json` & `--print-thoughts`, menghadirkan streaming token-by-token dan visualisasi thinking real-time serealistis `sub`. → [detail](docs/CHANGELOG/gb.md)
+
+## [v0.3.29] - 2026-08-06
 ### Changed
 - **`gb` v2.1.0 (Full TypeScript Migration, Sub Engine Adoption, & Issue Suite)**: Porting 100% codebase `gb` ke TypeScript modular, adopsi Live Streaming LLM Engine dari `sub`, penambahan `gb issue summarize` & `gb issue analyze`, serta pembersihan total (purge) file JS legacy. → [detail](docs/CHANGELOG/gb.md)
 
