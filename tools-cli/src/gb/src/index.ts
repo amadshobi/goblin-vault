@@ -45,7 +45,7 @@ import {
   issueMenu,
 } from "./services/issue/view";
 import { summarizeIssue } from "./services/issue/summarize";
-import { summarizeBacklog } from "./services/issue/analyze";
+import { summarizeBacklog, analyzeIssueWithAI } from "./services/issue/analyze";
 import { releaseMenu } from "./services/release/menu";
 import { repoMenu, viewRepo, openRepo } from "./services/repo/menu";
 import { authMenu } from "./services/auth/menu";
@@ -145,15 +145,22 @@ ${color.bold("Contoh:")}
 const HELP_ISSUE = `${color.bold("gb issue")} — Issues (view / summarize / analyze)
 
 ${color.bold("Penggunaan:")}
-  gb issue view <number>      Lihat detail issue (+ komentar)
-  gb issue summarize <number> Ringkas issue + komentar via LLM
-  gb issue analyze [--all]    Analisis severity/statistik issue
-  gb issue --help             Tampilkan bantuan ini
+  gb issue view <number>              Lihat detail issue (+ komentar)
+  gb issue summarize <number> [flags] Ringkas issue + komentar via LLM
+  gb issue analyze <number> [flags]   Deep AI Technical Analysis issue tertentu
+  gb issue analyze [--all]            Analisis statistik & backlog severity
+  gb issue --help                     Tampilkan bantuan ini
+
+${color.bold("Flags Preset Model:")}
+  --high       Gunakan model Sonnet 3.7 + thinking high
+  --medium     Gunakan model Gemini 3.6 Flash + thinking medium
+  --low        Gunakan model Gemini 2.5 Flash + thinking low
 
 ${color.bold("Contoh:")}
   gb issue view 42
-  gb issue summarize 42
-  gb issue analyze            Analisis seluruh issue OPEN
+  gb issue summarize 42 --high
+  gb issue analyze 42 --medium
+  gb issue analyze
 `;
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -311,7 +318,11 @@ async function runCli(argv: string[]): Promise<number> {
         console.log("");
         const model = getFlagValue(argv, "--model") || getFlagValue(argv, "-m");
         const variant = getFlagValue(argv, "--variant") || getFlagValue(argv, "-v");
-        const result = await summarizeIssue(issue, { model, variant });
+        const high = flags.includes("--high");
+        const medium = flags.includes("--medium");
+        const low = flags.includes("--low");
+
+        const result = await summarizeIssue(issue, { model, variant, high, medium, low });
         console.log(color.dim(`\n[model: ${result.model || "(default)"} | backend: ${result.backend} | tokens: ${result.tokens.total}]`));
         return 0;
       } catch (err) {
@@ -322,6 +333,30 @@ async function runCli(argv: string[]): Promise<number> {
     }
 
     if (sub === "analyze") {
+      const num = rest[0];
+      const high = flags.includes("--high");
+      const medium = flags.includes("--medium");
+      const low = flags.includes("--low");
+      const model = getFlagValue(argv, "--model") || getFlagValue(argv, "-m");
+      const variant = getFlagValue(argv, "--variant") || getFlagValue(argv, "-v");
+
+      if (num && !num.startsWith("--")) {
+        const s = spinner();
+        s.start(`Fetching issue #${num}...`);
+        try {
+          const issue = fetchIssue(repo, num);
+          s.stop(`Fetched issue #${issue.number} ${issue.title}`);
+          console.log("");
+          const result = await analyzeIssueWithAI(issue, { model, variant, high, medium, low });
+          console.log(color.dim(`\n[tokens: ${result.tokens.total}]`));
+          return 0;
+        } catch (err) {
+          s.stop("Error");
+          console.error(color.red(err instanceof Error ? err.message : String(err)));
+          return 1;
+        }
+      }
+
       const s = spinner();
       s.start("Fetching issues...");
       try {

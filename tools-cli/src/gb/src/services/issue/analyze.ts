@@ -2,12 +2,11 @@
  * issue/analyze.ts — Issue analysis service (TS)
  *
  * Fondasi modular untuk analisis isu: triase/labeling, penghitungan statistik
- * backlog, dan klasifikasi severity. Murni logika/data — TIDAK menyentuh UI,
- * sehingga mudah di-uji dan dipanggil dari berbagai entrypoint.
- *
- * API bersifat pure function pada array GHIssue (input di-klaim sebagai
- * immutable — selalu return array/object baru, tidak memutasi input).
+ * backlog, klasifikasi severity, dan AI Deep Technical Analysis via LLM.
  */
+import { streamLLM, estimateTokens } from "../llm";
+import { getSystemPrompt } from "../../config/prompts";
+import { recordLLMLog } from "../logger";
 import type { GHIssue } from "../../types";
 
 export type Severity = "critical" | "warning" | "normal" | "info";
@@ -25,6 +24,12 @@ export interface IssueStats {
   closed: number;
   byLabel: Record<string, number>;
   byAuthor: Record<string, number>;
+}
+
+export interface IssueAnalysisResult {
+  analysis: string;
+  prompt: string;
+  tokens: { prompt: number; completion: number; total: number };
 }
 
 /** Kata-kunci penanda isu (case-insensitive) untuk klasifikasi cepat. */
@@ -90,4 +95,49 @@ export function summarizeBacklog(issues: readonly GHIssue[]): string {
   const warning = severities.filter((s) => s.severity === "warning").length;
   lines.push(`Severity: ${critical} critical, ${warning} warning.`);
   return lines.join("\n");
+}
+
+/**
+ * Melakukan AI Deep Technical Analysis pada Issue menggunakan OMP StreamLLM & System Prompt khusus
+ */
+export async function analyzeIssueWithAI(
+  issue: GHIssue,
+  options: { model?: string; variant?: string; high?: boolean; medium?: boolean; low?: boolean } = {}
+): Promise<IssueAnalysisResult> {
+  const systemPrompt = getSystemPrompt("issue-analyze");
+  const userPrompt = [
+    `TITLE: ${issue.title || "(untitled)"}`,
+    `AUTHOR: ${issue.author?.login || "unknown"}`,
+    `LABELS: ${(issue.labels || []).map((l) => l.name).join(", ") || "(none)"}`,
+    "",
+    "DESCRIPTION:",
+    issue.body || "(no description)",
+  ].join("\n");
+
+  const rawAnalysis = await streamLLM(userPrompt, {
+    systemPrompt,
+    model: options.model,
+    variant: options.variant,
+    high: options.high,
+    medium: options.medium,
+    low: options.low,
+  });
+
+  const promptTokens = estimateTokens(userPrompt);
+  const completionTokens = estimateTokens(rawAnalysis);
+
+  recordLLMLog({
+    type: "issue-analyze",
+    number: issue.number,
+    model: options.model || "default",
+    variant: options.variant || (options.high ? "high" : options.low ? "low" : "medium"),
+    inputTokens: promptTokens,
+    outputTokens: completionTokens,
+  });
+
+  return {
+    analysis: rawAnalysis,
+    prompt: userPrompt,
+    tokens: { prompt: promptTokens, completion: completionTokens, total: promptTokens + completionTokens },
+  };
 }

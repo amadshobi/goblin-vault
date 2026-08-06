@@ -2,11 +2,11 @@
  * issue/summarize.ts — Issue summarization service (TS)
  *
  * Fondasi modular: mengambil issue + komentar, membangun prompt ringkas dalam
- * Bahasa Indonesia, dan mendelegasikan ke LLM via `../llm.ts` (`callLLM`).
- *
- * Ini fondasi — tidak terikat ke UI; callable dari mana saja (TUI, CLI, scheduler).
+ * Bahasa Indonesia, dan mendelegasikan ke LLM via `../llm.ts` (`streamLLM`).
  */
 import { callLLM, streamLLM, estimateTokens } from "../llm";
+import { getSystemPrompt } from "../../config/prompts";
+import { recordLLMLog } from "../logger";
 import type { GHIssue } from "../../types";
 
 export interface IssueSummary {
@@ -30,10 +30,6 @@ export function buildSummaryPrompt(issue: GHIssue, commentsLimit = 10): string {
     .join("\n");
 
   return [
-    "You are a concise issue summarizer. Summarize the GitHub issue below in Bahasa Indonesia.",
-    "Output: 1) ringkasan masalah (2-3 kalimat), 2) langkah reproduksi (bila ada),",
-    "3) konteks/kesepakatan dari komentar (bila ada), 4) saran next step. Direct, no fluff.",
-    "",
     `TITLE: ${title}`,
     `AUTHOR: ${author}`,
     `LABELS: ${labels}`,
@@ -49,8 +45,12 @@ export function buildSummaryPrompt(issue: GHIssue, commentsLimit = 10): string {
  * Summarize an issue.
  * @throws {Error} Kalau LLM backend gagal.
  */
-export async function summarizeIssue(issue: GHIssue, options: { model?: string | null; variant?: string | null; stream?: boolean } = {}): Promise<IssueSummary> {
+export async function summarizeIssue(
+  issue: GHIssue,
+  options: { model?: string | null; variant?: string | null; stream?: boolean; high?: boolean; medium?: boolean; low?: boolean } = {}
+): Promise<IssueSummary> {
   const prompt = buildSummaryPrompt(issue);
+  const systemPrompt = getSystemPrompt("issue-summarize");
   const isStream = options.stream !== false;
 
   let text = "";
@@ -59,8 +59,12 @@ export async function summarizeIssue(issue: GHIssue, options: { model?: string |
 
   if (isStream) {
     text = await streamLLM(prompt, {
-      model: options.model,
+      systemPrompt,
+      model: options.model ?? undefined,
       variant: options.variant ?? undefined,
+      high: options.high,
+      medium: options.medium,
+      low: options.low,
     });
   } else {
     const res = callLLM(prompt, {
@@ -74,6 +78,16 @@ export async function summarizeIssue(issue: GHIssue, options: { model?: string |
 
   const promptTokens = estimateTokens(prompt);
   const completionTokens = estimateTokens(text);
+
+  recordLLMLog({
+    type: "issue-summarize",
+    number: issue.number,
+    model: model || "default",
+    variant: options.variant || (options.high ? "high" : options.low ? "low" : "medium"),
+    inputTokens: promptTokens,
+    outputTokens: completionTokens,
+  });
+
   return {
     summary: text,
     prompt,

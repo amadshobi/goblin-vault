@@ -16,12 +16,13 @@ import os from "node:os";
 import path from "node:path";
 import { note, cancel, select, isCancel, text, confirm, spinner } from "@clack/prompts";
 import color from "picocolors";
+import { getSystemPrompt } from "../../config/prompts";
+import { recordLLMLog } from "../logger";
 import { ghApi, ghExec, getCurrentRepo, selectRepo } from "../gh";
 import { buildReviewPrompt, generateReview, streamLLM, stripAnsi } from "../llm";
 import type { ReviewTokens } from "../llm";
 import { fetchPRData, formatReview, getPRDiff } from "./view";
 import { clearLastLines } from "../../utils/format";
-import { MarkdownStreamFormatter } from "../../core/renderer";
 import type { GHPullRequest } from "../../types";
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -157,7 +158,11 @@ export async function reviewPR(prNumber: number | string, options: ReviewOptions
 
     let generated: ReturnType<typeof generateReview>;
     if (options.live) {
-      const raw = await streamLLM(buildReviewPrompt(prData, diff), options);
+      const systemPrompt = getSystemPrompt("pr-review");
+      const raw = await streamLLM(buildReviewPrompt(prData, diff), {
+        ...options,
+        systemPrompt,
+      });
       const review = stripAnsi(raw);
       generated = {
         review,
@@ -204,6 +209,15 @@ export async function reviewPR(prNumber: number | string, options: ReviewOptions
       backend: generated.backend,
       tokens: generated.tokens,
       ...(result.publishError ? { publishError: result.publishError } : {}),
+    });
+
+    recordLLMLog({
+      type: "pr-review",
+      number: n,
+      model: generated.model || "default",
+      variant: generated.variant || "medium",
+      inputTokens: generated.tokens.prompt,
+      outputTokens: generated.tokens.completion,
     });
 
     return result;

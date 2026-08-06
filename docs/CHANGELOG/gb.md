@@ -7,6 +7,25 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v2.1.3] - 2026-08-06
+
+### Added
+- **FinOps Token & Cost Analytics Logger (`~/.config/gb/logs/`)**:
+  - Otomatis mencatat metadata pemanggilan LLM, total token (input & output), timestamp, dan kalkulasi estimasi biaya dalam USD ke file JSON terpisah (`pr-review.json`, `issue-summarize.json`, `issue-analyze.json`).
+  - **Token Price Config (`~/.config/gb/price.json`)**: Konfigurasi harga token independen per model (USD/1M tokens) dengan fallback rate `$0` jika model belum terdaftar.
+- **Modular Hybrid Prompt System (`src/prompts/` & `~/.config/gb/prompts/`)**:
+  - Memisahkan built-in system prompt ke file Markdown terpisah (`pr-review.md`, `issue-summarize.md`, `issue-analyze.md`).
+  - Menghadirkan *Hybrid Prompt Engine*: User dapat meng-override system prompt per-fitur via `~/.config/gb/prompts/<name>.md`.
+- **Simple Model & Variant Manager (`~/.config/gb/models.json`)**:
+  - Konfigurasi simpel `models.default` (id + variant) serta mapping preset `high`, `medium`, `low`.
+  - Terintegrasi dengan CLI flags `--high`, `--medium`, `--low` di seluruh subcommand AI.
+- **Deep AI Technical Analysis Issue (`gb issue analyze <number>`)**: Subcommand analisis teknis mendalam per-issue.
+
+### Changed
+- **OMP System Prompt Isolation**: Memanggil OMP CLI dengan `--system-prompt="<CUSTOM_PROMPT>"` ditambah `--no-tools --no-rules --no-skills` untuk mengabaikan `~/.omp/SYSTEM.md` global 100%, menghemat token hingga 70%, dan menghilangkan basa-basi pembuka.
+
+---
+
 ## [v2.1.2] - 2026-08-06
 
 ### Changed

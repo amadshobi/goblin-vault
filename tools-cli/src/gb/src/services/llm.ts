@@ -2,58 +2,25 @@
  * llm.ts — Pure OMP LLM Provider service (TS)
  *
  * Menggunakan 100% `omp` CLI runner sebagai single-engine LLM backend.
- * Stateless, zero session-trash, real-time NDJSON stream parser.
+ * Isolated System Prompt (--system-prompt), stateless, zero session-trash, real-time NDJSON stream parser.
  */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { MarkdownStreamFormatter, formatOpenCodeToolLabel } from "../core/renderer";
-import type { GHPullRequest } from "../types";
+import { resolveModel, type ModelPreset, type ModelResolutionFlags } from "../config/models";
 
-// ───────────────────────────────────────────────────────────────────────────
-// Inlined model/variant resolution (sumber: utils/config.js + utils/models.json)
-// ───────────────────────────────────────────────────────────────────────────
-
-const MODELS_JSON = {
-  backends: {
-    omp: {
-      high: "google-antigravity/gemini-3.6-flash",
-      medium: "google-antigravity/gemini-3.6-flash",
-      low: "google-antigravity/gemini-3.6-flash",
-      auto: "google-antigravity/gemini-3.6-flash",
-      none: "peezy/deepseek-v4-flash-0731",
-    },
-  },
-} as const;
-
-const VALID_VARIANTS = ["high", "medium", "low", "auto", "none"];
-const THINKING_MAP: Record<string, string> = {
-  high: "high",
-  medium: "medium",
-  low: "low",
-  auto: "auto",
-  none: "off",
-};
-
-export interface ResolvedModel {
-  model: string | null;
-  variant: string | null;
-  backend: "omp";
-  thinking: string;
-}
-
-export interface LLMOptions {
+export interface LLMStreamOptions extends ModelResolutionFlags {
+  systemPrompt?: string;
   model?: string | null;
   variant?: string | null;
-  backend?: "omp" | string;
-  thinking?: string;
 }
 
 export interface LLMResult {
   text: string;
   backend: "omp";
-  model: string | null;
+  model: string;
 }
 
 export interface ReviewTokens {
@@ -72,75 +39,25 @@ export interface GeneratedReview {
   tokens: ReviewTokens;
 }
 
-function loadConfig(): Record<string, unknown> {
-  const base = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
-  const file = path.join(base, "goblin-vault", "gb-config.json");
-  try {
-    const raw = fs.readFileSync(file, "utf8");
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
+/** Estimate tokens (~4 chars per token). */
+export function estimateTokens(text: string | null | undefined): number {
+  return Math.ceil(String(text ?? "").length / 4);
 }
 
-/** Port resolveBackendVariantModel — hierarki variant + override config. */
-export function resolveBackendVariantModel(
-  _backendName: string = "omp",
-  variantOrModelName: string | null = null,
-  _cliOptions: Record<string, unknown> = {}
-): ResolvedModel {
-  const cfg = loadConfig();
-
-  const rawArg =
-    typeof variantOrModelName === "string" && variantOrModelName.trim() ? variantOrModelName.trim() : null;
-
-  let target = rawArg;
-  if (!target) {
-    target = typeof cfg.variant === "string" && cfg.variant.trim() ? cfg.variant.trim() : "high";
-  }
-
-  const cleanTarget = target.toLowerCase();
-  const isValidVariant = VALID_VARIANTS.includes(cleanTarget);
-
-  // Bukan variant → explicit model override name.
-  if (!isValidVariant) {
-    return { model: target, variant: null, backend: "omp", thinking: "off" };
-  }
-
-  const variantsCfg = (cfg.variants && typeof cfg.variants === "object" ? cfg.variants : {}) as Record<string, unknown>;
-  const flatOverride = variantsCfg[cleanTarget];
-
-  const customModel =
-    typeof flatOverride === "string" && flatOverride.trim()
-      ? flatOverride.trim()
-      : null;
-
-  const defaultMap = MODELS_JSON.backends.omp as Record<string, string>;
-  const model = customModel || defaultMap[cleanTarget] || null;
-
-  return { model, variant: cleanTarget, backend: "omp", thinking: THINKING_MAP[cleanTarget] || "off" };
+export function stripAnsi(str: string | null | undefined): string {
+  return String(str).replace(/\x1b\[[0-9;]*m/g, "");
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// Prompt & token helpers
-// ───────────────────────────────────────────────────────────────────────────
-
-/** Build a review prompt for the LLM from PR data + diff. */
-export function buildReviewPrompt(prData: GHPullRequest & { repo?: string }, diff?: string): string {
+/** Build review prompt fallback */
+export function buildReviewPrompt(prData: any, diff?: string): string {
   const repo = prData.repo || "";
   const number = prData.number != null ? `#${prData.number}` : "";
   const title = prData.title || "(no title)";
   const body = prData.body || "(no description)";
-  const author = prData.author?.login || "unknown";
 
   return [
-    "You are a senior code reviewer. Review the GitHub PR below and produce a concise,",
-    "actionable review in Bahasa Indonesia. Focus on correctness, security, performance,",
-    "and maintainability. Be direct and practical — no fluff.",
-    "",
     `PR ${number} — ${title}`,
-    `Repo: ${repo} | Author: ${author}`,
+    `Repo: ${repo}`,
     "",
     "DESCRIPTION:",
     body,
@@ -149,24 +66,45 @@ export function buildReviewPrompt(prData: GHPullRequest & { repo?: string }, dif
     "```diff",
     diff || "(no diff provided)",
     "```",
-    "",
-    "OUTPUT FORMAT:",
-    "- Ringkasan singkat (1-2 kalimat).",
-    "- Daftar masalah/risiko dengan severity (🔴 blocker / 🟠 warning / 🟢 nitpick).",
-    "- Saran perbaikan yang spesifik dan actionable.",
   ].join("\n");
 }
 
-/** Rough token estimate: ~4 chars/token (for cost logging, not precision). */
-export function estimateTokens(text: string | null | undefined): number {
-  return Math.ceil(String(text ?? "").length / 4);
+export function callLLM(prompt: string, options: LLMStreamOptions = {}): LLMResult {
+  const tmpFile = path.join(os.tmpdir(), `gb-prompt-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
+  try {
+    fs.writeFileSync(tmpFile, prompt, "utf8");
+    const args = ["-p", `@${tmpFile}`, "--mode=json", "--no-session", "--no-tools", "--no-rules", "--no-skills"];
+    if (options.systemPrompt) args.push(`--system-prompt=${options.systemPrompt}`);
+    if (options.model) args.push(`--model=${options.model}`);
+    const r = spawnSync("omp", args, { encoding: "utf8", timeout: 120_000 });
+    if (r.status === 0 && r.stdout) {
+      return { text: r.stdout.trim(), backend: "omp", model: options.model || "default" };
+    }
+    throw new Error(`omp exit ${r.status}`);
+  } finally {
+    try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile); } catch {}
+  }
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// LLM runners
-// ───────────────────────────────────────────────────────────────────────────
+export function generateReview(prData: any, diff: string, options: LLMStreamOptions = {}): GeneratedReview {
+  const prompt = buildReviewPrompt(prData, diff);
+  const res = callLLM(prompt, options);
+  const promptTokens = estimateTokens(prompt);
+  const completionTokens = estimateTokens(res.text);
+  return {
+    review: res.text,
+    prompt,
+    model: res.model,
+    variant: options.variant || null,
+    backend: "omp",
+    thinking: "",
+    tokens: { prompt: promptTokens, completion: completionTokens, total: promptTokens + completionTokens },
+  };
+}
 
-/** Cached cmd availability (avoids repeated spawnSync --version in batch mode). */
+const OMP_THINKING_VALUES = new Set(["high", "medium", "low", "auto", "off"]);
+
+/** Cached cmd availability. */
 const cmdCache: Record<string, boolean> = {};
 
 export function hasCmd(cmd: string): boolean {
@@ -179,105 +117,28 @@ export function hasCmd(cmd: string): boolean {
   return cmdCache[cmd];
 }
 
-export function stripAnsi(str: string | null | undefined): string {
-  return String(str).replace(/\x1b\[[0-9;]*m/g, "");
-}
-
-const OMP_THINKING_VALUES = new Set(["high", "medium", "low", "auto", "off"]);
-
-/** Run `omp` (prompt optimizer) via spawnSync argv. */
-export function callOmp(prompt: string, options: LLMOptions = {}): LLMResult | null {
-  const tmpFile = path.join(os.tmpdir(), `gb-prompt-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
-  try {
-    fs.writeFileSync(tmpFile, prompt, "utf8");
-    const args = ["-p", `@${tmpFile}`, "--no-session", "--hide-thinking"];
-    if (options.model) args.push(`--model=${options.model}`);
-    if (options.thinking && OMP_THINKING_VALUES.has(options.thinking)) {
-      args.push(`--thinking=${options.thinking}`);
-    }
-    const r = spawnSync("omp", args, {
-      encoding: "utf8",
-      maxBuffer: 50 * 1024 * 1024,
-      timeout: 120_000,
-    });
-    if (r.status === 0 && r.stdout && r.stdout.trim()) {
-      return { text: r.stdout.trim(), backend: "omp", model: options.model || null };
-    }
-    if (r.error) throw new Error(`omp spawn error: ${r.error.message}`);
-    if (r.status !== 0) {
-      const first = r.stderr?.trim()?.split("\n")[0] || r.stdout?.trim()?.split("\n")[0] || "unknown error";
-      throw new Error(`omp exit ${r.status}: ${first}`);
-    }
-    throw new Error("omp exit 0 tapi menghasilkan stdout kosong");
-  } finally {
-    try {
-      if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
-    } catch {
-      // ignore cleanup failure
-    }
-  }
-}
-
-/**
- * Call OMP LLM backend.
- * @throws {Error} Kalau OMP CLI gagal atau tidak tersedia.
- */
-export function callLLM(prompt: string, options: LLMOptions = {}): LLMResult {
-  if (!prompt || typeof prompt !== "string") {
-    throw new Error("callLLM: prompt wajib berupa string non-empty.");
-  }
-
-  if (!hasCmd("omp")) {
-    throw new Error("gb: CLI `omp` tidak ditemukan di system PATH. Tolong pastikan `omp` terpasang!");
-  }
-
-  const r = callOmp(prompt, options);
-  if (r) return r;
-
-  throw new Error("gb: eksekusi `omp` gagal menghasilkan output.");
-}
-
-/**
- * Generate a review for a PR (sync). Resolves model/variant, builds
- * prompt, calls OMP LLM, computes token estimates.
- */
-export function generateReview(
-  prData: GHPullRequest & { repo?: string },
-  diff: string,
-  options: LLMOptions = {}
-): GeneratedReview {
-  const resolved = resolveBackendVariantModel("omp", options.variant || options.model);
-  const prompt = buildReviewPrompt(prData, diff);
-  const { text, model: usedModel } = callLLM(prompt, {
-    model: resolved.model,
-    variant: resolved.variant,
-  });
-
-  const promptTokens = estimateTokens(prompt);
-  const completionTokens = estimateTokens(text);
-  return {
-    review: text,
-    prompt,
-    model: usedModel,
-    variant: resolved.variant,
-    backend: "omp",
-    thinking: resolved.thinking,
-    tokens: { prompt: promptTokens, completion: completionTokens, total: promptTokens + completionTokens },
-  };
-}
-
 /**
  * Stream LLM response token-by-token via MarkdownStreamFormatter using OMP NDJSON stream.
+ * Isolates system prompt with `--system-prompt` and disables OMP global rules/skills/tools.
  */
-export async function streamLLM(prompt: string, options: LLMOptions = {}): Promise<string> {
+export async function streamLLM(userPrompt: string, options: LLMStreamOptions = {}): Promise<string> {
+  if (!hasCmd("omp")) {
+    throw new Error("gb: CLI `omp` tidak ditemukan di system PATH. Pastikan `omp` terpasang!");
+  }
+
+  const preset: ModelPreset = resolveModel(options);
+  const selectedModel = options.model || preset.id;
+  const selectedVariant = options.variant || preset.variant || "medium";
+
   const startTime = Date.now();
   const formatter = new MarkdownStreamFormatter();
   const textChunks: string[] = [];
   let hasStreamedText = false;
-  const modelStr = options.model || "default";
   const labelStr = "omp/assistant";
+
   console.log(`\x1b[90m┌─\x1b[0m \x1b[1;36m󰚩 ${labelStr}\x1b[0m \x1b[90m${"─".repeat(Math.max(10, 45 - labelStr.length))}\x1b[0m`);
-  console.log(`\x1b[90m│\x1b[0m \x1b[90m󰅂 Model : ${modelStr}\x1b[0m`);
+  console.log(`\x1b[90m│\x1b[0m \x1b[90m󰅂 Model   : ${selectedModel}\x1b[0m`);
+  console.log(`\x1b[90m│\x1b[0m \x1b[90m󰅂 Variant : ${selectedVariant}\x1b[0m`);
   console.log(`\x1b[90m└${"─".repeat(50)}\x1b[0m\n`);
 
   return new Promise<string>((resolvePromise, rejectPromise) => {
@@ -286,20 +147,26 @@ export async function streamLLM(prompt: string, options: LLMOptions = {}): Promi
 
     try {
       tmpFile = path.join(os.tmpdir(), `gb-live-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
-      fs.writeFileSync(tmpFile, prompt, "utf8");
+      fs.writeFileSync(tmpFile, userPrompt, "utf8");
 
       const ompArgs = [
         "-p", `@${tmpFile}`,
         "--mode=json",
         "--no-session",
-        "--hide-thinking",
+        "--no-tools",
+        "--no-rules",
+        "--no-skills",
+        `--model=${selectedModel}`,
       ];
-      if (options.model) {
-        ompArgs.push(`--model=${options.model}`);
+
+      if (options.systemPrompt && options.systemPrompt.trim()) {
+        ompArgs.push(`--system-prompt=${options.systemPrompt.trim()}`);
       }
-      if (options.variant) {
-        ompArgs.push(`--thinking=${options.variant}`);
+
+      if (selectedVariant && OMP_THINKING_VALUES.has(selectedVariant)) {
+        ompArgs.push(`--thinking=${selectedVariant}`);
       }
+
       child = spawn("omp", ompArgs, {
         stdio: ["ignore", "pipe", "pipe"],
         cwd: process.cwd(),
