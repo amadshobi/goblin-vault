@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { calculateCost } from '../config/price';
+import { resolveModel } from '../config/models';
 
 export type LogType = 'pr-review' | 'issue-summarize' | 'issue-analyze';
 
@@ -52,13 +53,25 @@ export function recordLLMLog(input: LogEntryInput): void {
       }
     }
 
+    // Resolve actual model ID jika input.model masih "default"
+    let actualModel = input.model;
+    if (!actualModel || actualModel === 'default') {
+      const flags: Record<string, boolean> = {};
+      if (input.variant === 'high') flags.high = true;
+      else if (input.variant === 'medium') flags.medium = true;
+      else if (input.variant === 'low') flags.low = true;
+
+      const resolved = resolveModel(flags);
+      actualModel = resolved.id;
+    }
+
     const totalTokens = input.inputTokens + input.outputTokens;
-    const costUSD = calculateCost(input.model, input.inputTokens, input.outputTokens);
+    const costUSD = calculateCost(actualModel, input.inputTokens, input.outputTokens);
 
     const newRecord: LogEntryRecord = {
       timestamp: new Date().toISOString(),
       number: input.number,
-      model: input.model,
+      model: actualModel,
       variant: input.variant,
       tokens: {
         input: input.inputTokens,
