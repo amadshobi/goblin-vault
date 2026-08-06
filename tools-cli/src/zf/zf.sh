@@ -36,7 +36,7 @@ zf() {
             echo "  (none)              Pick directory and cd"
             echo "  --fex, -f           Pick → cd → fex (file explorer)"
             echo "  --fextr, -t         Pick → cd → fex --tree (tree viewer)"
-            echo "  --gh-blin, -g       Pick → cd → gh-blin (GitHub TUI)"
+            echo "  --gb, -g            Pick → cd → gb (GitHub TUI)"
             echo "  --lg, -l            Pick → cd → lazygit"
             echo "  --omp, -o           Pick → cd → omp (Oh My Pi)"
             echo "  --opencode, -oc     Pick → cd → opencode"
@@ -56,7 +56,7 @@ zf() {
             ;;
         --fex|-f)       mode="fex";      shift ;;
         --fextr|-t)     mode="fextr";    shift ;;
-        --gh-blin|-g)   mode="gh-blin";  shift ;;
+        --gb|-g)        mode="gb";       shift ;;
         --lg|-l)        mode="lg";       shift ;;
         --omp|-o)       mode="omp";      shift ;;
         --opencode|-oc) mode="opencode"; shift ;;
@@ -117,7 +117,7 @@ zf() {
         case "$mode" in
             fex)      header="$header → run fex";;
             fextr)    header="$header → run fex --tree";;
-            gh-blin)  header="$header → run gh-blin";;
+            gb)       header="$header → run gb";;
             lg)       header="$header → run lazygit";;
             omp)      header="$header → run omp";;
             opencode) header="$header → run opencode";;
@@ -157,7 +157,7 @@ zf() {
         case "$mode" in
             fex)      command fex ;;
             fextr)    command fex --tree ;;
-            gh-blin)  command gh-blin ;;
+            gb)       command gb ;;
             lg)       command lazygit ;;
             omp)      command omp ;;
             opencode) command opencode ;;

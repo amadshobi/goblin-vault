@@ -39,7 +39,7 @@
 2. **Action Mode (Jump + Exec)**:
    - `--fex, -f` — Lompat ke direktori + jalankan `fex` (File Explorer).
    - `--fextr, -t` — Lompat ke direktori + jalankan `fex --tree`.
-   - `--gh-blin, -g` — Lompat ke direktori + jalankan `gh-blin` (GitHub TUI).
+   - `--gb, -g` — Lompat ke direktori + jalankan `gb` (GitHub TUI).
    - `--lg, -l` — Lompat ke direktori + jalankan `lazygit`.
    - `--code, -c` — Lompat ke direktori + buka VS Code.
 3. **Zoxide Database Administrator**:

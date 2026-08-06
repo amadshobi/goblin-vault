@@ -21,7 +21,7 @@ export function execCommand(cmd) {
 
 /**
  * execCommandLive — jalanin command via spawn dengan output real-time ke terminal.
- * Cocok buat command interaktif (gh-blin, ocm, fe, dll).
+ * Cocok buat command interaktif (gb, ocm, fe, dll).
  *
  * @param {string} cmd
  * @returns {Promise<number>} — exit code
