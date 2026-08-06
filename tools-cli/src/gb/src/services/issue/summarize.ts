@@ -6,7 +6,7 @@
  *
  * Ini fondasi — tidak terikat ke UI; callable dari mana saja (TUI, CLI, scheduler).
  */
-import { callLLM, estimateTokens } from "../llm";
+import { callLLM, streamLLM, estimateTokens } from "../llm";
 import type { GHIssue } from "../../types";
 
 export interface IssueSummary {
@@ -49,13 +49,28 @@ export function buildSummaryPrompt(issue: GHIssue, commentsLimit = 10): string {
  * Summarize an issue.
  * @throws {Error} Kalau LLM backend gagal.
  */
-export async function summarizeIssue(issue: GHIssue, options: { model?: string | null; variant?: string | null } = {}): Promise<IssueSummary> {
+export async function summarizeIssue(issue: GHIssue, options: { model?: string | null; variant?: string | null; stream?: boolean } = {}): Promise<IssueSummary> {
   const prompt = buildSummaryPrompt(issue);
+  const isStream = options.stream !== false;
 
-  const { text, backend, model } = callLLM(prompt, {
-    model: options.model,
-    variant: options.variant ?? undefined,
-  });
+  let text = "";
+  let backend = "omp";
+  let model = options.model || null;
+
+  if (isStream) {
+    text = await streamLLM(prompt, {
+      model: options.model,
+      variant: options.variant ?? undefined,
+    });
+  } else {
+    const res = callLLM(prompt, {
+      model: options.model,
+      variant: options.variant ?? undefined,
+    });
+    text = res.text;
+    backend = res.backend;
+    model = res.model;
+  }
 
   const promptTokens = estimateTokens(prompt);
   const completionTokens = estimateTokens(text);

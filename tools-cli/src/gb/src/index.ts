@@ -202,8 +202,8 @@ async function runCli(argv: string[]): Promise<number> {
     const force = flags.includes("--force");
     const live = flags.includes("--live");
 
-    const model = getFlagValue(argv, "--model");
-    const variantVal = getFlagValue(argv, "--variant");
+    const model = getFlagValue(argv, "--model") || getFlagValue(argv, "-m");
+    const variantVal = getFlagValue(argv, "--variant") || getFlagValue(argv, "-v");
     let variant: string | undefined;
     if (flags.includes("--low")) variant = "low";
     else if (flags.includes("--medium")) variant = "medium";
@@ -211,7 +211,6 @@ async function runCli(argv: string[]): Promise<number> {
     else if (flags.includes("--eff-auto")) variant = "auto";
     else if (flags.includes("--none")) variant = "none";
     else if (variantVal) variant = variantVal;
-
     let useOmp = false;
     let backend: string | undefined;
     if (rest.length && rest[rest.length - 1] === "omp") {
@@ -311,12 +310,11 @@ async function runCli(argv: string[]): Promise<number> {
       s.start("Fetching issue...");
       try {
         const issue = fetchIssue(repo, num);
-        s.stop("Summarizing...");
-        s.start("Meringkas dengan LLM...");
-        const result = await summarizeIssue(issue, { model: getFlagValue(argv, "--model") });
-        s.stop("Done");
-        console.log(`\n${color.bold(color.cyan(`#${issue.number} ${issue.title}`))}\n`);
-        console.log(result.summary);
+        s.stop(`Fetched issue #${issue.number} ${issue.title}`);
+        console.log("");
+        const model = getFlagValue(argv, "--model") || getFlagValue(argv, "-m");
+        const variant = getFlagValue(argv, "--variant") || getFlagValue(argv, "-v");
+        const result = await summarizeIssue(issue, { model, variant });
         console.log(color.dim(`\n[model: ${result.model || "(default)"} | backend: ${result.backend} | tokens: ${result.tokens.total}]`));
         return 0;
       } catch (err) {

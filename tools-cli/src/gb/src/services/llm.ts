@@ -10,10 +10,11 @@
  *   3. `OPENAI_API_KEY` via `curl --data-binary @-` (payload stdin)
  *   4. Pelemparan error + Goblin Roast Hint yang actionable.
  */
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { MarkdownStreamFormatter, formatOpenCodeToolLabel } from "../core/renderer";
 import type { GHPullRequest } from "../types";
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -372,33 +373,275 @@ export function generateReview(
   diff: string,
   options: LLMOptions = {}
 ): GeneratedReview {
-  const requestedBackend = options.useOmp === true ? "omp" : options.backend || "opencode";
-  const resolved = resolveBackendVariantModel(requestedBackend, options.model || options.variant, {
-    ...options,
-  } as unknown as Record<string, unknown>);
-
+  const resolved = resolveBackendVariantModel("opencode", options.variant || options.model);
   const prompt = buildReviewPrompt(prData, diff);
   const { text, backend: usedBackend, model: usedModel } = callLLM(prompt, {
     useOmp: resolved.backend === "omp",
     backend: resolved.backend,
     model: resolved.model,
-    thinking: resolved.thinking,
+    variant: resolved.variant,
   });
 
-  const review = stripAnsi(text);
   const promptTokens = estimateTokens(prompt);
-  const completionTokens = estimateTokens(review);
+  const completionTokens = estimateTokens(text);
   return {
-    review,
+    review: text,
     prompt,
-    model: usedModel || resolved.model,
+    model: usedModel,
     variant: resolved.variant,
     backend: usedBackend,
     thinking: resolved.thinking,
-    tokens: {
-      prompt: promptTokens,
-      completion: completionTokens,
-      total: promptTokens + completionTokens,
-    },
+    tokens: { prompt: promptTokens, completion: completionTokens, total: promptTokens + completionTokens },
   };
+}
+
+/**
+ * Stream LLM response token-by-token via MarkdownStreamFormatter.
+ */
+export async function streamLLM(prompt: string, options: LLMOptions = {}): Promise<string> {
+  const startTime = Date.now();
+  const usesOmp =
+    options.useOmp === true ||
+    options.backend === "omp" ||
+    (options.useOmp !== false && options.backend !== "opencode" && hasCmd("omp"));
+  const formatter = new MarkdownStreamFormatter();
+  const textChunks: string[] = [];
+  let hasStreamedText = false;
+  const modelStr = options.model || "default";
+  const labelStr = usesOmp ? "omp/assistant" : "opencode/assistant";
+  console.log(`\x1b[90m┌─\x1b[0m \x1b[1;36m󰚩 ${labelStr}\x1b[0m \x1b[90m${"─".repeat(Math.max(10, 45 - labelStr.length))}\x1b[0m`);
+  console.log(`\x1b[90m│\x1b[0m \x1b[90m󰅂 Model : ${modelStr}\x1b[0m`);
+  console.log(`\x1b[90m└${"─".repeat(50)}\x1b[0m\n`);
+
+  return new Promise<string>((resolvePromise, rejectPromise) => {
+    let child: ReturnType<typeof spawn>;
+    if (usesOmp) {
+      const ompArgs = [
+        "-p", prompt,
+        "--auto-approve",
+        "--approval-mode=yolo",
+        `--cwd=${process.cwd()}`,
+        "--mode=json",
+        "--print-thoughts",
+      ];
+      if (options.model) {
+        ompArgs.push(`--model=${options.model}`);
+      }
+      if (options.variant) {
+        ompArgs.push(`--thinking=${options.variant}`);
+      }
+      child = spawn("omp", ompArgs, {
+        stdio: ["ignore", "pipe", "pipe"],
+        cwd: process.cwd(),
+        env: process.env,
+      });
+    } else {
+      child = spawn("opencode", ["run"], { stdio: ["pipe", "pipe", "pipe"] });
+      child.stdin!.write(prompt);
+      child.stdin!.end();
+    }
+
+    const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+    const DOT_FRAMES = [".  ", ".. ", "...", "   "];
+
+    const isEmbedded = Boolean(
+      process.env.OPENCODE_SESSION ||
+      process.env.OMP_SESSION_ID ||
+      process.env.PI_SESSION ||
+      process.env.TERM === "dummy" ||
+      !process.stdout.isTTY
+    );
+    const isRealTTY = Boolean(process.stdout.isTTY) && !isEmbedded;
+
+    let frameIdx = 0;
+    let isSpinnerActive = true;
+    let currentStatus = "Working";
+    let stepStartTime = Date.now();
+    let activeToolSummary = "";
+    let activeToolId = "";
+    let toolCount = 0;
+
+    function clearSpinner() {
+      if (isSpinnerActive && isRealTTY) {
+        try {
+          process.stdout.write("\r\x1b[K\x1b[?25h");
+        } catch {
+          process.stdout.write("\r\x1b[K\x1b[?25h");
+        }
+      }
+      isSpinnerActive = false;
+    }
+
+    function startSpinner(status: string, label = "") {
+      currentStatus = status;
+      activeToolSummary = label;
+      stepStartTime = Date.now();
+      isSpinnerActive = true;
+      if (isRealTTY) {
+        process.stdout.write("\x1b[?25l");
+      }
+    }
+
+    if (isRealTTY) {
+      process.stdout.write("\x1b[?25l");
+    }
+
+    const spinInterval = setInterval(() => {
+      if (isSpinnerActive && isRealTTY) {
+        const frame = SPINNER_FRAMES[frameIdx];
+        const elapsedSec = Math.floor((Date.now() - stepStartTime) / 1000);
+        let displayText = "";
+
+        if (currentStatus === "Working") {
+          const dots = DOT_FRAMES[Math.floor(frameIdx / 3) % DOT_FRAMES.length];
+          displayText = `\x1b[33mWorking${dots}\x1b[0m`;
+        } else if (currentStatus === "tool") {
+          displayText = `\x1b[1;33m${activeToolSummary}\x1b[0m`;
+        } else {
+          displayText = `\x1b[33m${currentStatus}\x1b[0m`;
+        }
+
+        const lineOutput = `\x1b[36m${frame}\x1b[0m ${displayText} \x1b[90m(${elapsedSec}s)\x1b[0m`;
+        process.stdout.write(`\r\x1b[K${lineOutput}`);
+        frameIdx = (frameIdx + 1) % SPINNER_FRAMES.length;
+      }
+    }, 120);
+    spinInterval.unref();
+
+    let lineBuffer = "";
+
+    const processTextDelta = (delta: string) => {
+      clearSpinner();
+      hasStreamedText = true;
+      textChunks.push(delta);
+      const rendered = formatter.processChunk(delta);
+      if (rendered) {
+        process.stdout.write(rendered);
+      }
+    };
+
+    child.stdout!.on("data", (d: Buffer) => {
+      lineBuffer += d.toString();
+      const lines = lineBuffer.split("\n");
+      lineBuffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const data = JSON.parse(line);
+          const eventType = data?.type;
+
+          if (eventType === "tool_execution_start" || eventType === "tool_start") {
+            clearSpinner();
+            hasStreamedText = false;
+            const toolName = data.toolName || data.name || data.tool || "tool";
+            const toolId = data.toolCallId || data.id || `${toolName}_${Date.now()}`;
+            if (activeToolId === toolId) continue;
+            activeToolId = toolId;
+            const toolArgs = data.args || data.arguments || {};
+            const toolLabel = formatOpenCodeToolLabel(toolName, toolArgs);
+            startSpinner("tool", toolLabel);
+          } else if (eventType === "tool_execution_end" || eventType === "tool_end") {
+            clearSpinner();
+            toolCount++;
+            const isErr = Boolean(data.isError || data.error);
+            const icon = isErr ? "\x1b[31m󰅚\x1b[0m" : "\x1b[32m󰄬\x1b[0m";
+            const durSec = ((Date.now() - stepStartTime) / 1000).toFixed(1);
+            console.log(`${icon} \x1b[1m${activeToolSummary}\x1b[0m \x1b[32m(${durSec}s)\x1b[0m`);
+            activeToolId = "";
+            startSpinner("Working");
+          } else if (eventType === "message_update") {
+            const evt = data.assistantMessageEvent;
+            if (evt?.type === "thinking_start") {
+              clearSpinner();
+              process.stdout.write("\x1b[35m󰘦 Thinking\x1b[0m\n\x1b[3;90m");
+            } else if (evt?.type === "thinking_delta" && evt.delta) {
+              clearSpinner();
+              process.stdout.write(evt.delta);
+            } else if (evt?.type === "thinking_end") {
+              process.stdout.write("\x1b[0m\n\n");
+            } else if (evt?.type === "text_start") {
+              clearSpinner();
+              process.stdout.write("\x1b[0m\n");
+              hasStreamedText = true;
+            } else if (evt?.type === "text_delta" && evt.delta) {
+              processTextDelta(evt.delta);
+            }
+          } else if (eventType === "message_end") {
+            const msg = data.message;
+            if (msg?.role === "assistant" && Array.isArray(msg.content)) {
+              for (const item of msg.content) {
+                if (item.type === "thinking" && item.thinking && !hasStreamedText) {
+                  clearSpinner();
+                  console.log(`\x1b[35m󰘦 Thinking\x1b[0m\n\x1b[3;90m${item.thinking.trim()}\x1b[0m\n`);
+                } else if (item.type === "text" && item.text && !hasStreamedText) {
+                  processTextDelta(item.text);
+                }
+              }
+            }
+            hasStreamedText = true;
+          } else if (eventType === "content_delta" && data.delta?.text) {
+            processTextDelta(data.delta.text);
+          } else if (eventType === "thought" || data.thought) {
+            clearSpinner();
+            const thoughtTxt = data.thought || data.text || "";
+            if (thoughtTxt.trim()) {
+              console.log(`\x1b[35m󰘦 Thinking\x1b[0m\n\x1b[3;90m${thoughtTxt.trim()}\x1b[0m\n`);
+            }
+            startSpinner("Working");
+          }
+        } catch {
+          if (!line.trim().startsWith("{") && !line.trim().startsWith("[")) {
+            processTextDelta(line + "\n");
+          }
+        }
+      }
+    });
+
+    child.stderr!.on("data", (data: Buffer) => {
+      clearSpinner();
+      process.stderr.write(data);
+    });
+
+    child.on("error", (err) => {
+      clearSpinner();
+      clearInterval(spinInterval);
+      if (isRealTTY) process.stdout.write("\x1b[?25h");
+      rejectPromise(err);
+    });
+
+    child.on("close", (code) => {
+      clearSpinner();
+      clearInterval(spinInterval);
+      if (isRealTTY) process.stdout.write("\x1b[?25h");
+
+      if (lineBuffer.trim() && !hasStreamedText) {
+        try {
+          const data = JSON.parse(lineBuffer);
+          if (data?.type === "message_update" && data?.assistantMessageEvent?.delta) {
+            processTextDelta(data.assistantMessageEvent.delta);
+          } else if (data?.delta?.text) {
+            processTextDelta(data.delta.text);
+          }
+        } catch {
+          processTextDelta(lineBuffer + "\n");
+        }
+      }
+
+      const flushed = formatter.flush();
+      if (flushed) process.stdout.write(flushed);
+
+      const totalDurSec = Math.max(0.1, Number(((Date.now() - startTime) / 1000).toFixed(1)));
+      const toolsStr = toolCount > 0 ? ` \x1b[90m󰇙\x1b[0m 󰆧 ${toolCount} tool${toolCount === 1 ? "" : "s"}` : "";
+
+      const raw = textChunks.join("").trim();
+      if (raw || code === 0) {
+        console.log(`\n\x1b[90m└─\x1b[0m \x1b[32m󰄬 assistant completed\x1b[0m \x1b[90m(${totalDurSec}s)${toolsStr} ${"─".repeat(20)}\x1b[0m\n`);
+        resolvePromise(raw);
+      } else {
+        console.log(`\n\x1b[90m└─\x1b[0m \x1b[31m󰅚 assistant failed (${code})\x1b[0m \x1b[90m(${totalDurSec}s)${toolsStr} ${"─".repeat(20)}\x1b[0m\n`);
+        rejectPromise(new Error(`LLM live backend exit ${code}`));
+      }
+    });
+  });
 }

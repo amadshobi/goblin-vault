@@ -17,7 +17,7 @@ import path from "node:path";
 import { note, cancel, select, isCancel, text, confirm, spinner } from "@clack/prompts";
 import color from "picocolors";
 import { ghApi, ghExec, getCurrentRepo, selectRepo } from "../gh";
-import { buildReviewPrompt, generateReview, stripAnsi } from "../llm";
+import { buildReviewPrompt, generateReview, streamLLM, stripAnsi } from "../llm";
 import type { ReviewTokens } from "../llm";
 import { fetchPRData, formatReview, getPRDiff } from "./view";
 import { clearLastLines } from "../../utils/format";
@@ -288,71 +288,6 @@ export async function autoReviewAll(options: ReviewOptions = {}): Promise<{
  * setiap chunk dengan MarkdownStreamFormatter (core engine), dan merender
  * progresif. Mengembalikan teks mentah (raw, unbuffered) untuk review final.
  */
-export async function streamLLM(prompt: string, options: ReviewOptions = {}): Promise<string> {
-  const usesOmp = options.useOmp === true || options.backend === "omp";
-  const formatter = new MarkdownStreamFormatter();
-  const chunks: string[] = [];
-  let tmpFile: string | null = null;
-
-  return new Promise<string>((resolvePromise, rejectPromise) => {
-    let child: ReturnType<typeof spawn>;
-    if (usesOmp) {
-      tmpFile = path.join(os.tmpdir(), `gb-live-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
-      writeFileSync(tmpFile, prompt, "utf8");
-      const args = ["-p", `@${tmpFile}`, "--no-session", "--hide-thinking"];
-      if (options.model) args.push(`--model=${options.model}`);
-      child = spawn("omp", args, { stdio: ["ignore", "pipe", "pipe"] });
-    } else {
-      child = spawn("opencode", ["run"], { stdio: ["pipe", "pipe", "pipe"] });
-      child.stdin!.write(prompt);
-      child.stdin!.end();
-    }
-
-    process.stdout.write("\x1b[?25l"); // hide cursor
-    child.stdout!.on("data", (d: Buffer) => {
-      const chunk = d.toString();
-      chunks.push(chunk);
-      const rendered = formatter.processChunk(chunk);
-      if (rendered) process.stdout.write(rendered);
-    });
-    child.stderr!.on("data", (d: Buffer) => {
-      const line = d.toString().trim();
-      if (line) process.stderr.write(`\x1b[90m…${line.split("\n")[0]}\x1b[0m\n`);
-    });
-    child.on("error", (err) => {
-      process.stdout.write("\x1b[?25h");
-      if (tmpFile) {
-        try {
-          unlinkSync(tmpFile);
-        } catch {
-          // ignore
-        }
-      }
-      rejectPromise(err);
-    });
-    child.on("close", (code) => {
-      const flushed = formatter.flush();
-      if (flushed) process.stdout.write(flushed);
-      process.stdout.write("\x1b[?25h"); // restore cursor
-      if (tmpFile) {
-        try {
-          unlinkSync(tmpFile);
-        } catch {
-          // ignore
-        }
-      }
-      let raw = chunks.join("").trim();
-      if (code === 0 && raw) {
-        resolvePromise(raw);
-      } else if (code !== 0) {
-        rejectPromise(new Error(`LLM live backend exit ${code}`));
-      } else {
-        rejectPromise(new Error("LLM live backend mengembalikan output kosong"));
-      }
-    });
-  });
-}
-
 /** Show one review result (interactive terminal). */
 export async function showReviewResult(res: ReviewResult): Promise<void> {
   if (!res.ok) {
@@ -508,3 +443,4 @@ export async function reviewMenu(repo?: string): Promise<void> {
     }
   }
 }
+export { streamLLM };
