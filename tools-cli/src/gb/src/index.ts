@@ -119,27 +119,26 @@ ${color.dim("Gunakan 'gb profile view' untuk memeriksa profil sebelum edit.")}
 const HELP_PR_REVIEW = `${color.bold("gb pr review")} — AI code review untuk Pull Request
 
 ${color.bold("Penggunaan:")}
-  gb pr review <number> [flags]   Review satu PR via AI
+  gb pr review <number> [flags]   Review satu PR via AI (default: live streaming)
   gb pr review --auto | --all [flags]   Review semua open PRs (batch)
   gb pr review --help              Tampilkan bantuan ini
 
 ${color.bold("Flags:")}
   --publish         Post hasil review sebagai komentar resmi GitHub PR
   --force           Paksa review ulang meski commit SHA sudah tercatat
-  --high/--medium/--low/--eff-auto/--none   Pilih variant model
+  --high/--medium/--low   Pilih variant/preset model (lihat ~/.config/gb/models.json)
   --variant <name>  Pilih variant model secara eksplisit
   --model <name>    Override model LLM langsung
-  --live            Stream hasil LLM token-by-token (MarkdownStreamFormatter)
+  --no-live         Matikan live streaming (gunakan sync mode)
 
-${color.bold("Magic omp:")}
+Magic omp:
   ... omp           Akhiri command dengan "omp" untuk pakai backend omp
 
 ${color.bold("Contoh:")}
   gb pr review 12 --high           Review PR #12 (variant high)
   gb pr review 12 --publish        Review & publish ke GitHub
-  gb pr review 12 omp              Review via backend omp
   gb pr review --auto --medium     Batch semua open PRs
-  gb pr review 12 --live           Review dengan live streaming
+  gb pr review 12 --no-live        Review dengan sync mode
 `;
 
 const HELP_ISSUE = `${color.bold("gb issue")} — Issues (view / summarize / analyze)
@@ -152,9 +151,9 @@ ${color.bold("Penggunaan:")}
   gb issue --help                     Tampilkan bantuan ini
 
 ${color.bold("Flags Preset Model:")}
-  --high       Gunakan model Sonnet 3.7 + thinking high
-  --medium     Gunakan model Gemini 3.6 Flash + thinking medium
-  --low        Gunakan model Gemini 2.5 Flash + thinking low
+  --high       Preset model High (lihat ~/.config/gb/models.json)
+  --medium     Preset model Medium (lihat ~/.config/gb/models.json)
+  --low        Preset model Low (lihat ~/.config/gb/models.json)
 
 ${color.bold("Contoh:")}
   gb issue view 42
@@ -207,7 +206,7 @@ async function runCli(argv: string[]): Promise<number> {
     const publish = flags.includes("--publish");
     const auto = flags.includes("--auto") || flags.includes("--all");
     const force = flags.includes("--force");
-    const live = flags.includes("--live");
+    const isLive = !flags.includes("--no-live");
 
     const model = getFlagValue(argv, "--model") || getFlagValue(argv, "-m");
     const variantVal = getFlagValue(argv, "--variant") || getFlagValue(argv, "-v");
@@ -224,7 +223,7 @@ async function runCli(argv: string[]): Promise<number> {
     }
 
     if (auto) {
-      const summary = await autoReviewAll({ publish, force, model, variant, backend, live });
+      const summary = await autoReviewAll({ publish, force, model, variant, backend, live: isLive });
       printBatchSummary(summary);
       return summary.ok && summary.failed.length === 0 ? 0 : 1;
     }
@@ -236,7 +235,7 @@ async function runCli(argv: string[]): Promise<number> {
       return 1;
     }
 
-    const res = await reviewPR(prNumber, { publish, force, model, variant, backend, live });
+    const res = await reviewPR(prNumber, { publish, force, model, variant, backend, live: isLive });
     if (!res.ok) {
       console.error(color.red(res.error || "unknown error"));
       return 1;
@@ -245,14 +244,16 @@ async function runCli(argv: string[]): Promise<number> {
       console.log(color.yellow(res.reason || "skipped"));
       return 0;
     }
-    console.log(
-      formatReview(res.review || "(no review)", res.prData || {}, {
-        model: res.model,
-        variant: res.variant,
-        backend: res.backend,
-        tokens: res.tokens,
-      })
-    );
+    if (!isLive) {
+      console.log(
+        formatReview(res.review || "(no review)", res.prData || {}, {
+          model: res.model,
+          variant: res.variant,
+          backend: res.backend,
+          tokens: res.tokens,
+        })
+      );
+    }
     if (res.published) {
       console.log(color.green(`Review PR #${res.prData?.number} dipublikasikan ke GitHub.`));
     } else if (res.publishError) {

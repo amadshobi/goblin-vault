@@ -155,13 +155,17 @@ export async function reviewPR(prNumber: number | string, options: ReviewOptions
     }
 
     const diff = getPRDiff(repo, n);
+    const isLive = options.live !== false;
 
     let generated: ReturnType<typeof generateReview>;
-    if (options.live) {
+    if (isLive) {
       const systemPrompt = getSystemPrompt("pr-review");
       const raw = await streamLLM(buildReviewPrompt(prData, diff), {
         ...options,
         systemPrompt,
+        tools: "read,glob,grep",
+        label: "omp/pr-review",
+        taskName: "reviewer",
       });
       const review = stripAnsi(raw);
       generated = {
@@ -303,7 +307,7 @@ export async function autoReviewAll(options: ReviewOptions = {}): Promise<{
  * progresif. Mengembalikan teks mentah (raw, unbuffered) untuk review final.
  */
 /** Show one review result (interactive terminal). */
-export async function showReviewResult(res: ReviewResult): Promise<void> {
+export async function showReviewResult(res: ReviewResult, isLive = true): Promise<void> {
   if (!res.ok) {
     cancel(color.red(res.error || "unknown error"));
     clearLastLines(2);
@@ -313,14 +317,16 @@ export async function showReviewResult(res: ReviewResult): Promise<void> {
     note(color.yellow(res.reason || "skipped"), "Skipped");
     return;
   }
-  console.log(
-    formatReview(res.review || "(no review)", res.prData || {}, {
-      model: res.model,
-      variant: res.variant,
-      backend: res.backend,
-      tokens: res.tokens,
-    })
-  );
+  if (!isLive) {
+    console.log(
+      formatReview(res.review || "(no review)", res.prData || {}, {
+        model: res.model,
+        variant: res.variant,
+        backend: res.backend,
+        tokens: res.tokens,
+      })
+    );
+  }
   if (res.published) {
     note(color.green(`Review PR #${res.prData?.number} dipublikasikan ke GitHub.`), "Published");
   } else if (res.publishError) {

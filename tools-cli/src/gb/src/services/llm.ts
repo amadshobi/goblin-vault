@@ -95,6 +95,7 @@ export function buildReviewPrompt(prData: any, diff?: string): string {
 
 export function callLLM(prompt: string, options: LLMStreamOptions = {}): LLMResult {
   const tmpFile = path.join(os.tmpdir(), `gb-prompt-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
+  let sysTmpFile: string | null = null;
   try {
     fs.writeFileSync(tmpFile, prompt, "utf8");
     const args = [
@@ -105,7 +106,11 @@ export function callLLM(prompt: string, options: LLMStreamOptions = {}): LLMResu
       "--approval-mode=yolo",
       "--auto-approve",
     ];
-    if (options.systemPrompt) args.push(`--system-prompt=${options.systemPrompt}`);
+    if (options.systemPrompt && options.systemPrompt.trim()) {
+      sysTmpFile = path.join(os.tmpdir(), `gb-sysprompt-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
+      fs.writeFileSync(sysTmpFile, options.systemPrompt.trim(), "utf8");
+      args.push(`--system-prompt=@${sysTmpFile}`);
+    }
     if (options.model) args.push(`--model=${options.model}`);
     const r = spawnSync("omp", args, { encoding: "utf8", timeout: 120_000 });
     if (r.status === 0 && r.stdout) {
@@ -114,6 +119,7 @@ export function callLLM(prompt: string, options: LLMStreamOptions = {}): LLMResu
     throw new Error(`omp exit ${r.status}`);
   } finally {
     try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile); } catch {}
+    try { if (sysTmpFile && fs.existsSync(sysTmpFile)) fs.unlinkSync(sysTmpFile); } catch {}
   }
 }
 
@@ -162,7 +168,17 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
 
   return new Promise<string>((resolvePromise, rejectPromise) => {
     let tmpFile: string | null = null;
+    let sysTmpFile: string | null = null;
     let child: ReturnType<typeof spawn>;
+
+    const cleanupTmpFiles = () => {
+      if (tmpFile && fs.existsSync(tmpFile)) {
+        try { fs.unlinkSync(tmpFile); } catch {}
+      }
+      if (sysTmpFile && fs.existsSync(sysTmpFile)) {
+        try { fs.unlinkSync(sysTmpFile); } catch {}
+      }
+    };
 
     try {
       tmpFile = path.join(os.tmpdir(), `gb-live-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
@@ -179,7 +195,9 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
       ];
 
       if (options.systemPrompt && options.systemPrompt.trim()) {
-        ompArgs.push(`--system-prompt=${options.systemPrompt.trim()}`);
+        sysTmpFile = path.join(os.tmpdir(), `gb-sysprompt-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
+        fs.writeFileSync(sysTmpFile, options.systemPrompt.trim(), "utf8");
+        ompArgs.push(`--system-prompt=@${sysTmpFile}`);
       }
 
       if (selectedVariant && OMP_THINKING_VALUES.has(selectedVariant)) {
@@ -192,9 +210,7 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
         env: process.env,
       });
     } catch (err) {
-      if (tmpFile && fs.existsSync(tmpFile)) {
-        try { fs.unlinkSync(tmpFile); } catch {}
-      }
+      cleanupTmpFiles();
       return rejectPromise(err);
     }
 
@@ -398,6 +414,7 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
     child.on("error", (err) => {
       clearSpinner();
       clearInterval(spinInterval);
+      cleanupTmpFiles();
       if (isRealTTY) process.stdout.write("\x1b[?25h");
       rejectPromise(err);
     });
@@ -405,6 +422,7 @@ export async function streamLLM(userPrompt: string, options: LLMStreamOptions = 
     child.on("close", (code) => {
       clearSpinner();
       clearInterval(spinInterval);
+      cleanupTmpFiles();
       if (isRealTTY) process.stdout.write("\x1b[?25h");
 
       if (lineBuffer.trim() && !hasStreamedText) {

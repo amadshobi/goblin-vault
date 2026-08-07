@@ -11,7 +11,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 - **FinOps Token & Cost Analytics Logger (`~/.config/gb/logs/`)**:
-  - Otomatis mencatat metadata pemanggilan LLM, total token (input & output), timestamp, dan kalkulasi estimasi biaya dalam USD ke file JSON terpisah (`pr-review.json`, `issue-summarize.json`, `issue-analyze.json`).
+  - Otomatis mencatat metadata pemanggilan LLM, total token (input & output), timestamp, dan kalkulasi estimasi biaya dalam USD ke file JSONL terpisah (`pr-review.jsonl`, `issue-summarize.jsonl`, `issue-analyze.jsonl`).
   - **Token Price Config (`~/.config/gb/price.json`)**: Konfigurasi harga token independen per model (USD/1M tokens) dengan fallback rate `$0` jika model belum terdaftar.
 - **Modular Hybrid Prompt System (`src/prompts/` & `~/.config/gb/prompts/`)**:
   - Memisahkan built-in system prompt ke file Markdown terpisah (`pr-review.md`, `issue-summarize.md`, `issue-analyze.md`) dengan instruksi eksplisit output Bahasa Indonesia yang profesional dan tajam.
@@ -19,13 +19,20 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **Simple Model & Variant Manager (`~/.config/gb/models.json`)**:
   - Konfigurasi simpel `models.default` (id + variant) serta mapping preset `high`, `medium`, `low`.
   - Terintegrasi dengan CLI flags `--high`, `--medium`, `--low` di seluruh subcommand AI.
+  - **Zero Hardcoded Vendor Models**: Menghapus seluruh hardcoded vendor model name sotoy (`claude-3-7-sonnet`, `gemini-3.6-flash`, dll) agar preset dikendalikan 100% dari config user (`models.json`) atau OMP CLI default.
 - **Deep AI Technical Analysis Issue (`gb issue analyze <number>`)**: Subcommand analisis teknis mendalam per-issue.
 
+### Security
+- **PAGER Env Hardening (`src/services/issue/view.ts`)**: Refactor `showInPager` dari `execSync` template literal ke `spawnSync` dengan array argv verbatim + allowlist pager aman (`less`, `more`, `most`, `bat`, `pg`, `view`) untuk mencegah Command Injection RCE.
+- **System Prompt File Isolation (`src/services/llm.ts`)**: System prompt multiline ditulis ke temporary file `@gb-sysprompt-*.txt` di `os.tmpdir()` untuk mencegah Shell Argument Splitting & limit `E2BIG`.
+- **READ-ONLY PR Review Boundaries (`src/services/pr/review.ts`)**: Membatasi tools OMP pada PR review khusus ke read-only tools (`read,glob,grep` - tanpa `bash`) agar AI Reviewer 100% fokus pada analisis diff tanpa melakukan mutasi repo/command sotoy.
+
 ### Changed
-- **OMP System Prompt Isolation & Smart Tool Usage**: Memanggil OMP CLI dengan `--system-prompt="<CUSTOM_PROMPT>"` ditambah `--tools=read,glob,grep,bash --approval-mode=yolo` untuk mengabaikan `~/.omp/SYSTEM.md` global 100%, menghemat token hingga 70%, serta menginstruksikan LLM untuk menggunakan tool secara efisien tanpa loop.
-- **Ultra-Clean TUI Streamer Layout & Syntax Highlighter Fix**:
+- **OMP System Prompt Isolation & Smart Tool Usage**: Memanggil OMP CLI dengan `--system-prompt=@${sysTmpFile}` ditambah `--tools=read,glob,grep --approval-mode=yolo` untuk mengabaikan `~/.omp/SYSTEM.md` global 100%, menghemat token hingga 70%, serta menginstruksikan LLM untuk menggunakan tool secara efisien tanpa loop.
+- **Ultra-Clean TUI Streamer Layout & Dual-Level Help**:
   - Menyempurnakan layout TUI dengan header kontekstual (`omp/issue-summarize`, `omp/pr-review`), footer sejajar (`token count` + `cost USD`), serta penggantian ikon tool ke bullet `•` (sukses) dan `x` merah (gagal) tanpa fake micro-timer.
-  - Memperbaiki bug regex ANSI syntax highlighter yang sebelumnya menyebabkan string `1;35` bocor ke layar terminal.
+  - Live streaming dijadikan sebagai default aktif pada `gb pr review` (dengan flag `--no-live` untuk mode sync) tanpa duplikasi print review.
+  - Memperbarui `HELP_PR_REVIEW` & `HELP_ISSUE` pada Dual-Level Help System agar mencerminkan kontrol `models.json` & flag `--no-live`.
   - Terintegrasi dengan CLI flags `--high`, `--medium`, `--low` di seluruh subcommand AI.
 - **Deep AI Technical Analysis Issue (`gb issue analyze <number>`)**: Subcommand analisis teknis mendalam per-issue.
 

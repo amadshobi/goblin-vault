@@ -9,11 +9,32 @@
  */
 import { cancel, note, spinner, text, confirm, select, isCancel } from "@clack/prompts";
 import { writeFileSync, unlinkSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
+import os from "node:os";
+import path from "node:path";
 import color from "picocolors";
 import { ghExec, ghRaw } from "../gh";
 import type { GHIssue } from "../../types";
 import { clearLastLines } from "../../utils/format";
+
+const ALLOWED_PAGERS = new Set(["less", "more", "most", "bat", "pg", "view"]);
+
+/** Parse PAGER env var secara aman tanpa shell interpolation */
+function parsePagerEnv(pagerEnv?: string): { bin: string; args: string[] } {
+  if (!pagerEnv || !pagerEnv.trim()) {
+    return { bin: "less", args: ["-R"] };
+  }
+  const parts = pagerEnv.trim().split(/\s+/);
+  const rawBin = parts[0];
+  const binName = path.basename(rawBin).toLowerCase();
+
+  if (!ALLOWED_PAGERS.has(binName)) {
+    return { bin: "less", args: ["-R"] };
+  }
+
+  const safeArgs = parts.slice(1).filter((arg) => !/[;&|><$`\\]/.test(arg));
+  return { bin: rawBin, args: safeArgs };
+}
 
 /** Plain-string truncate untuk display ringkas (tanpa memperdulikan ANSI). */
 export function truncate(str: string | null | undefined, maxLen = 50): string {
@@ -31,21 +52,24 @@ export function formatIssue(issue: GHIssue): string {
 
 /** Open content in pager or just log it. */
 export function showInPager(content: string, title = ""): void {
-  const tmpFile = `/tmp/gb-${Date.now()}.tmp`;
+  const tmpFile = path.join(os.tmpdir(), `gb-view-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`);
   const header = title ? `${title}\n${"-".repeat(60)}\n\n` : "";
-  writeFileSync(tmpFile, header + content, "utf8");
-
-  const cmd = process.env.PAGER || "less -R";
+  
   try {
-    execSync(`${cmd} "${tmpFile}"`, { stdio: "inherit" });
+    writeFileSync(tmpFile, header + content, "utf8");
+
+    const { bin, args } = parsePagerEnv(process.env.PAGER);
+    const result = spawnSync(bin, [...args, tmpFile], { stdio: "inherit" });
+
+    if (result.status !== 0) {
+      console.log(content);
+    }
   } catch {
     console.log(content);
   } finally {
     try {
-      unlinkSync(tmpFile);
-    } catch {
-      // ignore
-    }
+      if (unlinkSync) unlinkSync(tmpFile);
+    } catch {}
   }
 }
 

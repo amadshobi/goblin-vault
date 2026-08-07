@@ -16,15 +16,19 @@ export interface GBModelsConfig {
   };
 }
 
+/**
+ * Default fallback minimal tanpa hardcoded vendor model name.
+ * 100% dikendalikan dari user config ~/.config/gb/models.json atau OMP CLI default.
+ */
 const DEFAULT_MODELS_CONFIG: GBModelsConfig = {
   models: {
     default: {
-      id: 'gemini-3.6-flash',
+      id: 'default',
       variant: 'medium'
     },
-    high: 'claude-3-7-sonnet',
-    medium: 'gemini-3.6-flash',
-    low: 'gemini-2.5-flash'
+    high: 'high',
+    medium: 'medium',
+    low: 'low'
   }
 };
 
@@ -53,38 +57,55 @@ export function getModelsConfig(): GBModelsConfig {
 }
 
 export interface ModelResolutionFlags {
+  model?: string | null;
+  variant?: string | null;
   high?: boolean;
   medium?: boolean;
   low?: boolean;
 }
 
 /**
- * Menyelesaikan model ID dan variant (thinking level) berdasarkan CLI flags (--high, --medium, --low)
+ * Menyelesaikan model ID dan variant (thinking level) berdasarkan CLI flags (--high, --medium, --low, --variant, --model)
+ * Tanpa hardcoded vendor model — murni mengikuti user config (~/.config/gb/models.json) atau OMP default.
  */
 export function resolveModel(flags: ModelResolutionFlags = {}): ModelPreset {
   const config = getModelsConfig();
 
-  if (flags.high) {
+  const isHigh = Boolean(flags.high || flags.variant === 'high');
+  const isMedium = Boolean(flags.medium || flags.variant === 'medium');
+  const isLow = Boolean(flags.low || flags.variant === 'low');
+
+  // Prioritas 1: Explicit --model flag override selalu menang
+  if (flags.model && flags.model.trim()) {
+    const selectedVariant = isHigh ? 'high' : isLow ? 'low' : isMedium ? 'medium' : flags.variant || config.models.default.variant || 'medium';
     return {
-      id: config.models.high || 'claude-3-7-sonnet',
+      id: flags.model.trim(),
+      variant: selectedVariant
+    };
+  }
+
+  // Prioritas 2: Preset flags (--high, --medium, --low) atau --variant <name>
+  if (isHigh) {
+    return {
+      id: config.models.high || 'high',
       variant: 'high'
     };
   }
 
-  if (flags.medium) {
+  if (isMedium) {
     return {
-      id: config.models.medium || 'gemini-3.6-flash',
+      id: config.models.medium || 'medium',
       variant: 'medium'
     };
   }
 
-  if (flags.low) {
+  if (isLow) {
     return {
-      id: config.models.low || 'gemini-2.5-flash',
+      id: config.models.low || 'low',
       variant: 'low'
     };
   }
 
-  // Fallback to default
+  // Prioritas 3: Fallback ke default config user / minimal default
   return config.models.default;
 }
