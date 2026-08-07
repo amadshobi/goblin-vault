@@ -1,74 +1,73 @@
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import { getModelsConfig, type GBModelsConfig } from '../../config/models';
+
+const CONFIG_DIR = path.join(os.homedir(), '.config', 'gb');
+const MODELS_PATH = path.join(CONFIG_DIR, 'models.json');
+
+export interface GBConfigRecord extends Record<string, unknown> {
+  default?: string;
+  high?: string;
+  medium?: string;
+  low?: string;
+  variant?: string;
+}
+
 /**
- * config/store.ts — Persistent config store (TS)
- *
- * Port dari `utils/config.js`. Config file: ~/.config/goblin-vault/gb-config.json
- * (override via env XDG_CONFIG_HOME). Atomic write (tmp + rename) untuk
- * menjamin tidak ada file korup saat crash.
- *
- * Layer ini adalah single source of truth untuk config persistence di gb.
- * Domain lain (LLM, auth, dll.) cukup import dari sini.
+ * Memuat konfigurasi dari ~/.config/gb/models.json
  */
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-
-function configDir(): string {
-  const base = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
-  return path.join(base, "goblin-vault");
+export function loadConfig(): GBConfigRecord {
+  const modelsCfg = getModelsConfig();
+  return {
+    default: modelsCfg.models.default.id,
+    variant: modelsCfg.models.default.variant || 'medium',
+    high: modelsCfg.models.high,
+    medium: modelsCfg.models.medium,
+    low: modelsCfg.models.low,
+  };
 }
 
-function configFilePath(): string {
-  return path.join(configDir(), "gb-config.json");
+export function getConfig(): GBConfigRecord {
+  return loadConfig();
 }
 
-/** Load config dari disk. Return {} kalau file belum pernah dibuat. */
-export function loadConfig(): Record<string, unknown> {
-  const file = configFilePath();
-  let raw: string;
+/**
+ * Menyimpan pembaruan kunci-nilai ke ~/.config/gb/models.json secara atomic
+ */
+export function setConfig(key: string, value: unknown): GBConfigRecord {
   try {
-    raw = fs.readFileSync(file, "utf8");
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") return {};
-    throw new Error(`gb: gagal membaca config ${file}: ${(err as Error).message}`);
-  }
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>;
+    if (!fs.existsSync(CONFIG_DIR)) {
+      fs.mkdirSync(CONFIG_DIR, { recursive: true });
     }
-    throw new Error("root config bukan object");
+
+    const currentModelsCfg = getModelsConfig();
+    const updatedModels = { ...currentModelsCfg.models };
+
+    if (key === 'default') {
+      updatedModels.default = {
+        ...updatedModels.default,
+        id: String(value),
+      };
+    } else if (key === 'variant') {
+      updatedModels.default = {
+        ...updatedModels.default,
+        variant: String(value),
+      };
+    } else if (key === 'high' || key === 'medium' || key === 'low') {
+      updatedModels[key] = String(value);
+    }
+
+    const newConfigObj = {
+      models: updatedModels,
+    };
+
+    const tmpPath = `${MODELS_PATH}.tmp`;
+    fs.writeFileSync(tmpPath, JSON.stringify(newConfigObj, null, 2), 'utf8');
+    fs.renameSync(tmpPath, MODELS_PATH);
   } catch (err) {
-    throw new Error(`gb: config corrupt di ${file}: ${(err as Error).message}`);
+    console.error(`[gb-config] Gagal menyimpan config ke models.json: ${err instanceof Error ? err.message : String(err)}`);
   }
-}
 
-/** Persist config ke disk secara atomik (tmp + rename). */
-export function saveConfig(config: Record<string, unknown>): Record<string, unknown> {
-  if (!config || typeof config !== "object" || Array.isArray(config)) {
-    throw new Error("gb: saveConfig membutuhkan plain object config.");
-  }
-  const file = configFilePath();
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = `${file}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(config, null, 2), "utf8");
-  fs.renameSync(tmp, file);
-  return { ...config };
-}
-
-/** Ambil satu key dari config (top-level). */
-export function getConfig(key: string): unknown {
-  if (typeof key !== "string" || !key.trim()) {
-    throw new Error("gb: getConfig membutuhkan key (string non-empty).");
-  }
-  return loadConfig()[key];
-}
-
-/** Set satu key (immutable — selalu bikin object baru, tidak mutate input). */
-export function setConfig(key: string, value: unknown): Record<string, unknown> {
-  if (typeof key !== "string" || !key.trim()) {
-    throw new Error("gb: setConfig membutuhkan key (string non-empty).");
-  }
-  const current = loadConfig();
-  const next = { ...current, [key]: value };
-  return saveConfig(next);
+  return loadConfig();
 }

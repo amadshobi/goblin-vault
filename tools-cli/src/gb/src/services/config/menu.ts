@@ -225,10 +225,11 @@ async function setCustomVariantInteractive(): Promise<void> {
     return;
   }
 
-  const key = `variants.${String(vKeyChoice)}`;
+  const key = String(vKeyChoice);
   let currentVal = "";
   try {
-    const v = getConfig(key);
+    const cfg = getConfig();
+    const v = cfg[key];
     if (typeof v === "string") currentVal = v;
   } catch {
     // ignore

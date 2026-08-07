@@ -8,7 +8,7 @@
  * clearLastLines) di-import dari `../../utils/format` (shared cross-domain).
  */
 import { cancel, note, spinner, text, confirm, select, isCancel } from "@clack/prompts";
-import { writeFileSync, unlinkSync } from "node:fs";
+import fs, { writeFileSync, unlinkSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -68,7 +68,7 @@ export function showInPager(content: string, title = ""): void {
     console.log(content);
   } finally {
     try {
-      if (unlinkSync) unlinkSync(tmpFile);
+      if (fs.existsSync(tmpFile)) unlinkSync(tmpFile);
     } catch {}
   }
 }
