@@ -165,6 +165,10 @@ Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
 - Tambah dependency besar tanpa alasan yang jelas & terukur.
 - Biarkan error di-swallow diam-diam.
 
+**Dilarang:**
+- commit, add, push tanpa persetujuan 
+- cat and read secret, env, key
+
 ---
 
 > *Dibuat oleh Goblin, dirawat oleh Goblin, untuk kedamaian terminal Goblin. 🍻👹*
