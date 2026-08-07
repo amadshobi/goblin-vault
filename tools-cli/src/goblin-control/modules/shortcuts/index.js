@@ -1,5 +1,5 @@
 /**
- * Shortcuts Module — jalanin external tools (gh-blin, ocm, fe).
+ * Shortcuts Module — jalanin external tools (gb, ocm, fe).
  *
  * Flow:
  * 1. Menu pilih tool
@@ -10,7 +10,7 @@
  */
 
 import { p, color } from '../../utils/constants.js';
-import { GH_BLIN_PATH, OCM_PATH, FE_PATH } from '../../utils/constants.js';
+import { GB_PATH, OCM_PATH, FE_PATH } from '../../utils/constants.js';
 import { pathExists } from '../../utils/fs.js';
 import { execCommandLive } from '../../utils/exec.js';
 import { handleCancel, clearLastLines } from '../../utils/prompts.js';
@@ -20,7 +20,7 @@ export async function main() {
     const choice = await p.select({
       message: 'Shortcuts — pilih tool:',
       options: [
-        { value: 'gh-blin', label: 'gh-blin', hint: 'GitHub TUI' },
+        { value: 'gb',      label: 'gb',      hint: 'GitHub TUI' },
         { value: 'ocm',     label: 'ocm',     hint: 'opencode cfg' },
         { value: 'fe',      label: 'fe',      hint: 'file fzf' },
         { value: 'back',    label: '← Back to main menu' },
@@ -37,9 +37,9 @@ export async function main() {
     let toolLabel;
 
     switch (choice) {
-      case 'gh-blin':
-        toolPath = GH_BLIN_PATH;
-        toolLabel = 'gh-blin';
+      case 'gb':
+        toolPath = GB_PATH;
+        toolLabel = 'gb';
         break;
       case 'ocm':
         toolPath = OCM_PATH;

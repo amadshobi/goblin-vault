@@ -54,7 +54,7 @@ echo "📦 Mengecek Aplikasi & Binary Sistem..."
 check_command "node" "Node.js runtime untuk TUI ocm" "true"
 check_command "fzf" "Command-line fuzzy finder untuk fex" "true"
 check_command "tmux" "Terminal multiplexer untuk fex split mode" "true"
-check_command "gh" "GitHub CLI untuk gh-blin" "false"
+check_command "gh" "GitHub CLI untuk gb" "false"
 
 echo "────────────────────────────────────────"
 echo "⚙️ Mengecek Integrasi Shell & PATH..."
@@ -81,7 +81,7 @@ check_binary() {
 
 check_binary "fex"
 check_binary "ocm"
-check_binary "gh-blin"
+check_binary "gb"
 
 echo "────────────────────────────────────────"
 

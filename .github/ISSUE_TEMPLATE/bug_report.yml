@@ -19,7 +19,7 @@ body:
         - "gn (Goblin Nexus CLI)"
         - "ocm (OpenCode Configurator)"
         - "zf (Zoxide & Tmux Helper)"
-        - "gh-blin (GitHub Assistant)"
+        - "gb (GitHub Assistant)"
         - "Scripts & Infrastructure"
         - "Lainnya"
     validations:

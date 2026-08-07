@@ -75,8 +75,8 @@ export async function run(): Promise<void> {
       if (p.isCancel(alias)) continue;
 
       try {
-        utils.insertModel(parsedLines, provider.trim(), status, modelId.trim(), alias.trim());
-        utils.saveModelsFile(parsedLines);
+        const updatedLines = utils.insertModel(parsedLines, provider.trim(), status, modelId.trim(), alias.trim());
+        utils.saveModelsFile(updatedLines);
         p.outro(color.green(` Sukses menambahkan model "${modelId}" ke referensi!`));
       } catch (e: any) {
         p.cancel(color.red(`Gagal menyimpan file referensi: ${e.message}`));
@@ -98,11 +98,11 @@ export async function run(): Promise<void> {
 
       if (p.isCancel(chosenModelId)) continue;
 
-      const idx = parsedLines.findIndex(l => l.type === 'model' && l.modelId === chosenModelId);
-      if (idx !== -1) {
-        parsedLines.splice(idx, 1);
+      const modelExists = parsedLines.some(l => l.type === 'model' && l.modelId === chosenModelId);
+      if (modelExists) {
+        const updatedLines = parsedLines.filter(l => !(l.type === 'model' && l.modelId === chosenModelId));
         try {
-          utils.saveModelsFile(parsedLines);
+          utils.saveModelsFile(updatedLines);
           p.outro(color.green(` Model "${chosenModelId}" berhasil dihapus dari referensi!`));
         } catch (e: any) {
           p.cancel(color.red(`Gagal menyimpan perbaikan: ${e.message}`));

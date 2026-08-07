@@ -23,7 +23,7 @@ async function main() {
         { value: 'git',       label: 'Git',       hint: 'acp,branch,clone' },
         { value: 'create',    label: 'Create',    hint: 'file,folder' },
         { value: 'delete',    label: 'Delete',    hint: 'file via fzf' },
-        { value: 'shortcuts', label: 'Shortcuts', hint: 'gh-blin,ocm,fe' },
+        { value: 'shortcuts', label: 'Shortcuts', hint: 'gb,ocm,fe' },
         { value: 'cmd',       label: 'Cmd',       hint: 'linux cmd' },
         { value: 'check',     label: 'Check',     hint: 'doctor,lint' },
         { value: 'exit',      label: color.red('Exit'), hint: 'keluar' },

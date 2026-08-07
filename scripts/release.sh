@@ -18,7 +18,7 @@ show_help() {
     echo "  zf              ⚡ Release version for ZF Navigation Engine"
     echo "  ocm             ⚙️ Release version for OpenCode Configurator"
     echo "  sup             🧹 Release version for Smart Universal Package Updater"
-    echo "  gh-blin         🐙 Release version for GitHub Assistant TUI"
+    echo "  gb              🐙 Release version for GitHub Assistant TUI"
     echo ""
     echo "Setiap target per-tool otomatis me-refer changelog modular di docs/CHANGELOG/<tool>.md"
     echo ""
@@ -210,24 +210,24 @@ case "$TARGET" in
         echo "🎉 SUP RELEASE SUCCESS! Version: v$NEW_VER"
         ;;
 
-    gh-blin)
-        GH_BLIN_PKG="$VAULT_DIR/tools-cli/src/gh-blin/package.json"
-        CURRENT_VER=$(node -e 'console.log(require("'"$GH_BLIN_PKG"'").version || "1.0.0")')
+    gb)
+        GB_PKG="$VAULT_DIR/tools-cli/src/gb/package.json"
+        CURRENT_VER=$(node -e 'console.log(require("'"$GB_PKG"'").version || "1.0.0")')
         NEW_VER=$(calculate_next_version "$CURRENT_VER" "$BUMP_TYPE")
         node -e '
             const fs = require("fs");
-            const p = "'"$GH_BLIN_PKG"'";
+            const p = "'"$GB_PKG"'";
             const json = JSON.parse(fs.readFileSync(p, "utf8"));
             json.version = "'"$NEW_VER"'";
             fs.writeFileSync(p, JSON.stringify(json, null, 2) + "\n");
         '
-        echo "🐙 Bumping gh-blin version: v$CURRENT_VER -> v$NEW_VER"
+        echo "🐙 Bumping gb version: v$CURRENT_VER -> v$NEW_VER"
         
         cd "$VAULT_DIR"
-        git add "$GH_BLIN_PKG"
-        git add docs/CHANGELOG/gh-blin.md 2>/dev/null || true
-        git commit -m "chore(release): bump gh-blin to v$NEW_VER" || true
-        echo "🎉 GH-BLIN RELEASE SUCCESS! Version: v$NEW_VER"
+        git add "$GB_PKG"
+        git add docs/CHANGELOG/gb.md 2>/dev/null || true
+        git commit -m "chore(release): bump gb to v$NEW_VER" || true
+        echo "🎉 GB RELEASE SUCCESS! Version: v$NEW_VER"
         ;;
 
     *)

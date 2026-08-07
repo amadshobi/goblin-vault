@@ -206,7 +206,7 @@ Setiap alat CLI/TUI utama di Goblin Vault sebaiknya menyajikan header help / lan
 
 - Update dokumentasi kalau behavior user-facing berubah.
 - **Changelog modular**: detail perubahan per-tool dicatat di `docs/CHANGELOG/<tool>.md`
-  (e.g. `sup.md`, `fex.md`, `gn.md`, `ocm.md`, `zf.md`, `gh-blin.md`).
+  (e.g. `sup.md`, `fex.md`, `gn.md`, `ocm.md`, `zf.md`, `gb.md`).
 - **Master `CHANGELOG.md`** hanya memuat poin makro tingkat tinggi per versi plus
   navigasi link ke changelog per-tool — jangan menumpuk detail panjang di master.
 - Tool baru yang berdampak ke pengguna wajib punya file changelog sendiri di

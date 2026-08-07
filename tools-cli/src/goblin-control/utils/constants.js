@@ -14,7 +14,7 @@ export const TOOLS_CLI_ROOT = path.resolve(__dirname, '../../..');
 export const TOOLS_BIN_DIR = path.join(TOOLS_CLI_ROOT, 'bin');
 
 // Path ke external tools
-export const GH_BLIN_PATH = path.join(TOOLS_BIN_DIR, 'gh-blin');
+export const GB_PATH = path.join(TOOLS_BIN_DIR, 'gb');
 export const OCM_PATH = path.join(TOOLS_BIN_DIR, 'ocm');
 export const FE_PATH = path.join(TOOLS_BIN_DIR, 'fe');
 
