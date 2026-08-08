@@ -14,6 +14,18 @@
 
 ---
 
+## [Unreleased]
+
+### Added
+- **`check_syntax.js` & `doctor.js` JS Engine Migration**: Migrasi total script validator repositori dari Bash kuno (`check_syntax.sh` & `doctor.sh`) ke Node.js / Bun Engine yang jauh lebih cepat, paralel, dan kaya fitur.
+- **Multi-Language & Executable Permission Check**: Penambahan audit ijin eksekusi (`+x`) pada semua binary & scripts, rincian per-file `.go`, `.js`, `.ts`, dan `.sh`, serta parser error presisi (`file:line:col`) dengan format Arrow Identifier (`↳`) dan Goblin Roast Summary (`🤨 NIH BOSS FILE YANG ERROR:`).
+- **Flexible CLI Flags**: Dukungan flag `--staged` (`-s`), `--working` (`-w`, mengecek modified & untracked files), dan `--full` (`-f`).
+
+### Removed
+- **Legacy Bash Wrappers**: Penghapusan total file wrapper `scripts/check_syntax.sh` dan `scripts/doctor.sh`.
+
+---
+
 ## [v0.3.32] - 2026-08-06
 
 ### Added

@@ -175,8 +175,8 @@ goblin-vault/
 │       ├── zf/                 # Zoxide & Tmux Helper (Shell)
 │       └── shield/             # Privacy Shield Interceptor (TypeScript)
 ├── scripts/                    # Utilities & automation
-│   ├── check_syntax.sh         # Linter untuk Bash, Go, JS, TS
-│   ├── doctor.sh               # Health & dependency checker
+│   ├── check_syntax.js         # Linter & Security Engine untuk Bash, Go, JS, TS
+│   ├── doctor.js               # Health & dependency diagnostic checker
 │   ├── install.sh              # Setup PATH & symlink config
 │   ├── install-hooks.sh        # Install git hooks
 │   ├── release.sh              # SemVer release engine
@@ -203,8 +203,8 @@ goblin-vault/
 bash scripts/install-hooks.sh
 ```
 
-- **pre-commit** — menjalankan `check_syntax.sh --staged` (fast, hanya file yang di-stage).
-- **pre-push** — menjalankan `check_syntax.sh` full scan + build `fex`.
+- **pre-commit** — menjalankan `check_syntax.js --staged` (fast, hanya file yang di-stage).
+- **pre-push** — menjalankan `check_syntax.js --full` full scan + build `fex`.
 
 ### CI (GitHub Actions)
 
@@ -216,8 +216,8 @@ Setiap push/PR ke `main` atau `dev` memicu pipeline:
 ### Health Check
 
 ```bash
-bash scripts/doctor.sh          # Dependency & PATH check
-bash scripts/check_syntax.sh    # Lint Bash, Go, JS, TS
+./scripts/doctor.js          # Dependency & PATH check
+./scripts/check_syntax.js    # Lint Bash, Go, JS, TS
 ```
 
 ### Release
@@ -265,8 +265,8 @@ Kami terbuka untuk kontribusi! Sebelum mulai, baca dokumen berikut:
 **Checklist sebelum PR:**
 
 ```bash
-bash scripts/doctor.sh            # Dependency & PATH check
-bash scripts/check_syntax.sh      # Lint seluruh codebase
+./scripts/doctor.js            # Dependency & PATH check
+./scripts/check_syntax.js --full # Lint seluruh codebase
 cd tools-cli/src/fex && go build -o ~/.local/bin/fex .  # Build fex
 ```
 

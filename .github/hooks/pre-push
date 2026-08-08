@@ -7,8 +7,8 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
 echo "🩺 goblin pre-push: running doctor (blocking)..."
-if ! bash "$REPO_ROOT/scripts/doctor.sh"; then
-  echo "❌ doctor.sh gagal — push dibatalkan. Pastikan dependency wajib terpasang." >&2
+if ! "$REPO_ROOT/scripts/doctor.js"; then
+  echo "❌ doctor.js gagal — push dibatalkan. Pastikan dependency wajib terpasang." >&2
   exit 1
 fi
 
@@ -24,8 +24,8 @@ if ! (cd "$REPO_ROOT/tools-cli/src/fex" && go build -o "$BIN" ./cmd/fex); then
 fi
 
 echo "🐙 goblin pre-push: running full syntax check..."
-if ! bash "$REPO_ROOT/scripts/check_syntax.sh"; then
-  echo "❌ check_syntax.sh gagal — push dibatalkan." >&2
+if ! "$REPO_ROOT/scripts/check_syntax.js" --full; then
+  echo "❌ check_syntax.js gagal — push dibatalkan." >&2
   exit 1
 fi
 
