@@ -135,8 +135,12 @@ Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
 - **Branch/Worktree**: gunakan `scripts/worktree.sh` untuk isolasi pekerjaan.
 - **Git hooks & CI**: repo dilengkapi `scripts/install-hooks.sh` (pre-commit + pre-push
   blocking) dan GitHub Actions `.github/workflows/ci.yml` (lint + build otomatis).
-  - `pre-commit hook`: Menjalankan `scripts/check_syntax.sh --staged` (fast staged mode, hanya mengecek file yang di-`git add`).
-  - `pre-push hook`: Menjalankan `scripts/check_syntax.sh` (full repo scan menyeluruh untuk Bash, Go, JS, dan TS).
+  - `pre-commit hook`: Menjalankan `scripts/check_syntax.js --staged` (hanya mengecek file yang di-`git add`).
+  - `pre-push hook`: Menjalankan `scripts/check_syntax.js --full` (full repo scan menyeluruh untuk Bash, Go, JS, TS, dan executable permissions).
+  - **Syntax Checker Modes (`scripts/check_syntax.js`)**:
+    - `./scripts/check_syntax.js --staged` (`-s`): Fast scan khusus file yang di-stage (`git diff --cached`).
+    - `./scripts/check_syntax.js --working` (`-w`): Scan file modified & file baru untracked di working directory.
+    - `./scripts/check_syntax.js --full` (`-f`): Full repo scan menyeluruh untuk seluruh workspace.
 - **Prosedur Release & Branch Sync (PENTING)**: Gunakan `./scripts/release.sh` untuk automated release (terintegrasi dengan health audit, git tagging, dan GitHub Release).
   - **Standard Workflow**: Semua perubahan wajib lahir di branch `dev` terlebih dahulu, kemudian lakukan Pull Request (PR) `dev -> main`. Eksekusi script release dilakukan setelah PR di-merge ke `main` atau langsung dari branch `main` lokal yang sudah ter-sync dengan remote.
   - **Single Source of Truth**: Dilarang keras meng-edit atau membuat commit langsung di branch `main`.
@@ -154,7 +158,7 @@ Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
 
 **Lakukan:**
 - Cek `README.md`, `CHANGELOG.md`, `docs/CHANGELOG/`, dan struktur `tools-cli/` sebelum mengubah.
-- Jalankan `scripts/doctor.sh` & `scripts/check_syntax.sh` sebelum anggap selesai.
+- Jalankan `scripts/doctor.js` & `scripts/check_syntax.js` sebelum anggap selesai.
 - Pertahankan kompatibilitas dengan tools yang sudah dipakai BOSS harian.
 - Tulis perubahan kecil, fokused, dan reversible.
 
