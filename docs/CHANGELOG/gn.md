@@ -10,9 +10,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ### Refactored
 - **Nerd Font Icons Upgrade Across CLI**: Mengganti emoji warna-warni di seluruh output CLI (`gn --help`, `gn usage`, `gn ping`, `gn bench`, `gn config`, `gn doctor`, `shield.sh`, `gn.sh`) dengan simbol JetBrains Mono / Nerd Font icons (`󰄬`, `󰅚`, `󰀦`, `󰓅`, `󰒓`, `󱈸`, `󱎫`, `󰋼`, `󰑐`, `󰈙`, `󰓹`, `󰋽`, `󰚌`, `󰘚`) untuk tampilan terminal yang lebih bersih dan profesional.
+- **Compact 1-Line Usage Layout & Dynamic Progress Bars** (`usage.ts`, `formatter.ts`):
+  - Rombak total layout `gn usage` menjadi 1-line padat horizontal per-akun kuota tanpa ASCII banner besar.
+  - Implementasi progress bar tipis `━━━━────────` tanpa siku `[]`.
+  - Peningkatan dynamic color thresholds (<70% hijau, 70-99% kuning, >=100% merah).
 - **Unified Subcommands & Codebase Consolidation**:
+  - Peleburan subcommand `stats` dan `sessions` ke dalam `gn usage` (`--tokens` dan `--sessions`).
+  - Penambahan `gn config` (`c`), `gn ping` (`p`), `gn bench` (`b`), dan `gn doctor --check` (`-c`).
 - **Legacy Cleanup**: Pembersihan total tool legacy (`ocm`, `goblin-control`, `notes`).
-## [v1.0.0] - 2026-08-05
 
 ### Added
 - **TypeScript Native CLI Engine Architecture (Standalone v1.0.0 Release)**: Port total core `gn` dari Shell Script raksasa menjadi aplikasi TypeScript modular berbasis Bun/Node runtime di `tools-cli/src/gn/src/`.
