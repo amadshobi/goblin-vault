@@ -85,8 +85,8 @@ function showHelp(): void {
   console.log("  usage, u      \x1b[1;36m󰓅\x1b[0m Telemetry & Quota Engine (quota live, token activity, file audit)");
   console.log("  sessions, s   \x1b[1;36m󰈙\x1b[0m OpenCode Session Search & Explorer (list/find session history)");
   console.log("  config, c     \x1b[1;36m󰒓\x1b[0m OpenCode & Agent Config Manager (fast get/set opencode.jsonc)");
-  console.log("  ping, p       \x1b[1;36m󱈸\x1b[0m Connectivity check kilat OMP Gateway, Ollama, & DB");
-  console.log("  bench, b      \x1b[1;36m󱎫\x1b[0m Benchmark latency endpoint OMP Gateway (-n runs)");
+  console.log("  ping, p       \x1b[1;36m󱈸\x1b[0m Connectivity check OMP Gateway & model cache (--force)");
+  console.log("  bench, b      \x1b[1;36m󱎫\x1b[0m Benchmark engine latensi & tok/s OMP Gateway (--force)");
   console.log("  doctor, doc   \x1b[1;36m󰋼\x1b[0m Full health diagnostic & config syntax check (--check)");
   console.log("  restart, r    \x1b[1;36m󰑐\x1b[0m Restart systemd user services (omp-broker, omp-gateway)");
   console.log("");

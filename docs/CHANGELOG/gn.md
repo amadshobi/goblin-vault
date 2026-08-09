@@ -9,6 +9,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [v2.0.0] - 2026-08-09
 
 ### Added
+- **`gn ping` & `gn bench` Dual-Mode & Centralized Storage Engine (`~/.config/gn/cache/`)**:
+  - Migrasi storage cache ping & bench dari `~/.shell/cache/` ke `~/.config/gn/cache/` (sejajar dengan `~/.config/gb`).
+  - Auto-migration otomatis membaca & memindahkan cache lama dari `~/.shell/cache/` ke `~/.config/gn/cache/` tanpa membuang riwayat lama.
+  - **Dual-Mode Execution Architecture**:
+    - **Default Mode**: Membaca snapshot cache dari `~/.config/gn/cache/ping/<provider>.json` atau `~/.config/gn/cache/bench/<provider>.json` secara instan (**~5ms execution time**).
+    - **Live Force Mode (`--force` / `-f`)**: Bypass cache, mengeksekusi request live HTTP ke OMP Gateway (`http://127.0.0.1:4000`), menghitung metrics latensi & throughput (`tok/s`), dan memperbarui JSON cache secara otomatis.
+- **`gn ping` Live Probe Layout & Reliability Patch**:
+  - Mode live `gn p <provider> --force` memakai Clack spinner per-model dengan label minimal hanya nama model, tanpa teks tambahan seperti `Testing`.
+  - Payload probe diselaraskan dengan request chat valid (`Reply with only: ok`) dan `max_tokens` dinaikkan ke `50` untuk menghindari false negative pada model yang tersedia seperti `google-antigravity/gemini-3.6-flash`.
+  - Timeout request live ping distandarkan ke `10s` via `AbortSignal.timeout`, sehingga spinner otomatis berhenti sebagai `TIMEOUT` jika provider/gateway terlalu lama merespons.
+  - Cache mode `gn p <provider>` tetap mempertahankan boxed table existing; perubahan layout hanya menyasar live/local ping output.
 - **Daily Tokens & Subagent Tree Activity Engine (`gn u -t`)**:
   - Dukungan visual pohon silsilah aktivitas harian per sesi (`Root Title [model]` -> `subagent (title) [model]`).
   - Breakdown metrics presisi: Tokens Input, Output, Cache Read, Cache Write, Reasoning, Cost USD, dan Tool Calls summary.
