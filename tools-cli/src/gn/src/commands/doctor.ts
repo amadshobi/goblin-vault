@@ -18,7 +18,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { stderr, exit } from "node:process";
-import { existsSync, statSync, readdirSync } from "node:fs";
+import { existsSync, statSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -34,6 +34,7 @@ import {
   ANSI_GREEN,
   ANSI_YELLOW,
 } from "../utils/formatter";
+import { stripComments } from "../utils/config";
 
 // ─── Paths (single source of truth) ──────────────────────────
 
@@ -54,14 +55,16 @@ interface DoctorArgs {
   short: boolean;
   json: boolean;
   help: boolean;
+  check: boolean;
 }
 
 function parseDoctorArgs(argv: string[]): DoctorArgs {
-  const args: DoctorArgs = { short: false, json: false, help: false };
+  const args: DoctorArgs = { short: false, json: false, help: false, check: false };
   for (const a of argv) {
     if (a === "--short") args.short = true;
     else if (a === "--json") args.json = true;
     else if (a === "-h" || a === "--help") args.help = true;
+    else if (a === "-c" || a === "--check") args.check = true;
   }
   return args;
 }
@@ -87,6 +90,7 @@ function printDoctorHelp(): void {
     "FLAGS:",
     "      --short   Hanya tampilkan check yang warn/error",
     "      --json    Output JSON mentah (untuk monitoring scripts)",
+    "  -c, --check   Lakukan validasi keabsahan syntax JSONC pada opencode.jsonc",
     "  -h, --help    Tampilkan help ini",
     "",
     "CHECKS YANG DILAKUKAN (urutan):",
@@ -102,9 +106,9 @@ function printDoctorHelp(): void {
     "",
     "OUTPUT LAYOUT:",
     "  ┌─ Banner ASCII",
-    "  ├─ ✅ omp-broker.service         active",
-    "  ├─ ✅ omp-gateway.service        active",
-    "  ├─ ⚠️  stats.db                  NOT FOUND",
+    "  ├─ 󰄬 omp-broker.service         active",
+    "  ├─ 󰄬 omp-gateway.service        active",
+    "  ├─ 󰀦 stats.db                  NOT FOUND",
     "  │     Hint: stats.db dibuat lazily oleh OMP CLI.",
     "  └─ Summary: 8 OK, 1 WARN, 0 ERROR",
     "",
@@ -147,6 +151,11 @@ export async function handleDoctorCommand(argv: string[]): Promise<number> {
     await checkGatewayPort(),
   ];
 
+  // Milestone 5: `--check` flag integration
+  if (args.check) {
+    results.push(checkOpenCodeJsoncSyntax());
+  }
+
   // ── JSON mode ─────────────────────────────────────────────
   if (args.json) {
     const summary = summarize(results);
@@ -188,15 +197,15 @@ export async function handleDoctorCommand(argv: string[]): Promise<number> {
 
   if (s.error > 0) {
     console.log(
-      `\n  ${ANSI_RED}🔴 Ada ${s.error} check yang gagal. Lihat hint di atas untuk fix.${ANSI_RESET}\n`
+      `\n  ${ANSI_RED}󰅚 Ada ${s.error} check yang gagal. Lihat hint di atas untuk fix.${ANSI_RESET}\n`
     );
   } else if (s.warn > 0) {
     console.log(
-      `\n  ${ANSI_YELLOW}⚠️  Ada ${s.warn} warning. Jalankan tanpa --short untuk lihat detail.${ANSI_RESET}\n`
+      `\n  ${ANSI_YELLOW}󰀦 Ada ${s.warn} warning. Jalankan tanpa --short untuk lihat detail.${ANSI_RESET}\n`
     );
   } else {
     console.log(
-      `\n  ${ANSI_GREEN}🟢 Sistem sehat. Semua check passed.${ANSI_RESET}\n`
+      `\n  ${ANSI_GREEN}󰄬 Sistem sehat. Semua check passed.${ANSI_RESET}\n`
     );
   }
 
@@ -239,7 +248,7 @@ export async function handleRestartCommand(argv: string[]): Promise<number> {
   }
 
   console.log(
-    `\n${ANSI_CYAN}🔄 Restarting OMP Proxy services...${ANSI_RESET}`
+    `\n${ANSI_CYAN}󰑐 Restarting OMP Proxy services...${ANSI_RESET}`
   );
   console.log(`${ANSI_GRAY}   ${PATHS.brokerService}${ANSI_RESET}`);
   console.log(`${ANSI_GRAY}   ${PATHS.gatewayService}${ANSI_RESET}\n`);
@@ -278,7 +287,7 @@ export async function handleRestartCommand(argv: string[]): Promise<number> {
 
     if (!brokerOk || !gatewayOk) {
       console.log(
-        `\n${ANSI_YELLOW}⚠️  Service restart selesai tapi salah satu belum aktif.${ANSI_RESET}`
+        `\n${ANSI_YELLOW}󰀦 Service restart selesai tapi salah satu belum aktif.${ANSI_RESET}`
       );
       console.log(
         `${ANSI_GRAY}   Cek: journalctl --user -u omp-broker.service -n 50${ANSI_RESET}\n`
@@ -290,7 +299,7 @@ export async function handleRestartCommand(argv: string[]): Promise<number> {
     return 0;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    stderr.write(`💥 gn restart crash: ${msg}\n`);
+    stderr.write(`󰅚 gn restart crash: ${msg}\n`);
     return 1;
   }
 }
@@ -577,6 +586,41 @@ async function checkGatewayPort(): Promise<DoctorCheckResult> {
   }
 }
 
+/**
+ * Check 10: Validasi syntax opencode.jsonc (Milestone 5)
+ */
+function checkOpenCodeJsoncSyntax(): DoctorCheckResult {
+  const { findOpenCodeConfigPath } = require("../utils/config");
+  const configPath = findOpenCodeConfigPath();
+
+  if (!configPath) {
+    return {
+      name: "opencode.jsonc syntax",
+      status: "warn",
+      detail: "File opencode.jsonc tidak ditemukan",
+      hint: "Pastikan berkas opencode.jsonc ada di path pencarian default.",
+    };
+  }
+
+  try {
+    const rawContent = readFileSync(configPath, "utf8");
+    const stripped = stripComments(rawContent);
+    JSON.parse(stripped);
+    return {
+      name: "opencode.jsonc syntax",
+      status: "ok",
+      detail: `Valid JSONC: ${configPath}`,
+    };
+  } catch (err) {
+    return {
+      name: "opencode.jsonc syntax",
+      status: "error",
+      detail: `Syntax error: ${(err as Error).message}`,
+      hint: `Periksa error formatting di: ${configPath}`,
+    };
+  }
+}
+
 // ─── Helpers ─────────────────────────────────────────────────
 
 /**
@@ -657,7 +701,7 @@ function renderCheck(r: DoctorCheckResult): void {
   const namePadded = r.name.padEnd(28);
   console.log(`  ${badge} ${ANSI_BOLD}${namePadded}${ANSI_RESET} ${r.detail}`);
   if (r.hint) {
-    console.log(`     ${ANSI_GRAY}💡 ${r.hint}${ANSI_RESET}`);
+    console.log(`     ${ANSI_GRAY}󰋽 ${r.hint}${ANSI_RESET}`);
   }
 }
 
@@ -685,7 +729,7 @@ if (isMainModule) {
     .then((code) => exit(code))
     .catch((err) => {
       const msg = err instanceof Error ? err.message : String(err);
-      stderr.write(`💥 gn doctor crash: ${msg}\n`);
+      stderr.write(`󰅚 gn doctor crash: ${msg}\n`);
       exit(1);
     });
 }

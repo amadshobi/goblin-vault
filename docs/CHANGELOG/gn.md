@@ -5,8 +5,13 @@
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
----
 
+## [v2.0.0] - 2026-08-09
+
+### Refactored
+- **Nerd Font Icons Upgrade Across CLI**: Mengganti emoji warna-warni di seluruh output CLI (`gn --help`, `gn usage`, `gn ping`, `gn bench`, `gn config`, `gn doctor`, `shield.sh`, `gn.sh`) dengan simbol JetBrains Mono / Nerd Font icons (`󰄬`, `󰅚`, `󰀦`, `󰓅`, `󰒓`, `󱈸`, `󱎫`, `󰋼`, `󰑐`, `󰈙`, `󰓹`, `󰋽`, `󰚌`, `󰘚`) untuk tampilan terminal yang lebih bersih dan profesional.
+- **Unified Subcommands & Codebase Consolidation**:
+- **Legacy Cleanup**: Pembersihan total tool legacy (`ocm`, `goblin-control`, `notes`).
 ## [v1.0.0] - 2026-08-05
 
 ### Added

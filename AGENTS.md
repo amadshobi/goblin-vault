@@ -25,7 +25,7 @@ berjalan, bukan sekadar menambah fitur demi keren-kerenan.
 ```
 goblin-vault/
 ├── tools-cli/              # Pusat persenjataan CLI
-│   ├── bin/                # Executable binaries/wrappers siap pakai (fe, ocm, gb)
+│   ├── bin/                # Executable binaries/wrappers siap pakai (fe, gb)
 │   ├── src/                # Source code mentah aplikasi CLI
 │   │   ├── fex/            # File Explorer (Go) — fzf + tmux
 │   │   │   ├── cmd/        # Command handlers (root.go, search_mode.go, tree_mode.go)
@@ -33,9 +33,7 @@ goblin-vault/
 │   │   │   ├── helpers/    # Helper utilities (fzf-pick.sh, tmux-split.sh, dll)
 │   │   │   └── internal/   # Internal packages (config, fzf, session, tmux, tree, ui, util)
 │   │   ├── gb/             # GitHub Assistant TUI (Node.js)
-│   │   ├── goblin-control/ # Control center core (Node.js)
-│   │   ├── notes/          # Notes utility (Node.js)
-│   │   └── ocm/            # OpenCode Configurator TUI (Node.js)
+│   │   └── gn/             # Goblin Nexus Core CLI (TypeScript)
 │   ├── tests/              # Laboratorium uji coba (scratchpad)
 │   └── docs/               # Dokumentasi dan manual
 ├── scripts/                # Utilities shell & js (doctor, install, worktree, dll)

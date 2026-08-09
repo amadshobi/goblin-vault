@@ -229,3 +229,64 @@ export interface OmpNativeMessageSummary {
 // Memisahkan keduanya menjaga dependency graph tetap flat
 // (commands → types, commands → adapters/<impl>, tapi tidak
 //  commands → adapters/base → types).
+
+// ─── OpenCode Config Standard (Milestone 1) ───────────────────
+
+export interface AgentPermission {
+  name: string;
+  allow: boolean;
+  patterns?: string[];
+  warning_only?: boolean;
+}
+
+export interface AgentConfigItem {
+  id: string;
+  name: string;
+  persona?: string;
+  model: string;
+  max_tokens?: number;
+  temperature?: number;
+  permissions?: AgentPermission[];
+  tools?: string[];
+  system_instructions?: string;
+}
+
+export interface MCPServerConfig {
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  disabled?: boolean;
+}
+
+export interface CompactionConfig {
+  enabled: boolean;
+  trigger_token_count?: number;
+  keep_percent?: number;
+}
+
+export interface AIModel {
+  id: string;
+  name: string;
+  provider: string;
+  input_price_per_m?: number;
+  output_price_per_m?: number;
+  context_window?: number;
+}
+
+export interface ModelCategory {
+  default: string;
+  fast?: string;
+  reasoning?: string;
+}
+
+export interface OpenCodeConfig {
+  version: string;
+  models?: AIModel[];
+  model_categories?: ModelCategory;
+  agents?: AgentConfigItem[];
+  mcp_servers?: Record<string, MCPServerConfig>;
+  compaction?: CompactionConfig;
+  features?: Record<string, any>;
+  [key: string]: any;
+}
+

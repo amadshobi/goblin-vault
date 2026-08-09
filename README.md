@@ -68,13 +68,6 @@ Filosofi inti:
 <br/>
 
 <p align="center">
-  <img src="docs/assets/gif/ocm-demo.gif" alt="ocm — OpenCode Configurator TUI" width="800" />
-  <br/><em>ocm — Dashboard & manager untuk konfigurasi OpenCode</em>
-</p>
-
-<br/>
-
-<p align="center">
   <img src="docs/assets/gif/zf-demo.gif" alt="zf — Zoxide & Tmux Helper" width="800" />
   <br/><em>zf — Zoxide & Tmux Rapid Navigation Helper</em>
 </p>
@@ -94,8 +87,7 @@ Filosofi inti:
 |:-----|:----------|:------|:--------|
 | **[`sup`](tools-cli/src/sup/)** `v1.1.0` | Smart Universal Package Updater — granular multi-select updater untuk NPM, PIP3, System, Rustup, Bun, OMP. Mode verbose streaming (`-v`), proactive sudo handling. | TypeScript, Bun, Clack TUI | `sup` |
 | **[`fex`](tools-cli/src/fex/)** | File Explorer TUI — navigasi super cepat dengan fzf + tmux split mode. Subcommand: `tree`, `search`, `create`, `editor`, `path`, `kill`. Bookmark & state-machine navigation. | Go 1.22, Cobra, fzf, tmux | `fex` |
-| **[`gn`](tools-cli/src/gn/)** `v1.0.0` | Goblin Nexus CLI — Control Center core, AI adapter broker, bench tools, price/telemetry tracking, quarantine & privacy shield daemon. | Shell, TypeScript, Bun | `gn` |
-| **[`ocm`](tools-cli/src/ocm/)** `v1.2.0` | OpenCode Configurator TUI — dashboard & manager untuk opencode config, agents, MCP servers, dan providers. | TypeScript, Bun, Clack TUI | `ocm` |
+| **[`gn`](tools-cli/src/gn/)** `v2.0.0` | Goblin Nexus CLI — Control Center core, AI adapter broker, bench tools, price/telemetry tracking, configuration manager. | Shell, TypeScript, Bun | `gn` |
 | **[`zf`](tools-cli/src/zf/)** | Zoxide & Tmux Helper — rapid directory navigation, session switcher, auto-launcher tools integration. | Pure Shell (Zsh) | `zf` |
 | **[`gb`](tools-cli/src/gb/)** `v2.1.1` | GitHub Assistant TUI — kelola Issue, PR, Auth, & Release GitHub langsung dari terminal. | Node.js, Clack TUI | `gb` |
 
@@ -168,8 +160,6 @@ goblin-vault/
 │       ├── fex/                # File Explorer (Go + Cobra)
 │       ├── gn/                 # Goblin Nexus CLI (Shell + TypeScript)
 │       ├── gb/                 # GitHub Assistant TUI (Node.js)
-│       ├── goblin-control/     # Control Center core (Node.js)
-│       ├── notes/              # Notes utility (Node.js)
 │       ├── ocm/                # OpenCode Configurator (TypeScript)
 │       ├── sup/                # Smart Package Updater (TypeScript + Bun)
 │       ├── zf/                 # Zoxide & Tmux Helper (Shell)

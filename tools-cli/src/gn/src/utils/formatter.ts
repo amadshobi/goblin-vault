@@ -154,18 +154,18 @@ export function formatStatusBadge(status: string): string {
   const s = status.toLowerCase().trim();
   switch (s) {
     case "ok":
-      return "🟢 OK";
+      return "󰄬 OK";
     case "warn":
     case "warning":
-      return "🟡 WARN";
+      return "󰀦 WARN";
     case "error":
     case "failed":
     case "exhausted":
-      return "🔴 ERROR";
+      return "󰅚 ERROR";
     case "critical":
-      return "🔴 CRITICAL";
+      return "󰅚 CRITICAL";
     default:
-      return "⚪ UNUSED";
+      return "󰅖 UNUSED";
   }
 }
 
@@ -249,13 +249,13 @@ function isSameDay(a: Date, b: Date): boolean {
  */
 export function formatProviderBadge(provider: string): string {
   const p = provider.toLowerCase();
-  if (p.includes("google")) return "🤖 Google";
-  if (p.includes("openai")) return "🔑 OpenAI";
-  if (p.includes("anthropic") || p.includes("claude")) return "🧠 Anthropic";
-  if (p.includes("copilot") || p.includes("github")) return "🐙 GitHub";
-  if (p.includes("ollama")) return "🦙 Ollama";
-  if (p.includes("goblin") || p.includes("nexus")) return "👹 Goblin Nexus";
-  return `🔌 ${provider}`;
+  if (p.includes("google")) return "󰘚 Google";
+  if (p.includes("openai")) return "󰘚 OpenAI";
+  if (p.includes("anthropic") || p.includes("claude")) return "󰘚 Anthropic";
+  if (p.includes("copilot") || p.includes("github")) return "󰊤 GitHub";
+  if (p.includes("ollama")) return "󰘚 Ollama";
+  if (p.includes("goblin") || p.includes("nexus")) return "󰚌 Goblin Nexus";
+  return `󰘚 ${provider}`;
 }
 
 /**

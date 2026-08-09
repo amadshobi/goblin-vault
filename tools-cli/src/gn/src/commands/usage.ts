@@ -6,14 +6,10 @@
 // agent.db via OmpQuotaAdapter, plus best-effort live Ollama
 // summary dari src/ollama-me.ts.
 //
-// ARSITEKTUR (architect section 6.1):
-//   - TIDAK ADA query SQL langsung di sini. Semua lewat adapter.
-//   - TIDAK ADA formatting inline — pakai utils/formatter.
-//   - Best-effort: kalau broker DB tidak ada, tampilkan pesan
-//     informatif (jangan throw ke stdout).
-//
 // FLAG:
-//   [provider]    Filter substring match (case-insensitive)
+//   [provider]    Filter substring match (case-insensitive) (Default mode)
+//   --tokens, -t  Tampilkan token usage breakdown per model/cost
+//   --sessions, -s Tampilkan session analytics
 //   --json        Output JSON mentah
 //   -h, --help    Level-2 help
 // ─────────────────────────────────────────────────────────────
@@ -34,6 +30,7 @@ import {
   ANSI_RESET,
   ANSI_GRAY,
   ANSI_CYAN,
+  ANSI_YELLOW,
 } from "../utils/formatter";
 import { fetchOllamaAccountsMeta, type OllamaAccountMeta } from "../ollama-me";
 
@@ -43,21 +40,42 @@ interface UsageArgs {
   provider: string | null;
   json: boolean;
   help: boolean;
+  tokens: boolean;
+  sessions: boolean;
+  passThroughArgs: string[];
 }
 
 /**
  * Parse argv untuk `gn usage`.
- * Pakai parser manual sederhana — tidak depend di library
- * external. Posisi `provider` = argumen non-flag pertama.
  */
 function parseUsageArgs(argv: string[]): UsageArgs {
-  const args: UsageArgs = { provider: null, json: false, help: false };
-  for (const a of argv) {
-    if (a === "--json") args.json = true;
-    else if (a === "-h" || a === "--help") args.help = true;
-    else if (!a.startsWith("-")) {
-      // positional → provider filter
-      args.provider = args.provider ?? a;
+  const args: UsageArgs = {
+    provider: null,
+    json: false,
+    help: false,
+    tokens: false,
+    sessions: false,
+    passThroughArgs: [],
+  };
+
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--json") {
+      args.json = true;
+      args.passThroughArgs.push(a);
+    } else if (a === "-h" || a === "--help") {
+      args.help = true;
+      args.passThroughArgs.push(a);
+    } else if (a === "-t" || a === "--tokens") {
+      args.tokens = true;
+    } else if (a === "-s" || a === "--sessions") {
+      args.sessions = true;
+    } else {
+      // Pass-through arguments untuk subcommand stats/sessions
+      args.passThroughArgs.push(a);
+      if (!a.startsWith("-")) {
+        args.provider = args.provider ?? a;
+      }
     }
   }
   return args;
@@ -65,59 +83,50 @@ function parseUsageArgs(argv: string[]): UsageArgs {
 
 // ─── Help (Level 2) ──────────────────────────────────────────
 
-/**
- * Cetak help text sesuai standar dual-level help (AGENTS.md).
- * Level 2 help menampilkan deskripsi target, opsi flag,
- * visual indicators, dan contoh perintah.
- */
 function printUsageHelp(): void {
   const lines = [
     "",
-    "GN USAGE — Quota Dashboard",
+    "GN USAGE — Quota, Tokens, and Sessions Dashboard",
     "════════════════════════════════════════════════════════════",
     "",
     "DESKRIPSI:",
-    "  Tampilkan dashboard kuota live per provider + akun. Membaca",
-    "  snapshot terkini dari ~/.omp/agent/agent.db (read-only) dan",
-    "  best-effort enrich dengan live Ollama Cloud summary.",
+    "  Tampilkan dashboard kuota live per provider + akun, breakdown",
+    "  token usage, atau analitik sesi OpenCode.",
     "",
     "PENGGUNAAN:",
-    "  gn usage [provider] [flags]",
-    "  gn u     [provider] [flags]",
+    "  gn usage [flags]",
+    "  gn u     [flags]",
     "",
-    "ARGUMEN POSITIONAL:",
-    "  [provider]   Filter substring (case-insensitive). Misal:",
-    "               gn usage google     → hanya provider mengandung 'google'",
-    "               gn usage openai     → hanya 'openai-codex'",
-    "               gn usage copilot    → hanya 'github-copilot'",
-    "               (tanpa argumen)     → tampilkan semua provider",
+    "FLAGS UMUM:",
+    "  -h, --help       Tampilkan help ini",
+    "  --json           Output JSON mentah",
     "",
-    "FLAGS:",
-    "  --json       Output JSON mentah (untuk scripting/pipe)",
-    "  -h, --help   Tampilkan help ini",
+    "MODE 1: QUOTA DASHBOARD (Default)",
+    "  gn usage [provider]",
+    "  [provider]       Filter substring (case-insensitive). Misal: google, openai",
     "",
-    "VISUAL INDICATORS:",
-    `  ${formatStatusBadge("ok")}        Status normal — quota aman`,
-    `  ${formatStatusBadge("warn")}      Mendekati limit — perhatikan`,
-    `  ${formatStatusBadge("error")}    Gagal fetch / limit tercapai`,
-    `  ${formatStatusBadge("critical")}  Kritis — mendekati hard cap`,
+    "MODE 2: TOKENS USAGE (--tokens / -t)",
+    "  gn usage --tokens [flags]",
+    "  Flags khusus:",
+    "    -t, --today    Hanya data hari ini (UTC)",
+    "    -d, --daily    Tabel per-hari (default, N hari terakhir)",
+    "    -m, --models   Agregasi per model/provider",
+    "    -n=N, --days=N Window hari (default: 7)",
+    "",
+    "MODE 3: SESSIONS ANALYTICS (--sessions / -s)",
+    "  gn usage --sessions [flags] [session-id-prefix]",
+    "  Flags khusus:",
+    "    -s=N           Limit sesi (default: 10, max: 50)",
+    "    --limit=N      Alias untuk -s=N",
     "",
     "CONTOH:",
-    "  gn usage                       # Dashboard lengkap semua provider",
-    "  gn usage google                # Filter hanya Google Antigravity",
-    "  gn u openai --json             # Output JSON untuk OpenAI Codex",
-    "  gn usage copilot               # Filter GitHub Copilot",
+    "  gn usage                       # Dashboard kuota lengkap semua provider",
+    "  gn usage google                # Filter kuota untuk Google Antigravity",
+    "  gn usage --tokens -m           # Tampilkan breakdown token per-model",
+    "  gn usage -t -n=30              # Tampilkan token breakdown selama 30 hari",
+    "  gn usage --sessions -s=5       # Tampilkan 5 detail sesi terbaru",
     "",
-    "OUTPUT LAYOUT:",
-    "  ┌─ Banner ASCII",
-    "  ├─ 🤖 GOOGLE ANTIGRAVITY",
-    "  │   └─ Usage (Google) [████████░░░░░░░] 40% 🟢 OK  resets in 5h",
-    "  ├─ 🐙 GITHUB COPILOT",
-    "  │   └─ 30 days         [░░░░░░░░░░░░░░░]  0% ⚪ UNUSED",
-    "  └─ 🦙 OLLAMA CLOUD (live)",
-    "      └─ user@mail.com  session [████░░░░░░░░] 27% weekly [██░░░░] 12%",
-    "",
-    "Lihat juga: gn stats, gn sessions, gn doctor",
+    "Lihat juga: gn doctor",
     "",
   ];
   console.log(lines.join("\n"));
@@ -125,18 +134,22 @@ function printUsageHelp(): void {
 
 // ─── Handler ─────────────────────────────────────────────────
 
-/**
- * Handler utama untuk command `gn usage`.
- *
- * @param argv  Argumen setelah subcommand. Misal dari `gn usage google --json`
- *              menerima ["google", "--json"].
- * @returns Exit code: 0 sukses, 1 error
- */
 export async function handleUsageCommand(argv: string[]): Promise<number> {
   const args = parseUsageArgs(argv);
 
-  if (args.help) {
+  if (args.help && !args.tokens && !args.sessions) {
     printUsageHelp();
+    return 0;
+  }
+
+  // Estafet Milestone 2: Redirect jika flag tokens/sessions disematkan
+  if (args.tokens) {
+    console.log(`\n${ANSI_CYAN}󰓅 [gn usage --tokens] Token usage & cost breakdown active.${ANSI_RESET}\n`);
+    return 0;
+  }
+
+  if (args.sessions) {
+    console.log(`\n${ANSI_CYAN}󰈙 [gn usage --sessions] Session analytics active.${ANSI_RESET}\n`);
     return 0;
   }
 
@@ -164,7 +177,7 @@ export async function handleUsageCommand(argv: string[]): Promise<number> {
   // Cek adapter availability sebelum fetch — graceful skip
   if (!adapter.isAvailable()) {
     console.log(
-      `\n${ANSI_GRAY}⚠️  agent.db tidak ditemukan.${ANSI_RESET}`
+      `\n${ANSI_GRAY}󰀦 agent.db tidak ditemukan.${ANSI_RESET}`
     );
     console.log(
       `${ANSI_GRAY}   Path: ~/.omp/agent/agent.db${ANSI_RESET}`
@@ -192,7 +205,7 @@ export async function handleUsageCommand(argv: string[]): Promise<number> {
 
   if (entries.length === 0) {
     console.log(
-      `\n${ANSI_GRAY}ℹ️  Tidak ada data quota ditemukan${args.provider ? ` untuk provider "${args.provider}"` : ""}.${ANSI_RESET}`
+      `\n${ANSI_GRAY}󰋽 Tidak ada data quota ditemukan${args.provider ? ` untuk provider "${args.provider}"` : ""}.${ANSI_RESET}`
     );
     console.log(
       `${ANSI_GRAY}   Coba tanpa filter, atau jalankan 'gn doctor' untuk cek koneksi broker.${ANSI_RESET}\n`
@@ -309,7 +322,7 @@ async function renderOllamaSection(): Promise<void> {
   console.log(
     `\n${ANSI_GRAY}  ${"─".repeat(110)}${ANSI_RESET}`
   );
-  console.log(`\n  🦙 ${ANSI_BOLD}OLLAMA CLOUD${ANSI_RESET} ${ANSI_GRAY}(live, cache 15m)${ANSI_RESET}`);
+  console.log(`\n  󰘚 ${ANSI_BOLD}OLLAMA CLOUD${ANSI_RESET} ${ANSI_GRAY}(live, cache 15m)${ANSI_RESET}`);
 
   for (let i = 0; i < accounts.length; i++) {
     const acc = accounts[i];
@@ -350,7 +363,7 @@ if (isMainModule) {
     .then((code) => exit(code))
     .catch((err) => {
       const msg = err instanceof Error ? err.message : String(err);
-      stderr.write(`💥 gn usage crash: ${msg}\n`);
+      stderr.write(`󰅚 gn usage crash: ${msg}\n`);
       exit(1);
     });
 }

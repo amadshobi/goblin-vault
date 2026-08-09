@@ -17,35 +17,34 @@
 
 import { printGnHeader } from "./utils/formatter";
 import { handleUsageCommand } from "./commands/usage";
-import { handleOllamaCommand } from "./commands/ollama";
-import { handleStatsCommand } from "./commands/stats";
-import { handleSessionsCommand } from "./commands/sessions";
+import { handleConfigCommand } from "./commands/config";
+import { handlePingCommand } from "./commands/ping";
+import { handleBenchCommand } from "./commands/bench";
 import {
   handleDoctorCommand,
   handleRestartCommand,
 } from "./commands/doctor";
 
-/** Versi gn standalone v1.0.0 (TypeScript Engine Port). */
-export const GN_VERSION = "1.0.0";
+/** Versi gn standalone v2.0.0 (Control Plane & Telemetry Core). */
+export const GN_VERSION = "2.0.0";
 
 /**
  * Peta subcommand → handler.
- * Alias singkat (`u`, `o`, `s`, `ses`, `doc`, `r`) mengikuti pola lama `gn.sh`.
  */
 const COMMANDS: Record<string, (argv: string[]) => Promise<number>> = {
-  // Quota & cost
+  // Quota & telemetry cost
   usage: handleUsageCommand,
   u: handleUsageCommand,
 
-  // Ollama multi-account
-  ollama: handleOllamaCommand,
-  o: handleOllamaCommand,
+  // Configuration management (Leburan OCM)
+  config: handleConfigCommand,
+  c: handleConfigCommand,
 
-  // Activity & analytics
-  stats: handleStatsCommand,
-  s: handleStatsCommand,
-  sessions: handleSessionsCommand,
-  ses: handleSessionsCommand,
+  // Connectivity & benchmarking
+  ping: handlePingCommand,
+  p: handlePingCommand,
+  bench: handleBenchCommand,
+  b: handleBenchCommand,
 
   // Service control
   doctor: handleDoctorCommand,
@@ -61,22 +60,6 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<number>> = {
  * exec ke router ini) tetap bisa menampilkan deprecation warning yang benar.
  */
 const DEPRECATED_COMMANDS: Record<string, string> = {
-  ping:
-    "Command 'gn ping' telah didepresiasi. Gunakan REST API OMP (GET /healthz) atau 'omp ping' untuk health-check.",
-  p:
-    "Command 'gn ping' telah didepresiasi. Gunakan REST API OMP (GET /healthz) atau 'omp ping' untuk health-check.",
-  bench:
-    "Command 'gn bench' telah didepresiasi. Gunakan REST API OMP (POST /v1/chat/completions) atau 'ocm bench' untuk benchmark model.",
-  b:
-    "Command 'gn bench' telah didepresiasi. Gunakan REST API OMP (POST /v1/chat/completions) atau 'ocm bench' untuk benchmark model.",
-  quarantine:
-    "Command 'gn quarantine' telah didepresiasi. Gunakan REST API OMP Auth-Broker (POST /v1/credential/:id/disable).",
-  q:
-    "Command 'gn quarantine' telah didepresiasi. Gunakan REST API OMP Auth-Broker (POST /v1/credential/:id/disable).",
-  export:
-    "Command 'gn export' telah didepresiasi. Gunakan REST API OMP Auth-Broker (GET /v1/snapshot).",
-  e:
-    "Command 'gn export' telah didepresiasi. Gunakan REST API OMP Auth-Broker (GET /v1/snapshot).",
 };
 
 /** Cetak banner ringkas untuk header bantuan/error. */
@@ -89,31 +72,32 @@ function showHelp(): void {
   printBanner();
   console.log("USAGE");
   console.log("  $ gn <command> [args]");
-  console.log("  $ gn <command> --help                  \x1b[1;33m💡 Panduan mendalam per-command!\x1b[0m");
+  console.log("  $ gn <command> --help                  \x1b[1;33m󰋽 Panduan mendalam per-command!\x1b[0m");
   console.log("");
-  console.log("QUOTA & COST TRACKING");
-  console.log("  usage, u    [provider]    \x1b[1;36m📈\x1b[0m Dashboard kuota live + token burn & cost tracker");
-  console.log("  ollama, o   [--refresh]   \x1b[1;36m🦙\x1b[0m Status akun Ollama multi-account");
+  console.log("TELEMETRY & QUOTA TRACKING");
+  console.log("  usage, u    [flags]       \x1b[1;36m󰓅\x1b[0m Quota usage (--tokens, --sessions, --json)");
   console.log("");
-  console.log("ACTIVITY & ANALYTICS");
-  console.log("  stats, s    [--today|--daily|--models]   \x1b[1;36m📊\x1b[0m Statistik session, cost, model usage");
-  console.log("  sessions, ses [-n=N] [prefix]            \x1b[1;36m📚\x1b[0m Riwayat session opencode");
+  console.log("CONFIGURATION MANAGEMENT");
+  console.log("  config, c   get/set [path]\x1b[1;36m󰒓\x1b[0m OpenCode & Agent config manager");
   console.log("");
-  console.log("SERVICE CONTROL");
-  console.log("  doctor, doc [--short]    \x1b[1;36m🩺\x1b[0m Full-chain system health diagnostic");
-  console.log("  restart, r               \x1b[1;36m🔄\x1b[0m Restart systemd user services (omp-broker, omp-gateway)");
+  console.log("CONNECTIVITY & BENCHMARKING");
+  console.log("  ping, p                   \x1b[1;36m󱈸\x1b[0m Cek konektivitas OMP, Ollama, & DB");
+  console.log("  bench, b    [-n runs]     \x1b[1;36m󱎫\x1b[0m Benchmark latency endpoint OMP Gateway");
+  console.log("");
+  console.log("SERVICE CONTROL & DIAGNOSTICS");
+  console.log("  doctor, doc [--check/-c]  \x1b[1;36m󰋼\x1b[0m Full health diagnostic & config syntax check");
+  console.log("  restart, r                \x1b[1;36m󰑐\x1b[0m Restart systemd user services");
   console.log("");
   console.log("META");
-  console.log("  help, h                  \x1b[1;36m📜\x1b[0m Tampilkan panduan ini");
-  console.log("  version, v               \x1b[1;36m🔖\x1b[0m Tampilkan versi");
+  console.log("  help, h                  \x1b[1;36m󰈙\x1b[0m Tampilkan panduan ini");
+  console.log("  version, v               \x1b[1;36m󰓹\x1b[0m Tampilkan versi");
   console.log("");
   console.log("EXAMPLES");
-  console.log("  $ gn usage                 \x1b[2m# Dashboard kuota + token burn\x1b[0m");
-  console.log("  $ gn usage anthropic --json");
-  console.log("  $ gn stats --today         \x1b[2m# Statistik hari ini\x1b[0m");
-  console.log("  $ gn sessions -s=5         \x1b[2m# 5 session terakhir\x1b[0m");
-  console.log("  $ gn doctor --short        \x1b[2m# Diagnostic ringkas\x1b[0m");
-  console.log("  $ gn ollama --refresh      \x1b[2m# Refresh cache Ollama\x1b[0m");
+  console.log("  $ gn usage                 \x1b[2m# Quota usage live\x1b[0m");
+  console.log("  $ gn u --tokens --days 7   \x1b[2m# Token burn 7 hari terakhir\x1b[0m");
+  console.log("  $ gn u --sessions -w       \x1b[2m# Session analytics mingguan\x1b[0m");
+  console.log("  $ gn c get agent           \x1b[2m# Cek list agent opencode\x1b[0m");
+  console.log("  $ gn doctor --check        \x1b[2m# Audit health & syntax jsonc\x1b[0m");
   console.log("");
 }
 
@@ -127,17 +111,14 @@ function showVersion(): void {
  */
 function reportUnknown(cmd: string): void {
   console.error("");
-  console.error("\x1b[1;31m🔥 [Goblin Roast Error] Subcommand tidak dikenal: \x1b[1;37m" + cmd + "\x1b[0m");
-  console.error("\x1b[1;33m💡 Hint: Jalankan \x1b[1;37mgn help\x1b[1;33m untuk melihat daftar command yang tersedia.\x1b[0m");
+  console.error("\x1b[1;31m󰅚 [Goblin Roast Error] Subcommand tidak dikenal: \x1b[1;37m" + cmd + "\x1b[0m");
+  console.error("\x1b[1;33m󰋽 Hint: Jalankan \x1b[1;37mgn help\x1b[1;33m untuk melihat daftar command yang tersedia.\x1b[0m");
   console.error("");
 }
 
-/**
- * Cetak warning depresiasi untuk command yang sudah dihapus/redirected.
- */
 function reportDeprecated(cmd: string, msg: string): void {
   console.error("");
-  console.error("\x1b[1;33m⚠️  " + msg + "\x1b[0m");
+  console.error("\x1b[1;33m󰀦  " + msg + "\x1b[0m");
   console.error("");
 }
 
