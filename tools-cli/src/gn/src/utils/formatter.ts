@@ -101,7 +101,7 @@ export function formatCost(num: number): string {
  * formatProgressBar(1.0)         // "[████████████████████] 100%"
  * formatProgressBar(0)           // "[░░░░░░░░░░░░░░░░░░░░] 0%"
  */
-export function formatProgressBar(fraction: number, width: number = 20): string {
+export function formatProgressBar(fraction: number, width: number = 12): string {
   return formatQuotaBar(fraction, undefined, width);
 }
 
@@ -109,15 +109,11 @@ export function formatProgressBar(fraction: number, width: number = 20): string 
  * Architect-spec alias: `formatQuotaBar(used, total?, width?)`.
  * Jika `total` diberikan, fraction = used/total. Jika tidak,
  * `used` diperlakukan sebagai fraction langsung (0..1).
- *
- * @example
- * formatQuotaBar(0.42)              // sama dengan formatProgressBar
- * formatQuotaBar(420, 1000, 20)     // "[████████░░░░░░░░░░░░] 42%"
  */
 export function formatQuotaBar(
   used: number,
   total?: number,
-  width: number = 20
+  width: number = 12
 ): string {
   const safeWidth = Math.max(1, Math.floor(width));
   const fraction = total !== undefined && total > 0
@@ -126,10 +122,18 @@ export function formatQuotaBar(
   const clamped = Math.max(0, Math.min(1, fraction));
   const filled = Math.round(clamped * safeWidth);
   const empty = safeWidth - filled;
-  const filledStr = "█".repeat(filled);
-  const emptyStr = "░".repeat(empty);
   const pct = Math.round(clamped * 100);
-  return `[${filledStr}${emptyStr}] ${pct}%`;
+
+  let color = ANSI_GREEN;
+  if (pct >= 100) {
+    color = ANSI_RED;
+  } else if (pct >= 70) {
+    color = ANSI_YELLOW;
+  }
+
+  const filledStr = `${color}${"━".repeat(filled)}${ANSI_RESET}`;
+  const emptyStr = `${ANSI_GRAY}${"─".repeat(empty)}${ANSI_RESET}`;
+  return `${filledStr}${emptyStr}`;
 }
 
 // ─── Status Badge ───────────────────────────────────────────

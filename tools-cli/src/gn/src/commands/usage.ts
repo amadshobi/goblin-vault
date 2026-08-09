@@ -15,22 +15,20 @@
 // ─────────────────────────────────────────────────────────────
 
 import { stderr, exit } from "node:process";
-
 import type { QuotaEntry } from "../types";
 import { OmpQuotaAdapter } from "../adapters/omp-quota";
 import {
-  printGnHeader,
-  formatHeader,
   formatProviderBadge,
   formatProgressBar,
   formatStatusBadge,
   formatResetCountdown,
-  formatCostBadge,
   ANSI_BOLD,
   ANSI_RESET,
   ANSI_GRAY,
   ANSI_CYAN,
   ANSI_YELLOW,
+  ANSI_GREEN,
+  ANSI_RED,
 } from "../utils/formatter";
 import { fetchOllamaAccountsMeta, type OllamaAccountMeta } from "../ollama-me";
 
@@ -172,7 +170,12 @@ export async function handleUsageCommand(argv: string[]): Promise<number> {
   }
 
   // ── Dashboard mode ───────────────────────────────────────
-  printGnHeader("QUOTA DASHBOARD");
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+
+  console.log(`\n  ${ANSI_BOLD}󰓅 QUOTA DASHBOARD${ANSI_RESET} ${ANSI_GRAY}(Updated ${hh}:${mm}:${ss})${ANSI_RESET}\n`);
 
   // Cek adapter availability sebelum fetch — graceful skip
   if (!adapter.isAvailable()) {
@@ -199,7 +202,7 @@ export async function handleUsageCommand(argv: string[]): Promise<number> {
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    stderr.write(`❌ Gagal fetch quota: ${msg}\n`);
+    stderr.write(`󰅚 Gagal fetch quota: ${msg}\n`);
     return 1;
   }
 
@@ -219,9 +222,9 @@ export async function handleUsageCommand(argv: string[]): Promise<number> {
 
   // Header kolom ringkas
   console.log(
-    `\n${ANSI_BOLD}  Provider / Label                       Bar                              Status       Reset${ANSI_RESET}`
+    `${ANSI_BOLD}  LABEL                          EMAIL                     USAGE     BAR         STATUS      RESET${ANSI_RESET}`
   );
-  console.log(`${ANSI_GRAY}  ${"─".repeat(110)}${ANSI_RESET}`);
+  console.log(`${ANSI_GRAY}  ${"─".repeat(95)}${ANSI_RESET}`);
 
   for (const provider of providerKeys) {
     const providerEntries = grouped[provider];
@@ -230,16 +233,7 @@ export async function handleUsageCommand(argv: string[]): Promise<number> {
 
   // ── Best-effort: Ollama Cloud live summary ───────────────
   await renderOllamaSection();
-
-  // ── Footer timestamp ─────────────────────────────────────
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mm = String(now.getMinutes()).padStart(2, "0");
-  const ss = String(now.getSeconds()).padStart(2, "0");
-  console.log(
-    `\n${ANSI_GRAY}  ─${ANSI_RESET} ${ANSI_CYAN}⏱  Updated: ${hh}:${mm}:${ss}${ANSI_RESET}` +
-    `${ANSI_GRAY} (omp-broker snapshot dari agent.db)${ANSI_RESET}\n`
-  );
+  console.log();
 
   return 0;
 }
@@ -264,89 +258,84 @@ function groupByProvider(entries: QuotaEntry[]): Record<string, QuotaEntry[]> {
  * Render satu group provider dengan header badge + entry rows.
  */
 function renderProviderGroup(provider: string, entries: QuotaEntry[]): void {
-  // Provider badge (line header)
   const badge = formatProviderBadge(provider);
   console.log(`\n  ${badge} ${ANSI_BOLD}${provider}${ANSI_RESET}`);
 
-  // Sort entries by usedFraction DESC (most used first)
   const sorted = [...entries].sort((a, b) => b.usedFraction - a.usedFraction);
-
   for (const e of sorted) {
     renderQuotaRow(e);
   }
 }
 
 /**
- * Render satu baris quota: label + progress bar + status badge + reset.
+ * Render satu baris quota: label + email + progress bar + status badge + reset.
  */
 function renderQuotaRow(e: QuotaEntry): void {
-  const bar = formatProgressBar(e.usedFraction, 30);
-  const pctStr = `${Math.round(e.usedFraction * 100)}%`;
+  const bar = formatProgressBar(e.usedFraction, 12);
+  const pctNum = Math.round(e.usedFraction * 100);
+  const pctStr = `${pctNum}%`;
+
+  let pctColor = ANSI_GREEN;
+  if (pctNum >= 100) pctColor = ANSI_RED;
+  else if (pctNum >= 70) pctColor = ANSI_YELLOW;
+
+  const formattedPct = `${pctColor}${pctStr.padStart(4)}${ANSI_RESET}`;
   const status = formatStatusBadge(String(e.status ?? "ok"));
   const reset = e.resetsAt
     ? formatResetCountdown(e.resetsAt)
     : `${ANSI_GRAY}-${ANSI_RESET}`;
 
-  // Compose label: prefer "windowLabel label" atau "label"
   const labelRaw =
     [e.windowLabel, e.label].filter(Boolean).join(" · ") || e.label;
-  const label = labelRaw.length > 32
-    ? labelRaw.slice(0, 29) + "..."
-    : labelRaw.padEnd(32);
+  const label = labelRaw.length > 30
+    ? labelRaw.slice(0, 27) + "..."
+    : labelRaw.padEnd(30);
 
-  const emailHint = e.email ? `${ANSI_GRAY} (${e.email})${ANSI_RESET}` : "";
+  const emailRaw = e.email || "-";
+  const email = emailRaw.length > 24
+    ? emailRaw.slice(0, 21) + "..."
+    : emailRaw.padEnd(24);
 
   console.log(
-    `    ${ANSI_GRAY}${label}${ANSI_RESET}${emailHint}`
-  );
-  console.log(
-    `      ${bar}  ${pctStr.padStart(4)}  ${status.padEnd(15)}  ${reset}`
+    `  ${ANSI_GRAY}${label}${ANSI_RESET} ${email}  ${formattedPct}  ${bar}  ${status}  ${reset}`
   );
 }
 
 /**
  * Best-effort: tampilkan live Ollama Cloud summary jika
- * fetchOllamaAccountsMeta() tidak throw. Kalau gagal,
- * skip silently (tidak ganggu output utama).
+ * fetchOllamaAccountsMeta() tidak throw.
  */
 async function renderOllamaSection(): Promise<void> {
   let accounts: OllamaAccountMeta[];
   try {
     accounts = await fetchOllamaAccountsMeta();
   } catch {
-    // silent — best-effort
     return;
   }
   if (accounts.length === 0) return;
 
   console.log(
-    `\n${ANSI_GRAY}  ${"─".repeat(110)}${ANSI_RESET}`
+    `\n${ANSI_GRAY}  ${"─".repeat(95)}${ANSI_RESET}`
   );
-  console.log(`\n  󰘚 ${ANSI_BOLD}OLLAMA CLOUD${ANSI_RESET} ${ANSI_GRAY}(live, cache 15m)${ANSI_RESET}`);
+  console.log(`  󰘚 ${ANSI_BOLD}OLLAMA CLOUD${ANSI_RESET} ${ANSI_GRAY}(live, cache 15m)${ANSI_RESET}`);
 
   for (let i = 0; i < accounts.length; i++) {
     const acc = accounts[i];
-    const sessBar = formatProgressBar(acc.sessionUsagePct / 100, 15);
-    const weekBar = formatProgressBar(acc.weeklyUsagePct / 100, 15);
+    const sessBar = formatProgressBar(acc.sessionUsagePct / 100, 8);
+    const weekBar = formatProgressBar(acc.weeklyUsagePct / 100, 8);
+    const sessPct = `${Math.round(acc.sessionUsagePct)}%`;
+    const weekPct = `${Math.round(acc.weeklyUsagePct)}%`;
     const suspendedTag = acc.suspended
       ? `  ${formatStatusBadge("error")} suspended`
       : "";
+    const email = acc.email.length > 24 ? acc.email.slice(0, 21) + "..." : acc.email.padEnd(24);
+
     console.log(
-      `    ${ANSI_GRAY}#${i + 1}${ANSI_RESET}  ${acc.email}  ${ANSI_CYAN}[${acc.plan}]${ANSI_RESET}${suspendedTag}`
-    );
-    console.log(
-      `        session ${sessBar}   weekly ${weekBar}`
+      `  ${email} ${ANSI_CYAN}[${acc.plan.padEnd(4)}]${ANSI_RESET}  sess: ${sessPct.padStart(4)} ${sessBar}  week: ${weekPct.padStart(4)} ${weekBar}${suspendedTag}`
     );
   }
 }
 
-// ─── Entry point (saat dijalankan langsung via `bun run`) ────
-
-/**
- * Deteksi apakah file ini dijalankan langsung oleh Bun.
- * `import.meta.path` adalah path file module ini — kalau sama
- * dengan argv[1] (entry script), kita panggil handler.
- */
 const isMainModule = (() => {
   const arg1 = process.argv[1];
   if (!arg1) return false;
