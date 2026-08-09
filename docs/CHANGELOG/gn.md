@@ -10,9 +10,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ### Refactored
 - **Nerd Font Icons Upgrade Across CLI**: Mengganti emoji warna-warni di seluruh output CLI (`gn --help`, `gn usage`, `gn ping`, `gn bench`, `gn config`, `gn doctor`, `shield.sh`, `gn.sh`) dengan simbol JetBrains Mono / Nerd Font icons (`󰄬`, `󰅚`, `󰀦`, `󰓅`, `󰒓`, `󱈸`, `󱎫`, `󰋼`, `󰑐`, `󰈙`, `󰓹`, `󰋽`, `󰚌`, `󰘚`) untuk tampilan terminal yang lebih bersih dan profesional.
-- **Compact 1-Line Usage Layout & Dynamic Progress Bars** (`usage.ts`, `formatter.ts`):
-  - Rombak total layout `gn usage` menjadi 1-line padat horizontal per-akun kuota tanpa ASCII banner besar.
-  - Implementasi progress bar tipis `━━━━────────` tanpa siku `[]`.
+- **3-Tier Hierarchical Usage Layout & Dynamic Progress Bars** (`usage.ts`, `formatter.ts`):
+  - Rombak total layout `gn usage` menjadi hirarki 3-tingkat yang super terstruktur: `Provider Pool -> Email Account -> Quota Limits`.
+  - Pembersihan total status badges (`󰄬 OK`) dan kata kunci redundant `"Daily · Usage (...)`" -> murni `"Google"`, `"Anthropic"`, `"OpenAI"`.
+  - Progress bar tipis `━━━━────────` tanpa siku `[]` dan tanpa clutter.
   - Peningkatan dynamic color thresholds (<70% hijau, 70-99% kuning, >=100% merah).
 - **Unified Subcommands & Codebase Consolidation**:
   - Peleburan subcommand `stats` dan `sessions` ke dalam `gn usage` (`--tokens` dan `--sessions`).

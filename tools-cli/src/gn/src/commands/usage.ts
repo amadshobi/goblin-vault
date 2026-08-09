@@ -217,28 +217,24 @@ export async function handleUsageCommand(argv: string[]): Promise<number> {
   }
 
   // ── Group entries by provider ────────────────────────────
+  // ── Group entries by provider ────────────────────────────
   const grouped = groupByProvider(entries);
   const providerKeys = Object.keys(grouped).sort();
 
   // Header kolom ringkas
   console.log(
-    `${ANSI_BOLD}  LABEL                          EMAIL                     USAGE     BAR         STATUS      RESET${ANSI_RESET}`
+    `${ANSI_BOLD}  LIMIT                         USAGE    BAR           RESET${ANSI_RESET}`
   );
-  console.log(`${ANSI_GRAY}  ${"─".repeat(95)}${ANSI_RESET}`);
+  console.log(`${ANSI_GRAY}  ${"─".repeat(60)}${ANSI_RESET}`);
 
   for (const provider of providerKeys) {
     const providerEntries = grouped[provider];
     renderProviderGroup(provider, providerEntries);
   }
-
-  // ── Best-effort: Ollama Cloud live summary ───────────────
-  await renderOllamaSection();
   console.log();
 
   return 0;
 }
-
-// ─── Render helpers ──────────────────────────────────────────
 
 /**
  * Group QuotaEntry[] by provider.
@@ -253,23 +249,32 @@ function groupByProvider(entries: QuotaEntry[]): Record<string, QuotaEntry[]> {
   }
   return out;
 }
+function groupByEmail(entries: QuotaEntry[]): Record<string, QuotaEntry[]> {
+  const out: Record<string, QuotaEntry[]> = {};
+  for (const e of entries) {
+    const key = e.email || "unknown";
+    if (!out[key]) out[key] = [];
+    out[key].push(e);
+  }
+  return out;
+}
 
-/**
- * Render satu group provider dengan header badge + entry rows.
- */
 function renderProviderGroup(provider: string, entries: QuotaEntry[]): void {
   const badge = formatProviderBadge(provider);
   console.log(`\n  ${badge} ${ANSI_BOLD}${provider}${ANSI_RESET}`);
 
-  const sorted = [...entries].sort((a, b) => b.usedFraction - a.usedFraction);
-  for (const e of sorted) {
-    renderQuotaRow(e);
+  const byEmail = groupByEmail(entries);
+  const emails = Object.keys(byEmail).sort();
+
+  for (const email of emails) {
+    console.log(`    ${ANSI_CYAN}${email}${ANSI_RESET}`);
+    const emailEntries = byEmail[email].sort((a, b) => b.usedFraction - a.usedFraction);
+    for (const e of emailEntries) {
+      renderQuotaRow(e);
+    }
   }
 }
 
-/**
- * Render satu baris quota: label + email + progress bar + status badge + reset.
- */
 function renderQuotaRow(e: QuotaEntry): void {
   const bar = formatProgressBar(e.usedFraction, 12);
   const pctNum = Math.round(e.usedFraction * 100);
@@ -280,31 +285,22 @@ function renderQuotaRow(e: QuotaEntry): void {
   else if (pctNum >= 70) pctColor = ANSI_YELLOW;
 
   const formattedPct = `${pctColor}${pctStr.padStart(4)}${ANSI_RESET}`;
-  const status = formatStatusBadge(String(e.status ?? "ok"));
   const reset = e.resetsAt
     ? formatResetCountdown(e.resetsAt)
     : `${ANSI_GRAY}-${ANSI_RESET}`;
 
-  const labelRaw =
-    [e.windowLabel, e.label].filter(Boolean).join(" · ") || e.label;
-  const label = labelRaw.length > 30
-    ? labelRaw.slice(0, 27) + "..."
-    : labelRaw.padEnd(30);
-
-  const emailRaw = e.email || "-";
-  const email = emailRaw.length > 24
-    ? emailRaw.slice(0, 21) + "..."
-    : emailRaw.padEnd(24);
-
+  let labelRaw = e.label || e.windowLabel || "";
+  if (labelRaw.includes("Google")) labelRaw = "Google";
+  else if (labelRaw.includes("Anthropic")) labelRaw = "Anthropic";
+  else if (labelRaw.includes("OpenAI")) labelRaw = "OpenAI";
+  const label = labelRaw.length > 24
+    ? labelRaw.slice(0, 21) + "..."
+    : labelRaw.padEnd(24);
   console.log(
-    `  ${ANSI_GRAY}${label}${ANSI_RESET} ${email}  ${formattedPct}  ${bar}  ${status}  ${reset}`
+    `      ${ANSI_GRAY}${label}${ANSI_RESET}  ${formattedPct}  ${bar}  ${reset}`
   );
 }
 
-/**
- * Best-effort: tampilkan live Ollama Cloud summary jika
- * fetchOllamaAccountsMeta() tidak throw.
- */
 async function renderOllamaSection(): Promise<void> {
   let accounts: OllamaAccountMeta[];
   try {
@@ -315,9 +311,9 @@ async function renderOllamaSection(): Promise<void> {
   if (accounts.length === 0) return;
 
   console.log(
-    `\n${ANSI_GRAY}  ${"─".repeat(95)}${ANSI_RESET}`
+    `\n${ANSI_GRAY}  ${"─".repeat(60)}${ANSI_RESET}`
   );
-  console.log(`  󰘚 ${ANSI_BOLD}OLLAMA CLOUD${ANSI_RESET} ${ANSI_GRAY}(live, cache 15m)${ANSI_RESET}`);
+  console.log(`  󰘚 ${ANSI_BOLD}OLLAMA CLOUD${ANSI_RESET}`);
 
   for (let i = 0; i < accounts.length; i++) {
     const acc = accounts[i];
@@ -346,7 +342,6 @@ const isMainModule = (() => {
     return arg1.endsWith("usage.ts");
   }
 })();
-
 if (isMainModule) {
   handleUsageCommand(process.argv.slice(2))
     .then((code) => exit(code))
