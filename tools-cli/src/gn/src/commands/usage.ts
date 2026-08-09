@@ -2,25 +2,22 @@
 // ─────────────────────────────────────────────────────────────
 // Goblin Nexus — Command: `gn usage` / `gn u`
 //
-// Quota Dashboard live. Membaca snapshot kuota terkini dari
-// agent.db via OmpQuotaAdapter, plus best-effort live Ollama
-// summary dari src/ollama-me.ts.
-//
-// FLAG:
-//   [provider]    Filter substring match (case-insensitive) (Default mode)
-//   --tokens, -t  Tampilkan token usage breakdown per model/cost
-//   --sessions, -s Tampilkan session analytics
-//   --json        Output JSON mentah
-//   -h, --help    Level-2 help
+// Plan 2 Layout:
+// 1. Default (no flag): Quota Dashboard (3-tier layout + thin bars)
+// 2. `gn u -t` / `gn u --tokens`: Daily Tokens & Subagent Tree Activity
+// 3. `gn u -f` / `gn u --files`: File Modification Audit Mode
+//    - `--mini` / `-m`: Compact Minimalist Table mode
+//    - `-s <title_or_id>`: Filter specific session ID or title
+//    - `--agent <name>`: Filter subagent by name
 // ─────────────────────────────────────────────────────────────
 
 import { stderr, exit } from "node:process";
+import path from "node:path";
 import type { QuotaEntry } from "../types";
 import { OmpQuotaAdapter } from "../adapters/omp-quota";
 import {
   formatProviderBadge,
   formatProgressBar,
-  formatStatusBadge,
   formatResetCountdown,
   ANSI_BOLD,
   ANSI_RESET,
@@ -30,7 +27,14 @@ import {
   ANSI_GREEN,
   ANSI_RED,
 } from "../utils/formatter";
-import { fetchOllamaAccountsMeta, type OllamaAccountMeta } from "../ollama-me";
+import {
+  fetchAllSessionData,
+  parseModelName,
+  getStartOfTodayMs,
+  type OpenCodeCliSessionRow,
+  type OpenCodeCliToolUsageRow,
+  type FileDiffStat,
+} from "../utils/opencode-cli";
 
 // ─── CLI Args ────────────────────────────────────────────────
 
@@ -39,20 +43,29 @@ interface UsageArgs {
   json: boolean;
   help: boolean;
   tokens: boolean;
+  filesOnly: boolean;
   sessions: boolean;
+  days: number | null;
+  all: boolean;
+  mini: boolean;
+  sessionFilter: string | null;
+  agentFilter: string | null;
   passThroughArgs: string[];
 }
 
-/**
- * Parse argv untuk `gn usage`.
- */
 function parseUsageArgs(argv: string[]): UsageArgs {
   const args: UsageArgs = {
     provider: null,
     json: false,
     help: false,
     tokens: false,
+    filesOnly: false,
     sessions: false,
+    days: null,
+    all: false,
+    mini: false,
+    sessionFilter: null,
+    agentFilter: null,
     passThroughArgs: [],
   };
 
@@ -60,16 +73,35 @@ function parseUsageArgs(argv: string[]): UsageArgs {
     const a = argv[i];
     if (a === "--json") {
       args.json = true;
-      args.passThroughArgs.push(a);
     } else if (a === "-h" || a === "--help") {
       args.help = true;
-      args.passThroughArgs.push(a);
     } else if (a === "-t" || a === "--tokens") {
       args.tokens = true;
-    } else if (a === "-s" || a === "--sessions") {
-      args.sessions = true;
+    } else if (a === "-f" || a === "--files" || a === "--file") {
+      args.filesOnly = true;
+    } else if (a === "-m" || a === "--mini") {
+      args.mini = true;
+    } else if (a === "-a" || a === "--all") {
+      args.all = true;
+    } else if (a.startsWith("--agent=")) {
+      args.agentFilter = a.split("=")[1];
+    } else if (a === "--agent" && argv[i + 1]) {
+      args.agentFilter = argv[++i];
+    } else if (a.startsWith("-s=") || a.startsWith("--session=") || a.startsWith("--sessions=")) {
+      args.sessionFilter = a.split("=")[1];
+    } else if (a === "-s" || a === "--session" || a === "--sessions") {
+      if (argv[i + 1] && !argv[i + 1].startsWith("-")) {
+        args.sessionFilter = argv[++i];
+      } else {
+        args.sessions = true;
+      }
+    } else if (a.startsWith("-d=") || a.startsWith("--days=")) {
+      const val = parseInt(a.split("=")[1], 10);
+      if (!isNaN(val)) args.days = val;
+    } else if ((a === "-d" || a === "--days") && argv[i + 1]) {
+      const val = parseInt(argv[++i], 10);
+      if (!isNaN(val)) args.days = val;
     } else {
-      // Pass-through arguments untuk subcommand stats/sessions
       args.passThroughArgs.push(a);
       if (!a.startsWith("-")) {
         args.provider = args.provider ?? a;
@@ -79,52 +111,64 @@ function parseUsageArgs(argv: string[]): UsageArgs {
   return args;
 }
 
+// ─── Number & Cost Formatters ────────────────────────────────
+
+function formatTokenCount(num: number): string {
+  if (num >= 1_000_000) {
+    return `${(num / 1_000_000).toFixed(2)}M`;
+  }
+  if (num >= 1_000) {
+    return `${(num / 1_000).toFixed(1)}k`;
+  }
+  return String(num);
+}
+
+function formatCostUsd(cost: number): string {
+  return `$ ${cost.toFixed(2)}`;
+}
+
+function formatRelativePath(filePath: string, cwd: string): string {
+  if (filePath.startsWith(cwd)) {
+    const rel = path.relative(cwd, filePath);
+    return rel.startsWith("./") ? rel : `./${rel}`;
+  }
+  return filePath;
+}
+
 // ─── Help (Level 2) ──────────────────────────────────────────
 
 function printUsageHelp(): void {
   const lines = [
     "",
-    "GN USAGE — Quota, Tokens, and Sessions Dashboard",
+    "GN USAGE — Quota & Tokens Activity Engine",
     "════════════════════════════════════════════════════════════",
-    "",
-    "DESKRIPSI:",
-    "  Tampilkan dashboard kuota live per provider + akun, breakdown",
-    "  token usage, atau analitik sesi OpenCode.",
     "",
     "PENGGUNAAN:",
     "  gn usage [flags]",
     "  gn u     [flags]",
     "",
-    "FLAGS UMUM:",
-    "  -h, --help       Tampilkan help ini",
-    "  --json           Output JSON mentah",
-    "",
     "MODE 1: QUOTA DASHBOARD (Default)",
     "  gn usage [provider]",
-    "  [provider]       Filter substring (case-insensitive). Misal: google, openai",
     "",
-    "MODE 2: TOKENS USAGE (--tokens / -t)",
+    "MODE 2: DAILY TOKENS & SUBAGENT TREE (--tokens / -t)",
     "  gn usage --tokens [flags]",
-    "  Flags khusus:",
-    "    -t, --today    Hanya data hari ini (UTC)",
-    "    -d, --daily    Tabel per-hari (default, N hari terakhir)",
-    "    -m, --models   Agregasi per model/provider",
-    "    -n=N, --days=N Window hari (default: 7)",
-    "",
-    "MODE 3: SESSIONS ANALYTICS (--sessions / -s)",
-    "  gn usage --sessions [flags] [session-id-prefix]",
-    "  Flags khusus:",
-    "    -s=N           Limit sesi (default: 10, max: 50)",
-    "    --limit=N      Alias untuk -s=N",
+    "  Flags:",
+    "    -t, --tokens          Tampilkan pohon sesi & subagent activity",
+    "    -f, --files           Audit khusus file yang di-edit/ditulis (File Audit Mode)",
+    "    -m, --mini            Mode Tabel Ringkas (Compact Table)",
+    "    -s, --session <id/kw> Filter berdasarkan Session ID atau Judul",
+    "    --agent <name>        Filter berdasarkan nama subagent",
+    "    -d, --days N          Window hari (default: hari ini)",
+    "    -a, --all             Tampilkan seluruh riwayat historis",
+    "    --json                Output JSON mentah",
     "",
     "CONTOH:",
-    "  gn usage                       # Dashboard kuota lengkap semua provider",
-    "  gn usage google                # Filter kuota untuk Google Antigravity",
-    "  gn usage --tokens -m           # Tampilkan breakdown token per-model",
-    "  gn usage -t -n=30              # Tampilkan token breakdown selama 30 hari",
-    "  gn usage --sessions -s=5       # Tampilkan 5 detail sesi terbaru",
-    "",
-    "Lihat juga: gn doctor",
+    "  gn usage                       # Live quota status",
+    "  gn u -t                        # Activity & Subagent tree hari ini",
+    "  gn u -f                        # Audit khusus file yang di-edit hari ini",
+    "  gn u -t -m                     # Mode tabel ringkas (compact table)",
+    "  gn u -t -s ses_01be1381        # Filter spesifik ID sesi",
+    "  gn u -f -s \"OCM\"               # Filter file modified khusus sesi \"OCM\"",
     "",
   ];
   console.log(lines.join("\n"));
@@ -135,26 +179,40 @@ function printUsageHelp(): void {
 export async function handleUsageCommand(argv: string[]): Promise<number> {
   const args = parseUsageArgs(argv);
 
-  if (args.help && !args.tokens && !args.sessions) {
+  if (args.help) {
     printUsageHelp();
     return 0;
   }
 
-  // Estafet Milestone 2: Redirect jika flag tokens/sessions disematkan
-  if (args.tokens) {
-    console.log(`\n${ANSI_CYAN}󰓅 [gn usage --tokens] Token usage & cost breakdown active.${ANSI_RESET}\n`);
+  if (args.sessions && !args.tokens && !args.filesOnly && !args.sessionFilter) {
+    console.log(
+      `\n${ANSI_YELLOW}💡 Hint: 'gn usage --sessions' telah disederhanakan.${ANSI_RESET}`
+    );
+    console.log(
+      `   Gunakan ${ANSI_CYAN}gn u -t${ANSI_RESET} untuk melihat Daily Subagent Tree & Activity.`
+    );
+    console.log(
+      `   Gunakan ${ANSI_CYAN}gn u -f${ANSI_RESET} untuk audit khusus File Modified.`
+    );
+    console.log(
+      `   Gunakan ${ANSI_CYAN}gn sessions list${ANSI_RESET} untuk mencari riwayat sesi.\n`
+    );
     return 0;
   }
 
-  if (args.sessions) {
-    console.log(`\n${ANSI_CYAN}󰈙 [gn usage --sessions] Session analytics active.${ANSI_RESET}\n`);
-    return 0;
+  // Mode 3: File Modification Audit Mode (-f / --files)
+  if (args.filesOnly) {
+    return renderFilesAuditDashboard(args);
+  }
+
+  // Mode 2: Daily Tokens & Subagent Tree Activity (-t / --tokens)
+  if (args.tokens || args.sessionFilter || args.mini) {
+    return renderTokensDashboard(args);
   }
 
   // ── Init adapter ─────────────────────────────────────────
   const adapter = new OmpQuotaAdapter();
 
-  // ── JSON mode: skip rendering, dump raw data ─────────────
   if (args.json) {
     try {
       const entries = await adapter.fetchData(
@@ -169,7 +227,7 @@ export async function handleUsageCommand(argv: string[]): Promise<number> {
     }
   }
 
-  // ── Dashboard mode ───────────────────────────────────────
+  // ── Default Quota Dashboard ──────────────────────────────
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, "0");
   const mm = String(now.getMinutes()).padStart(2, "0");
@@ -177,24 +235,11 @@ export async function handleUsageCommand(argv: string[]): Promise<number> {
 
   console.log(`\n  ${ANSI_BOLD}󰓅 QUOTA DASHBOARD${ANSI_RESET} ${ANSI_GRAY}(Updated ${hh}:${mm}:${ss})${ANSI_RESET}\n`);
 
-  // Cek adapter availability sebelum fetch — graceful skip
   if (!adapter.isAvailable()) {
-    console.log(
-      `\n${ANSI_GRAY}󰀦 agent.db tidak ditemukan.${ANSI_RESET}`
-    );
-    console.log(
-      `${ANSI_GRAY}   Path: ~/.omp/agent/agent.db${ANSI_RESET}`
-    );
-    console.log(
-      `${ANSI_GRAY}   Pastikan omp-broker pernah berjalan untuk membuat file ini.${ANSI_RESET}`
-    );
-    console.log(
-      `${ANSI_GRAY}   Tip: jalankan 'gn doctor' untuk diagnostik lengkap.${ANSI_RESET}\n`
-    );
+    console.log(`\n${ANSI_GRAY}󰀦 agent.db tidak ditemukan.${ANSI_RESET}`);
     return 1;
   }
 
-  // Fetch quota entries (with optional provider filter)
   let entries: QuotaEntry[];
   try {
     entries = await adapter.fetchData(
@@ -208,38 +253,348 @@ export async function handleUsageCommand(argv: string[]): Promise<number> {
 
   if (entries.length === 0) {
     console.log(
-      `\n${ANSI_GRAY}󰋽 Tidak ada data quota ditemukan${args.provider ? ` untuk provider "${args.provider}"` : ""}.${ANSI_RESET}`
-    );
-    console.log(
-      `${ANSI_GRAY}   Coba tanpa filter, atau jalankan 'gn doctor' untuk cek koneksi broker.${ANSI_RESET}\n`
+      `\n${ANSI_GRAY}󰋽 Tidak ada data quota ditemukan.${ANSI_RESET}\n`
     );
     return 0;
   }
 
-  // ── Group entries by provider ────────────────────────────
-  // ── Group entries by provider ────────────────────────────
   const grouped = groupByProvider(entries);
   const providerKeys = Object.keys(grouped).sort();
 
-  // Header kolom ringkas
   console.log(
     `${ANSI_BOLD}  LIMIT                         USAGE    BAR           RESET${ANSI_RESET}`
   );
   console.log(`${ANSI_GRAY}  ${"─".repeat(60)}${ANSI_RESET}`);
 
   for (const provider of providerKeys) {
-    const providerEntries = grouped[provider];
-    renderProviderGroup(provider, providerEntries);
+    renderProviderGroup(provider, grouped[provider]);
   }
   console.log();
 
   return 0;
 }
 
-/**
- * Group QuotaEntry[] by provider.
- * Return object dengan key = provider id, value = entry[].
- */
+// ─── Mode 3: File Modification Audit Mode (`gn u -f`) ───────────
+
+function renderFilesAuditDashboard(args: UsageArgs): number {
+  const cwd = process.cwd();
+  let cutoffTs = getStartOfTodayMs();
+  let timeframeLabel = args.sessionFilter
+    ? `FILTER: "${args.sessionFilter}"`
+    : "HARI INI";
+
+  if (args.all) {
+    cutoffTs = 0;
+    timeframeLabel = args.sessionFilter ? `FILTER: "${args.sessionFilter}" (ALL)` : "SEMUA RIWAYAT";
+  } else if (args.days && args.days > 0) {
+    cutoffTs = Date.now() - args.days * 24 * 60 * 60 * 1000;
+    timeframeLabel = `${args.days} HARI TERAKHIR`;
+  }
+
+  const { rootSessions, subagentsByParent, diffsBySession } =
+    fetchAllSessionData(cutoffTs, args.sessionFilter);
+
+  // Filter hanya root session yang punya diffs ATAU child-nya punya diffs!
+  const activeRoots = rootSessions.filter((root) => {
+    const rootDiffs = diffsBySession.get(root.id) ?? [];
+    if (rootDiffs.length > 0) return true;
+    const subs = subagentsByParent.get(root.id) ?? [];
+    return subs.some((sub) => (diffsBySession.get(sub.id) ?? []).length > 0);
+  });
+
+  if (activeRoots.length === 0) {
+    console.log(
+      `\n  ${ANSI_BOLD}󰓅 FILE MODIFICATION AUDIT${ANSI_RESET} ${ANSI_GRAY}(${timeframeLabel})${ANSI_RESET}`
+    );
+    console.log(`\n  ${ANSI_GRAY}󰋽 Tidak ada rekaman file modified ditemukan untuk ${timeframeLabel.toLowerCase()}.${ANSI_RESET}\n`);
+    return 0;
+  }
+
+  console.log(
+    `\n  ${ANSI_BOLD}󰓅 FILE MODIFICATION AUDIT${ANSI_RESET} ${ANSI_GRAY}(${timeframeLabel})${ANSI_RESET}\n`
+  );
+
+  let totalModifiedFiles = 0;
+  let totalSessionsWithFiles = 0;
+
+  for (const root of activeRoots) {
+    const rootModel = parseModelName(root.model);
+    const rootDiffs = diffsBySession.get(root.id) ?? [];
+    const rootSubagents = (subagentsByParent.get(root.id) ?? []).filter((sub) => {
+      if (args.agentFilter && !sub.agent?.toLowerCase().includes(args.agentFilter.toLowerCase())) {
+        return false;
+      }
+      return (diffsBySession.get(sub.id) ?? []).length > 0;
+    });
+
+    if (rootDiffs.length === 0 && rootSubagents.length === 0) continue;
+    totalSessionsWithFiles++;
+
+    console.log(`  󰘚 ${ANSI_BOLD}${root.title}${ANSI_RESET} ${ANSI_CYAN}[${rootModel}]${ANSI_RESET}`);
+
+    if (rootDiffs.length > 0) {
+      totalModifiedFiles += rootDiffs.length;
+      for (const stat of rootDiffs) {
+        const relPath = formatRelativePath(stat.filePath, cwd);
+        const addStr = stat.additions > 0 ? `${ANSI_GREEN}+${stat.additions}${ANSI_RESET}` : "";
+        const delStr = stat.deletions > 0 ? `${ANSI_RED}-${stat.deletions}${ANSI_RESET}` : "";
+        const diffStr = [addStr, delStr].filter(Boolean).join(" ");
+        const formattedDiff = diffStr ? ` (${diffStr})` : "";
+        console.log(`     - ${ANSI_GRAY}${relPath}${ANSI_RESET}${formattedDiff}`);
+      }
+    }
+
+    for (let i = 0; i < rootSubagents.length; i++) {
+      const sub = rootSubagents[i];
+      const subAgentName = sub.agent || "subagent";
+      const subModel = parseModelName(sub.model);
+      const subDiffs = diffsBySession.get(sub.id) ?? [];
+      if (subDiffs.length === 0) continue;
+
+      totalModifiedFiles += subDiffs.length;
+
+      console.log(`     └── 󰘚 ${ANSI_BOLD}${subAgentName}${ANSI_RESET} (${sub.title}) ${ANSI_CYAN}[${subModel}]${ANSI_RESET}`);
+      for (const stat of subDiffs) {
+        const relPath = formatRelativePath(stat.filePath, cwd);
+        const addStr = stat.additions > 0 ? `${ANSI_GREEN}+${stat.additions}${ANSI_RESET}` : "";
+        const delStr = stat.deletions > 0 ? `${ANSI_RED}-${stat.deletions}${ANSI_RESET}` : "";
+        const diffStr = [addStr, delStr].filter(Boolean).join(" ");
+        const formattedDiff = diffStr ? ` (${diffStr})` : "";
+        console.log(`           - ${ANSI_GRAY}${relPath}${ANSI_RESET}${formattedDiff}`);
+      }
+    }
+    console.log();
+  }
+
+  console.log(`${ANSI_GRAY}  ${"─".repeat(70)}${ANSI_RESET}`);
+  console.log(
+    `  ${ANSI_BOLD}󰓅 TOTAL:${ANSI_RESET} ${ANSI_GREEN}${totalSessionsWithFiles} Sesi${ANSI_RESET} · ${ANSI_YELLOW}${totalModifiedFiles} File(s) Modified${ANSI_RESET}\n`
+  );
+
+  return 0;
+}
+
+// ─── Plan 2 Renderer: Tokens & Subagent Tree Activity ─────────
+
+function renderTokensDashboard(args: UsageArgs): number {
+  const cwd = process.cwd();
+  let cutoffTs = getStartOfTodayMs();
+  let timeframeLabel = args.sessionFilter
+    ? `FILTER: "${args.sessionFilter}"`
+    : "HARI INI";
+
+  if (args.all) {
+    cutoffTs = 0;
+    timeframeLabel = args.sessionFilter ? `FILTER: "${args.sessionFilter}" (ALL)` : "SEMUA RIWAYAT";
+  } else if (args.days && args.days > 0) {
+    cutoffTs = Date.now() - args.days * 24 * 60 * 60 * 1000;
+    timeframeLabel = `${args.days} HARI TERAKHIR`;
+  }
+
+  // Super fast batch query via bun:sqlite!
+  const { rootSessions, subagentsByParent, toolsBySession, diffsBySession } =
+    fetchAllSessionData(cutoffTs, args.sessionFilter);
+
+  if (rootSessions.length === 0) {
+    console.log(
+      `\n  ${ANSI_BOLD}󰓅 DAILY TOKENS & SUBAGENT TREE ACTIVITY${ANSI_RESET} ${ANSI_GRAY}(${timeframeLabel})${ANSI_RESET}`
+    );
+    console.log(`\n  ${ANSI_GRAY}󰋽 Tidak ada aktivitas sesi ditemukan untuk ${timeframeLabel.toLowerCase()}.${ANSI_RESET}\n`);
+    return 0;
+  }
+
+  if (args.json) {
+    const payload = rootSessions.map((root) => ({
+      ...root,
+      modelName: parseModelName(root.model),
+      tools: toolsBySession.get(root.id) ?? [],
+      subagents: (subagentsByParent.get(root.id) ?? []).map((sub) => ({
+        ...sub,
+        modelName: parseModelName(sub.model),
+        tools: toolsBySession.get(sub.id) ?? [],
+        fileDiffStats: diffsBySession.get(sub.id) ?? [],
+      })),
+    }));
+    console.log(JSON.stringify(payload, null, 2));
+    return 0;
+  }
+
+  // Render Mode 2: Compact Minimalist Table (`--mini` / `-m`)
+  if (args.mini) {
+    return renderCompactTable(rootSessions, subagentsByParent, toolsBySession, diffsBySession, timeframeLabel);
+  }
+
+  // Render Mode 1: Tree Detail (Default)
+  console.log(
+    `\n  ${ANSI_BOLD}󰓅 DAILY TOKENS & SUBAGENT TREE ACTIVITY${ANSI_RESET} ${ANSI_GRAY}(${timeframeLabel})${ANSI_RESET}\n`
+  );
+
+  let grandTotalTokens = 0;
+  let grandTotalCost = 0;
+
+  for (const root of rootSessions) {
+    const rootModel = parseModelName(root.model);
+    const rootTools = toolsBySession.get(root.id) ?? [];
+    const rootSubagents = subagentsByParent.get(root.id) ?? [];
+
+    const rootTotalTokens = root.tokens_input + root.tokens_output;
+    grandTotalTokens += rootTotalTokens;
+    grandTotalCost += root.cost;
+
+    console.log(`  󰘚 ${ANSI_BOLD}${root.title}${ANSI_RESET} ${ANSI_CYAN}[${rootModel}]${ANSI_RESET}`);
+
+    const toolSummaryStr = rootTools.length > 0
+      ? rootTools.map((t) => `${t.tool}: ${t.count}`).join(", ")
+      : "none";
+
+    const hasChildren = rootSubagents.length > 0;
+    const branchPrefix = hasChildren ? "│" : " ";
+
+    console.log(`     ├── ${ANSI_BOLD}Tokens Metrics:${ANSI_RESET}`);
+    console.log(`     │     Input       : ${formatTokenCount(root.tokens_input)}`);
+    console.log(`     │     Output      : ${formatTokenCount(root.tokens_output)}`);
+    if (root.tokens_cache_read > 0) {
+      console.log(`     │     Cache Read  : ${formatTokenCount(root.tokens_cache_read)}`);
+    }
+    if (root.tokens_cache_write > 0) {
+      console.log(`     │     Cache Write : ${formatTokenCount(root.tokens_cache_write)}`);
+    }
+    if (root.tokens_reasoning > 0) {
+      console.log(`     │     Reasoning   : ${formatTokenCount(root.tokens_reasoning)}`);
+    }
+    console.log(`     │     Cost        : ${formatCostUsd(root.cost)}`);
+    console.log(`     │     Tool Calls  : ${rootTools.reduce((acc, t) => acc + t.count, 0)}x (${toolSummaryStr})`);
+    console.log(`     ${branchPrefix}`);
+
+    for (let i = 0; i < rootSubagents.length; i++) {
+      const sub = rootSubagents[i];
+      const isLastSub = i === rootSubagents.length - 1;
+      const subPrefix = isLastSub ? "└──" : "├──";
+      const subChildPrefix = isLastSub ? "   " : "│  ";
+
+      const subAgentName = sub.agent || "subagent";
+      const subModel = parseModelName(sub.model);
+      const subTools = toolsBySession.get(sub.id) ?? [];
+      const subFileStats = diffsBySession.get(sub.id) ?? [];
+
+      grandTotalTokens += (sub.tokens_input + sub.tokens_output);
+      grandTotalCost += sub.cost;
+
+      const subToolSummaryStr = subTools.length > 0
+        ? subTools.map((t) => `${t.tool}: ${t.count}`).join(", ")
+        : "none";
+
+      console.log(`     ${subPrefix} 󰘚 ${ANSI_BOLD}${subAgentName}${ANSI_RESET} (${sub.title}) ${ANSI_CYAN}[${subModel}]${ANSI_RESET}`);
+      console.log(`     ${subChildPrefix}   ├── Tokens Metrics:`);
+      console.log(`     ${subChildPrefix}   │     Input       : ${formatTokenCount(sub.tokens_input)}`);
+      console.log(`     ${subChildPrefix}   │     Output      : ${formatTokenCount(sub.tokens_output)}`);
+      if (sub.tokens_cache_read > 0) {
+        console.log(`     ${subChildPrefix}   │     Cache Read  : ${formatTokenCount(sub.tokens_cache_read)}`);
+      }
+      if (sub.tokens_reasoning > 0) {
+        console.log(`     ${subChildPrefix}   │     Reasoning   : ${formatTokenCount(sub.tokens_reasoning)}`);
+      }
+      console.log(`     ${subChildPrefix}   │     Cost        : ${formatCostUsd(sub.cost)}`);
+      console.log(`     ${subChildPrefix}   │     Tool Calls  : ${subTools.reduce((acc, t) => acc + t.count, 0)}x (${subToolSummaryStr})`);
+
+      if (subFileStats.length > 0) {
+        console.log(`     ${subChildPrefix}   └── Files Modified (Relatif):`);
+        for (const stat of subFileStats) {
+          const relPath = formatRelativePath(stat.filePath, cwd);
+          const addStr = stat.additions > 0 ? `${ANSI_GREEN}+${stat.additions}${ANSI_RESET}` : "";
+          const delStr = stat.deletions > 0 ? `${ANSI_RED}-${stat.deletions}${ANSI_RESET}` : "";
+          const diffStr = [addStr, delStr].filter(Boolean).join(" ");
+          const formattedDiff = diffStr ? ` (${diffStr})` : "";
+          console.log(`     ${subChildPrefix}         - ${ANSI_GRAY}${relPath}${ANSI_RESET}${formattedDiff}`);
+        }
+      }
+      console.log(`     ${subChildPrefix}`);
+    }
+    console.log();
+  }
+
+  console.log(`${ANSI_GRAY}  ${"─".repeat(70)}${ANSI_RESET}`);
+  console.log(
+    `  ${ANSI_BOLD}󰓅 TOTAL SUMMARY:${ANSI_RESET} ${ANSI_GREEN}${formatTokenCount(grandTotalTokens)} Tokens${ANSI_RESET} · ${ANSI_YELLOW}${formatCostUsd(grandTotalCost)}${ANSI_RESET}\n`
+  );
+
+  return 0;
+}
+
+// ─── Compact Table Renderer (`--mini` / `-m`) ────────────────
+
+function renderCompactTable(
+  rootSessions: OpenCodeCliSessionRow[],
+  subagentsByParent: Map<string, OpenCodeCliSessionRow[]>,
+  toolsBySession: Map<string, OpenCodeCliToolUsageRow[]>,
+  diffsBySession: Map<string, FileDiffStat[]>,
+  timeframeLabel: string
+): number {
+  console.log(
+    `\n  ${ANSI_BOLD}󰓅 DAILY TOKENS ACTIVITY (COMPACT TABLE)${ANSI_RESET} ${ANSI_GRAY}(${timeframeLabel})${ANSI_RESET}\n`
+  );
+
+  console.log(
+    `  ${ANSI_BOLD}${"SESSION / SUBAGENT".padEnd(30)}  ${"MODEL".padEnd(18)}  ${"TOKENS (IN/OUT/CACHE)".padEnd(24)}  ${"TOOLS".padEnd(7)}  ${"FILES".padEnd(6)}  ${"COST".padEnd(8)}${ANSI_RESET}`
+  );
+  console.log(`  ${ANSI_GRAY}${"─".repeat(98)}${ANSI_RESET}`);
+
+  let grandTotalTokens = 0;
+  let grandTotalCost = 0;
+
+  for (const root of rootSessions) {
+    const rootModel = parseModelName(root.model);
+    const rootTools = toolsBySession.get(root.id) ?? [];
+    const rootSubagents = subagentsByParent.get(root.id) ?? [];
+
+    const rootTokens = root.tokens_input + root.tokens_output;
+    grandTotalTokens += rootTokens;
+    grandTotalCost += root.cost;
+
+    const rootTitle = root.title.length > 28 ? root.title.slice(0, 25) + "..." : root.title.padEnd(28);
+    const modelStr = rootModel.length > 16 ? rootModel.slice(0, 13) + "..." : rootModel.padEnd(16);
+    const tokenStr = `${formatTokenCount(root.tokens_input)} / ${formatTokenCount(root.tokens_output)} / ${formatTokenCount(root.tokens_cache_read)}`;
+    const toolCount = rootTools.reduce((acc, t) => acc + t.count, 0);
+
+    console.log(
+      `  󰘚 ${ANSI_BOLD}${rootTitle}${ANSI_RESET}  ${ANSI_CYAN}${modelStr}${ANSI_RESET}  ${tokenStr.padEnd(24)}  ${(toolCount + "x").padEnd(7)}  ${"-".padEnd(6)}  ${ANSI_GRAY}${formatCostUsd(root.cost)}${ANSI_RESET}`
+    );
+
+    for (let i = 0; i < rootSubagents.length; i++) {
+      const sub = rootSubagents[i];
+      const isLast = i === rootSubagents.length - 1;
+      const prefix = isLast ? "└── " : "├── ";
+
+      const subAgentName = sub.agent || "subagent";
+      const subModel = parseModelName(sub.model);
+      const subTools = toolsBySession.get(sub.id) ?? [];
+      const subFileStats = diffsBySession.get(sub.id) ?? [];
+
+      grandTotalTokens += (sub.tokens_input + sub.tokens_output);
+      grandTotalCost += sub.cost;
+
+      const subLabel = `${prefix}󰘚 ${subAgentName}`;
+      const subLabelPadded = subLabel.length > 28 ? subLabel.slice(0, 25) + "..." : subLabel.padEnd(28);
+      const subModelStr = subModel.length > 16 ? subModel.slice(0, 13) + "..." : subModel.padEnd(16);
+      const subTokenStr = `${formatTokenCount(sub.tokens_input)} / ${formatTokenCount(sub.tokens_output)} / ${formatTokenCount(sub.tokens_cache_read)}`;
+      const subToolCount = subTools.reduce((acc, t) => acc + t.count, 0);
+
+      console.log(
+        `  ${ANSI_GRAY}${subLabelPadded}${ANSI_RESET}  ${ANSI_CYAN}${subModelStr}${ANSI_RESET}  ${subTokenStr.padEnd(24)}  ${(subToolCount + "x").padEnd(7)}  ${(subFileStats.length > 0 ? subFileStats.length + " files" : "-").padEnd(6)}  ${ANSI_GRAY}${formatCostUsd(sub.cost)}${ANSI_RESET}`
+      );
+    }
+  }
+
+  console.log(`  ${ANSI_GRAY}${"─".repeat(98)}${ANSI_RESET}`);
+  console.log(
+    `  ${ANSI_BOLD}󰓅 TOTAL SUMMARY:${ANSI_RESET} ${ANSI_GREEN}${formatTokenCount(grandTotalTokens)} Tokens${ANSI_RESET} · ${ANSI_YELLOW}${formatCostUsd(grandTotalCost)}${ANSI_RESET}\n`
+  );
+
+  return 0;
+}
+
+// ─── Render Quota helpers ────────────────────────────────────
+
 function groupByProvider(entries: QuotaEntry[]): Record<string, QuotaEntry[]> {
   const out: Record<string, QuotaEntry[]> = {};
   for (const e of entries) {
@@ -249,6 +604,7 @@ function groupByProvider(entries: QuotaEntry[]): Record<string, QuotaEntry[]> {
   }
   return out;
 }
+
 function groupByEmail(entries: QuotaEntry[]): Record<string, QuotaEntry[]> {
   const out: Record<string, QuotaEntry[]> = {};
   for (const e of entries) {
@@ -299,37 +655,6 @@ function renderQuotaRow(e: QuotaEntry): void {
   console.log(
     `      ${ANSI_GRAY}${label}${ANSI_RESET}  ${formattedPct}  ${bar}  ${reset}`
   );
-}
-
-async function renderOllamaSection(): Promise<void> {
-  let accounts: OllamaAccountMeta[];
-  try {
-    accounts = await fetchOllamaAccountsMeta();
-  } catch {
-    return;
-  }
-  if (accounts.length === 0) return;
-
-  console.log(
-    `\n${ANSI_GRAY}  ${"─".repeat(60)}${ANSI_RESET}`
-  );
-  console.log(`  󰘚 ${ANSI_BOLD}OLLAMA CLOUD${ANSI_RESET}`);
-
-  for (let i = 0; i < accounts.length; i++) {
-    const acc = accounts[i];
-    const sessBar = formatProgressBar(acc.sessionUsagePct / 100, 8);
-    const weekBar = formatProgressBar(acc.weeklyUsagePct / 100, 8);
-    const sessPct = `${Math.round(acc.sessionUsagePct)}%`;
-    const weekPct = `${Math.round(acc.weeklyUsagePct)}%`;
-    const suspendedTag = acc.suspended
-      ? `  ${formatStatusBadge("error")} suspended`
-      : "";
-    const email = acc.email.length > 24 ? acc.email.slice(0, 21) + "..." : acc.email.padEnd(24);
-
-    console.log(
-      `  ${email} ${ANSI_CYAN}[${acc.plan.padEnd(4)}]${ANSI_RESET}  sess: ${sessPct.padStart(4)} ${sessBar}  week: ${weekPct.padStart(4)} ${weekBar}${suspendedTag}`
-    );
-  }
 }
 
 const isMainModule = (() => {

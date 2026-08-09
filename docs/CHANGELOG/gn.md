@@ -8,7 +8,27 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ## [v2.0.0] - 2026-08-09
 
+### Added
+- **Daily Tokens & Subagent Tree Activity Engine (`gn u -t`)**:
+  - Dukungan visual pohon silsilah aktivitas harian per sesi (`Root Title [model]` -> `subagent (title) [model]`).
+  - Breakdown metrics presisi: Tokens Input, Output, Cache Read, Cache Write, Reasoning, Cost USD, dan Tool Calls summary.
+  - Integration `opencode db` native C++ via `bun:sqlite` untuk performa eksekusi super kilat (**<70ms total runtime**).
+- **File Modification Audit Mode (`gn u -f`)**:
+  - Audit instan khusus file yang pernah di-edit/ditulis (`edit` & `write`) dengan git diff metrics (`+lines -lines`).
+  - Auto-filtering otomatis memangkas sesi non-edit (0 files modified).
+- **Compact Minimalist Table Mode (`gn u -t -m`)**:
+  - Tampilan tabel ringkas 1-baris per session/subagent.
+- **Session & Subagent Filter Support**:
+  - Filter presisi berdasarkan Session ID / Judul (`gn u -t -s <query>`) dan nama subagent (`gn u -t --agent <name>`).
+- **Session Explorer & Search CLI Tool (`gn s list` / `gn s <query>`)**:
+  - CLI dedicated untuk mendaftar dan mencari riwayat sesi OpenCode.
+- **Fuzzy Levenshtein Error Matcher & Migration Hints (`utils/error.ts`)**:
+  - Modul error handling dedicated dengan fuzzy suggestion untuk subcommand typo (`gn usag` -> `usage`) dan migration hints untuk command legacy (`gn stats`, `gn ollama`, `gn ocm`).
+
 ### Refactored
+- **Dual-Level Help Standard**:
+  - Level-1 (`gn --help`): Tampilan makro ringkas daftar subcommand utama.
+  - Level-2 (`gn u -h` / `gn u --help`): Panduan mendalam terpisah per-command.
 - **Nerd Font Icons Upgrade Across CLI**: Mengganti emoji warna-warni di seluruh output CLI (`gn --help`, `gn usage`, `gn ping`, `gn bench`, `gn config`, `gn doctor`, `shield.sh`, `gn.sh`) dengan simbol JetBrains Mono / Nerd Font icons (`󰄬`, `󰅚`, `󰀦`, `󰓅`, `󰒓`, `󱈸`, `󱎫`, `󰋼`, `󰑐`, `󰈙`, `󰓹`, `󰋽`, `󰚌`, `󰘚`) untuk tampilan terminal yang lebih bersih dan profesional.
 - **3-Tier Hierarchical Usage Layout & Dynamic Progress Bars** (`usage.ts`, `formatter.ts`):
   - Rombak total layout `gn usage` menjadi hirarki 3-tingkat yang super terstruktur: `Provider Pool -> Email Account -> Quota Limits`.

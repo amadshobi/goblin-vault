@@ -16,7 +16,9 @@
  */
 
 import { printGnHeader } from "./utils/formatter";
+import { handleUnknownCommand } from "./utils/error";
 import { handleUsageCommand } from "./commands/usage";
+import { handleSessionsCommand } from "./commands/sessions";
 import { handleConfigCommand } from "./commands/config";
 import { handlePingCommand } from "./commands/ping";
 import { handleBenchCommand } from "./commands/bench";
@@ -35,6 +37,11 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<number>> = {
   // Quota & telemetry cost
   usage: handleUsageCommand,
   u: handleUsageCommand,
+
+  // Session search & explorer (Plan 2)
+  sessions: handleSessionsCommand,
+  s: handleSessionsCommand,
+  ses: handleSessionsCommand,
 
   // Configuration management (Leburan OCM)
   config: handleConfigCommand,
@@ -67,59 +74,34 @@ function printBanner(): void {
   printGnHeader(`v${GN_VERSION} · Powered by OMP Engine`);
 }
 
-/** Cetak bantuan level-1 (banner + daftar command). */
+/** Cetak bantuan level-1 (banner + daftar command makro). */
 function showHelp(): void {
   printBanner();
   console.log("USAGE");
-  console.log("  $ gn <command> [args]");
-  console.log("  $ gn <command> --help                  \x1b[1;33m󰋽 Panduan mendalam per-command!\x1b[0m");
+  console.log("  $ gn <command> [flags]");
+  console.log("  $ gn <command> --help                  \x1b[1;33m󰋽 Panduan mendalam Level-2 per-command!\x1b[0m");
   console.log("");
-  console.log("TELEMETRY & QUOTA TRACKING");
-  console.log("  usage, u    [flags]       \x1b[1;36m󰓅\x1b[0m Quota usage (--tokens, --sessions, --json)");
-  console.log("");
-  console.log("CONFIGURATION MANAGEMENT");
-  console.log("  config, c   get/set [path]\x1b[1;36m󰒓\x1b[0m OpenCode & Agent config manager");
-  console.log("");
-  console.log("CONNECTIVITY & BENCHMARKING");
-  console.log("  ping, p                   \x1b[1;36m󱈸\x1b[0m Cek konektivitas OMP, Ollama, & DB");
-  console.log("  bench, b    [-n runs]     \x1b[1;36m󱎫\x1b[0m Benchmark latency endpoint OMP Gateway");
-  console.log("");
-  console.log("SERVICE CONTROL & DIAGNOSTICS");
-  console.log("  doctor, doc [--check/-c]  \x1b[1;36m󰋼\x1b[0m Full health diagnostic & config syntax check");
-  console.log("  restart, r                \x1b[1;36m󰑐\x1b[0m Restart systemd user services");
+  console.log("COMMANDS");
+  console.log("  usage, u      \x1b[1;36m󰓅\x1b[0m Telemetry & Quota Engine (quota live, token activity, file audit)");
+  console.log("  sessions, s   \x1b[1;36m󰈙\x1b[0m OpenCode Session Search & Explorer (list/find session history)");
+  console.log("  config, c     \x1b[1;36m󰒓\x1b[0m OpenCode & Agent Config Manager (fast get/set opencode.jsonc)");
+  console.log("  ping, p       \x1b[1;36m󱈸\x1b[0m Connectivity check kilat OMP Gateway, Ollama, & DB");
+  console.log("  bench, b      \x1b[1;36m󱎫\x1b[0m Benchmark latency endpoint OMP Gateway (-n runs)");
+  console.log("  doctor, doc   \x1b[1;36m󰋼\x1b[0m Full health diagnostic & config syntax check (--check)");
+  console.log("  restart, r    \x1b[1;36m󰑐\x1b[0m Restart systemd user services (omp-broker, omp-gateway)");
   console.log("");
   console.log("META");
-  console.log("  help, h                  \x1b[1;36m󰈙\x1b[0m Tampilkan panduan ini");
-  console.log("  version, v               \x1b[1;36m󰓹\x1b[0m Tampilkan versi");
+  console.log("  help, h       \x1b[1;36m󰈙\x1b[0m Tampilkan panduan ini");
+  console.log("  version, v    \x1b[1;36m󰓹\x1b[0m Tampilkan versi");
   console.log("");
-  console.log("EXAMPLES");
-  console.log("  $ gn usage                 \x1b[2m# Quota usage live\x1b[0m");
-  console.log("  $ gn u --tokens --days 7   \x1b[2m# Token burn 7 hari terakhir\x1b[0m");
-  console.log("  $ gn u --sessions -w       \x1b[2m# Session analytics mingguan\x1b[0m");
-  console.log("  $ gn c get agent           \x1b[2m# Cek list agent opencode\x1b[0m");
-  console.log("  $ gn doctor --check        \x1b[2m# Audit health & syntax jsonc\x1b[0m");
+  console.log("HINT");
+  console.log("  \x1b[0;90mCoba jalankan:\x1b[0m \x1b[1;36mgn u -h\x1b[0m  \x1b[0;90matau\x1b[0m  \x1b[1;36mgn c -h\x1b[0m  \x1b[0;90muntuk panduan detail per-command!\x1b[0m");
   console.log("");
 }
 
 /** Cetak versi singkat. */
 function showVersion(): void {
   console.log(`gn v${GN_VERSION}`);
-}
-
-/**
- * Cetak pesan error ramah + hint perbaikan (Goblin Roast pattern).
- */
-function reportUnknown(cmd: string): void {
-  console.error("");
-  console.error("\x1b[1;31m󰅚 [Goblin Roast Error] Subcommand tidak dikenal: \x1b[1;37m" + cmd + "\x1b[0m");
-  console.error("\x1b[1;33m󰋽 Hint: Jalankan \x1b[1;37mgn help\x1b[1;33m untuk melihat daftar command yang tersedia.\x1b[0m");
-  console.error("");
-}
-
-function reportDeprecated(cmd: string, msg: string): void {
-  console.error("");
-  console.error("\x1b[1;33m󰀦  " + msg + "\x1b[0m");
-  console.error("");
 }
 
 /**
@@ -148,7 +130,7 @@ export async function main(argv: string[]): Promise<number> {
 
   const handler = COMMANDS[cmd];
   if (!handler) {
-    reportUnknown(cmd);
+    handleUnknownCommand(cmd);
     return 1;
   }
 
