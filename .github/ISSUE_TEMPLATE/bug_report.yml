@@ -17,7 +17,6 @@ body:
         - "sup (Package Updater)"
         - "fex (File Explorer TUI)"
         - "gn (Goblin Nexus CLI)"
-        - "ocm (OpenCode Configurator)"
         - "zf (Zoxide & Tmux Helper)"
         - "gb (GitHub Assistant)"
         - "Scripts & Infrastructure"

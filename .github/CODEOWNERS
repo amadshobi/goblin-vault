@@ -7,7 +7,6 @@
 # CLI Tools Owners
 /tools-cli/src/fex/          @amadshobi
 /tools-cli/src/sup/          @amadshobi
-/tools-cli/src/ocm/          @amadshobi
 /tools-cli/src/gn/           @amadshobi
 /tools-cli/src/gb/           @amadshobi
 /tools-cli/bin/              @amadshobi
