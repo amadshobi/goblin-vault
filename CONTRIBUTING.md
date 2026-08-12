@@ -44,7 +44,7 @@ Setiap kontribusi di repositori ini WAJIB mematuhi panduan teknis utama yang ada
    ```
 3. Uji kesehatan environment terminal:
    ```bash
-   ./scripts/doctor.sh
+   ./scripts/doctor.js
    ```
 
 ---
@@ -67,7 +67,7 @@ Setiap kontribusi di repositori ini WAJIB mematuhi panduan teknis utama yang ada
 3. **Verifikasi & Format Standard**:
    Jalankan check syntax sebelum meng-commit:
    ```bash
-   ./scripts/check_syntax.sh
+   ./scripts/check_syntax.js --full
    ```
 
 4. **Update Changelog Modular**:

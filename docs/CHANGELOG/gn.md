@@ -5,9 +5,54 @@
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
----
 
-## [v1.0.0] - 2026-08-05
+## [v2.0.0] - 2026-08-09
+
+### Added
+- **`gn ping` & `gn bench` Dual-Mode & Centralized Storage Engine (`~/.config/gn/cache/`)**:
+  - Migrasi storage cache ping & bench dari `~/.shell/cache/` ke `~/.config/gn/cache/` (sejajar dengan `~/.config/gb`).
+  - Auto-migration otomatis membaca & memindahkan cache lama dari `~/.shell/cache/` ke `~/.config/gn/cache/` tanpa membuang riwayat lama.
+  - **Dual-Mode Execution Architecture**:
+    - **Default Mode**: Membaca snapshot cache dari `~/.config/gn/cache/ping/<provider>.json` atau `~/.config/gn/cache/bench/<provider>.json` secara instan (**~5ms execution time**).
+    - **Live Force Mode (`--force` / `-f`)**: Bypass cache, mengeksekusi request live HTTP ke OMP Gateway (`http://127.0.0.1:4000`), menghitung metrics latensi & throughput (`tok/s`), dan memperbarui JSON cache secara otomatis.
+- **`gn ping` Live Probe Layout & Reliability Patch**:
+  - Mode live `gn p <provider> --force` memakai Clack spinner per-model dengan label minimal hanya nama model, tanpa teks tambahan seperti `Testing`.
+  - Payload probe diselaraskan dengan request chat valid (`Reply with only: ok`) dan `max_tokens` dinaikkan ke `50` untuk menghindari false negative pada model yang tersedia seperti `google-antigravity/gemini-3.6-flash`.
+  - Timeout request live ping distandarkan ke `10s` via `AbortSignal.timeout`, sehingga spinner otomatis berhenti sebagai `TIMEOUT` jika provider/gateway terlalu lama merespons.
+  - Cache mode `gn p <provider>` tetap mempertahankan boxed table existing; perubahan layout hanya menyasar live/local ping output.
+- **Daily Tokens & Subagent Tree Activity Engine (`gn u -t`)**:
+  - Dukungan visual pohon silsilah aktivitas harian per sesi (`Root Title [model]` -> `subagent (title) [model]`).
+  - Breakdown metrics presisi: Tokens Input, Output, Cache Read, Cache Write, Reasoning, Cost USD, dan Tool Calls summary.
+  - Integration `opencode db` native C++ via `bun:sqlite` untuk performa eksekusi super kilat (**<70ms total runtime**).
+- **File Modification Audit Mode (`gn u -f`)**:
+  - Audit instan khusus file yang pernah di-edit/ditulis (`edit` & `write`) dengan git diff metrics (`+lines -lines`).
+  - Auto-filtering otomatis memangkas sesi non-edit (0 files modified).
+- **Compact Minimalist Table Mode (`gn u -t -m`)**:
+  - Tampilan tabel ringkas 1-baris per session/subagent.
+- **Session & Subagent Filter Support**:
+  - Filter presisi berdasarkan Session ID / Judul (`gn u -t -s <query>`) dan nama subagent (`gn u -t --agent <name>`).
+- **Session Explorer & Search CLI Tool (`gn s list` / `gn s <query>`)**:
+  - CLI dedicated untuk mendaftar dan mencari riwayat sesi OpenCode.
+- **Fuzzy Levenshtein Error Matcher & Migration Hints (`utils/error.ts`)**:
+  - Modul error handling dedicated dengan fuzzy suggestion untuk subcommand typo (`gn usag` -> `usage`) dan migration hints untuk command legacy (`gn stats`, `gn ollama`, `gn ocm`).
+
+### Fixed
+- **`gn ping` Model Limitation**: Menghapus batasan slice 15 model pada `gn ping <provider>` sehingga secara default menge-ping seluruh model yang dimiliki oleh provider tersebut (e.g. 503 model untuk `kilo`). Ini memperbaiki kelakuan di mana `gn p kilo` nampak kosong di cache mode karena 15 model pertama yang di-slice semuanya mengembalikan status non-200.
+
+### Refactored
+- **Dual-Level Help Standard**:
+  - Level-1 (`gn --help`): Tampilan makro ringkas daftar subcommand utama.
+  - Level-2 (`gn u -h` / `gn u --help`): Panduan mendalam terpisah per-command.
+- **Nerd Font Icons Upgrade Across CLI**: Mengganti emoji warna-warni di seluruh output CLI (`gn --help`, `gn usage`, `gn ping`, `gn bench`, `gn config`, `gn doctor`, `shield.sh`, `gn.sh`) dengan simbol JetBrains Mono / Nerd Font icons (`󰄬`, `󰅚`, `󰀦`, `󰓅`, `󰒓`, `󱈸`, `󱎫`, `󰋼`, `󰑐`, `󰈙`, `󰓹`, `󰋽`, `󰚌`, `󰘚`) untuk tampilan terminal yang lebih bersih dan profesional.
+- **3-Tier Hierarchical Usage Layout & Dynamic Progress Bars** (`usage.ts`, `formatter.ts`):
+  - Rombak total layout `gn usage` menjadi hirarki 3-tingkat yang super terstruktur: `Provider Pool -> Email Account -> Quota Limits`.
+  - Pembersihan total status badges (`󰄬 OK`) dan kata kunci redundant `"Daily · Usage (...)`" -> murni `"Google"`, `"Anthropic"`, `"OpenAI"`.
+  - Progress bar tipis `━━━━────────` tanpa siku `[]` dan tanpa clutter.
+  - Peningkatan dynamic color thresholds (<70% hijau, 70-99% kuning, >=100% merah).
+- **Unified Subcommands & Codebase Consolidation**:
+  - Peleburan subcommand `stats` dan `sessions` ke dalam `gn usage` (`--tokens` dan `--sessions`).
+  - Penambahan `gn config` (`c`), `gn ping` (`p`), `gn bench` (`b`), dan `gn doctor --check` (`-c`).
+- **Legacy Cleanup**: Pembersihan total tool legacy (`ocm`, `goblin-control`, `notes`).
 
 ### Added
 - **TypeScript Native CLI Engine Architecture (Standalone v1.0.0 Release)**: Port total core `gn` dari Shell Script raksasa menjadi aplikasi TypeScript modular berbasis Bun/Node runtime di `tools-cli/src/gn/src/`.
@@ -26,6 +71,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **Legacy Shell & Bench Scripts Cleanup**:
   - Dihapus: `quarantine.sh`, `config.ts`, `bench.ts`, `bench-roles.ts`, `bench-storage.ts`, `pool-manager.ts`, `agent.sh`, `picker.sh`, `price.ts`, dan `doctor.sh`.
   - Pembersihan total sisa rujukan dead code `price` dan `doctor.sh` dari `help-formatter.sh` & `gn.sh`.
+
+## [v2.0.1] - 2026-08-12
+
+### Added
+- **`gn ping / p` Custom Provider Live Probe (`ping-config.ts`)**:
+  - Modul baru `utils/ping-config.ts` menggantikan `config-alias.ts` — berisi parser `models.yml` (`~/.omp/agent/models.yml`) untuk auto-discovery custom model beserta `baseUrl`, `apiKey`, dan protokol `api` masing-masing.
+  - Ping live custom model otomatis me-route ke `baseUrl` provider dengan suffix protokol yang tepat (`openai-responses` → `/responses`, selainnya → `/chat/completions`), plus `Authorization: Bearer` dari `apiKey` custom.
+  - Payload model ID custom memakai `localId` asli dari `models.yml` alih-alih ID prefixed.
+
+### Changed
+- **`gn ping` Live Model Unification**: Model dari API response (gateway) kini digabung dengan model custom dari `models.yml` (`[...data.data, ...parseModelsYml()]`) sehingga semua model custom ikut ter-probe — tanpa lagi pembatasan slice 15 model pertama.
 
 ## [Unreleased]
 

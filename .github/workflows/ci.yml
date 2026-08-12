@@ -38,8 +38,14 @@ jobs:
       - name: Add tools-cli/bin to PATH
         run: echo "$GITHUB_WORKSPACE/tools-cli/bin" >> $GITHUB_PATH
 
+      - name: Install tool dependencies (gn, gb & sup)
+        run: |
+          cd tools-cli/src/gn && bun install
+          cd ../gb && bun install
+          cd ../sup && bun install
+
       - name: Shell & JS syntax check
-        run: bash scripts/check_syntax.sh
+        run: ./scripts/check_syntax.js --full
 
       - name: Build fex (Go) & Install to PATH
         working-directory: tools-cli/src/fex
@@ -49,7 +55,7 @@ jobs:
           cp $GITHUB_WORKSPACE/tools-cli/bin/fex ~/.local/bin/fex
 
       - name: Health & dependency check
-        run: bash scripts/doctor.sh
+        run: ./scripts/doctor.js
 
       - name: Go vet
         working-directory: tools-cli/src/fex

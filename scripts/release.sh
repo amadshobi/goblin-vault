@@ -16,7 +16,6 @@ show_help() {
     echo "  fex             📂 Release version for fex (Go file explorer)"
     echo "  gn              🧙‍♂️ Release version for Goblin Nexus CLI"
     echo "  zf              ⚡ Release version for ZF Navigation Engine"
-    echo "  ocm             ⚙️ Release version for OpenCode Configurator"
     echo "  sup             🧹 Release version for Smart Universal Package Updater"
     echo "  gb              🐙 Release version for GitHub Assistant TUI"
     echo ""
@@ -48,11 +47,11 @@ fi
 # 1. Health Audit (Blocking)
 echo "🔍 Running pre-release fast health audit..."
 if [[ "${TARGET:-}" == "vault" || "${TARGET:-}" == "all" ]]; then
-    bash "$VAULT_DIR/scripts/check_syntax.sh" --full
+    "$VAULT_DIR/scripts/check_syntax.js" --full
 else
-    bash "$VAULT_DIR/scripts/check_syntax.sh" --staged
+    "$VAULT_DIR/scripts/check_syntax.js" --staged
 fi
-bash "$VAULT_DIR/scripts/doctor.sh"
+"$VAULT_DIR/scripts/doctor.js"
 
 echo "────────────────────────────────────────"
 
@@ -143,14 +142,14 @@ case "$TARGET" in
         ;;
 
     gn)
-        GN_SH="$VAULT_DIR/tools-cli/src/gn/gn.sh"
-        CURRENT_VER=$(grep -E 'Goblin Nexus Proxy CLI v' "$GN_SH" | sed -E 's/.*v([0-9\.]+).*/\1/' | head -1 || echo "2.0.0")
+        GN_INDEX="$VAULT_DIR/tools-cli/src/gn/src/index.ts"
+        CURRENT_VER=$(grep -E 'GN_VERSION = "' "$GN_INDEX" | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/' | head -1 || echo "2.0.0")
         NEW_VER=$(calculate_next_version "$CURRENT_VER" "$BUMP_TYPE")
-        sed -i -E 's/(Goblin Nexus Proxy CLI v)[0-9\.]+/\1'"$NEW_VER"'/' "$GN_SH"
+        sed -i -E 's/(GN_VERSION = ")[0-9]+\.[0-9]+\.[0-9]+(")/\1'"$NEW_VER"'\2/' "$GN_INDEX"
         echo "🧙‍♂️ Bumping Goblin Nexus CLI version: v$CURRENT_VER -> v$NEW_VER"
         
         cd "$VAULT_DIR"
-        git add "$GN_SH"
+        git add "$GN_INDEX"
         git add docs/CHANGELOG/gn.md 2>/dev/null || true
         git commit -m "chore(release): bump gn to v$NEW_VER" || true
         echo "🎉 GOBLIN NEXUS RELEASE SUCCESS! Version: v$NEW_VER"
@@ -168,26 +167,6 @@ case "$TARGET" in
         git add docs/CHANGELOG/zf.md 2>/dev/null || true
         git commit -m "chore(release): bump zf to v$NEW_VER" || true
         echo "🎉 ZF RELEASE SUCCESS! Version: v$NEW_VER"
-        ;;
-
-    ocm)
-        OCM_PKG="$VAULT_DIR/tools-cli/src/ocm/package.json"
-        CURRENT_VER=$(node -e 'console.log(require("'"$OCM_PKG"'").version || "1.0.0")')
-        NEW_VER=$(calculate_next_version "$CURRENT_VER" "$BUMP_TYPE")
-        node -e '
-            const fs = require("fs");
-            const p = "'"$OCM_PKG"'";
-            const json = JSON.parse(fs.readFileSync(p, "utf8"));
-            json.version = "'"$NEW_VER"'";
-            fs.writeFileSync(p, JSON.stringify(json, null, 2) + "\n");
-        '
-        echo "⚙️ Bumping OCM version: v$CURRENT_VER -> v$NEW_VER"
-        
-        cd "$VAULT_DIR"
-        git add "$OCM_PKG"
-        git add docs/CHANGELOG/ocm.md 2>/dev/null || true
-        git commit -m "chore(release): bump ocm to v$NEW_VER" || true
-        echo "🎉 OCM RELEASE SUCCESS! Version: v$NEW_VER"
         ;;
 
     sup)

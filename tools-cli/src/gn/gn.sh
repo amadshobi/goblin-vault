@@ -20,9 +20,9 @@ GN_DIR="$(cd "$(dirname "$0")" && pwd)"
 _gn_warn() {
     local msg="$1"
     if command -v gum >/dev/null 2>&1; then
-        gum style --foreground 214 "⚠️  $msg"
+        gum style --foreground 214 "󰀦  $msg"
     else
-        echo "⚠️  $msg"
+        echo "󰀦  $msg"
     fi
 }
 

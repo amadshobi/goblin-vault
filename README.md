@@ -68,13 +68,6 @@ Filosofi inti:
 <br/>
 
 <p align="center">
-  <img src="docs/assets/gif/ocm-demo.gif" alt="ocm — OpenCode Configurator TUI" width="800" />
-  <br/><em>ocm — Dashboard & manager untuk konfigurasi OpenCode</em>
-</p>
-
-<br/>
-
-<p align="center">
   <img src="docs/assets/gif/zf-demo.gif" alt="zf — Zoxide & Tmux Helper" width="800" />
   <br/><em>zf — Zoxide & Tmux Rapid Navigation Helper</em>
 </p>
@@ -94,8 +87,7 @@ Filosofi inti:
 |:-----|:----------|:------|:--------|
 | **[`sup`](tools-cli/src/sup/)** `v1.1.0` | Smart Universal Package Updater — granular multi-select updater untuk NPM, PIP3, System, Rustup, Bun, OMP. Mode verbose streaming (`-v`), proactive sudo handling. | TypeScript, Bun, Clack TUI | `sup` |
 | **[`fex`](tools-cli/src/fex/)** | File Explorer TUI — navigasi super cepat dengan fzf + tmux split mode. Subcommand: `tree`, `search`, `create`, `editor`, `path`, `kill`. Bookmark & state-machine navigation. | Go 1.22, Cobra, fzf, tmux | `fex` |
-| **[`gn`](tools-cli/src/gn/)** `v1.0.0` | Goblin Nexus CLI — Control Center core, AI adapter broker, bench tools, price/telemetry tracking, quarantine & privacy shield daemon. | Shell, TypeScript, Bun | `gn` |
-| **[`ocm`](tools-cli/src/ocm/)** `v1.2.0` | OpenCode Configurator TUI — dashboard & manager untuk opencode config, agents, MCP servers, dan providers. | TypeScript, Bun, Clack TUI | `ocm` |
+| **[`gn`](tools-cli/src/gn/)** `v2.0.0` | Goblin Nexus CLI — Control Center core, AI adapter broker, bench tools, price/telemetry tracking, configuration manager. | Shell, TypeScript, Bun | `gn` |
 | **[`zf`](tools-cli/src/zf/)** | Zoxide & Tmux Helper — rapid directory navigation, session switcher, auto-launcher tools integration. | Pure Shell (Zsh) | `zf` |
 | **[`gb`](tools-cli/src/gb/)** `v2.1.1` | GitHub Assistant TUI — kelola Issue, PR, Auth, & Release GitHub langsung dari terminal. | Node.js, Clack TUI | `gb` |
 
@@ -168,15 +160,13 @@ goblin-vault/
 │       ├── fex/                # File Explorer (Go + Cobra)
 │       ├── gn/                 # Goblin Nexus CLI (Shell + TypeScript)
 │       ├── gb/                 # GitHub Assistant TUI (Node.js)
-│       ├── goblin-control/     # Control Center core (Node.js)
-│       ├── notes/              # Notes utility (Node.js)
 │       ├── ocm/                # OpenCode Configurator (TypeScript)
 │       ├── sup/                # Smart Package Updater (TypeScript + Bun)
 │       ├── zf/                 # Zoxide & Tmux Helper (Shell)
 │       └── shield/             # Privacy Shield Interceptor (TypeScript)
 ├── scripts/                    # Utilities & automation
-│   ├── check_syntax.sh         # Linter untuk Bash, Go, JS, TS
-│   ├── doctor.sh               # Health & dependency checker
+│   ├── check_syntax.js         # Linter & Security Engine untuk Bash, Go, JS, TS
+│   ├── doctor.js               # Health & dependency diagnostic checker
 │   ├── install.sh              # Setup PATH & symlink config
 │   ├── install-hooks.sh        # Install git hooks
 │   ├── release.sh              # SemVer release engine
@@ -203,8 +193,8 @@ goblin-vault/
 bash scripts/install-hooks.sh
 ```
 
-- **pre-commit** — menjalankan `check_syntax.sh --staged` (fast, hanya file yang di-stage).
-- **pre-push** — menjalankan `check_syntax.sh` full scan + build `fex`.
+- **pre-commit** — menjalankan `check_syntax.js --staged` (fast, hanya file yang di-stage).
+- **pre-push** — menjalankan `check_syntax.js --full` full scan + build `fex`.
 
 ### CI (GitHub Actions)
 
@@ -216,8 +206,8 @@ Setiap push/PR ke `main` atau `dev` memicu pipeline:
 ### Health Check
 
 ```bash
-bash scripts/doctor.sh          # Dependency & PATH check
-bash scripts/check_syntax.sh    # Lint Bash, Go, JS, TS
+./scripts/doctor.js          # Dependency & PATH check
+./scripts/check_syntax.js    # Lint Bash, Go, JS, TS
 ```
 
 ### Release
@@ -265,8 +255,8 @@ Kami terbuka untuk kontribusi! Sebelum mulai, baca dokumen berikut:
 **Checklist sebelum PR:**
 
 ```bash
-bash scripts/doctor.sh            # Dependency & PATH check
-bash scripts/check_syntax.sh      # Lint seluruh codebase
+./scripts/doctor.js            # Dependency & PATH check
+./scripts/check_syntax.js --full # Lint seluruh codebase
 cd tools-cli/src/fex && go build -o ~/.local/bin/fex .  # Build fex
 ```
 

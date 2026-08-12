@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# Inject NODE_PATH & jalankan TypeScript entrypoint ocm via Bun
-export NODE_PATH="$HOME/.opencode/node_modules"
-exec bun run "$(dirname "$0")/../src/ocm/src/index.ts" "$@"

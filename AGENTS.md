@@ -25,7 +25,7 @@ berjalan, bukan sekadar menambah fitur demi keren-kerenan.
 ```
 goblin-vault/
 ├── tools-cli/              # Pusat persenjataan CLI
-│   ├── bin/                # Executable binaries/wrappers siap pakai (fe, ocm, gb)
+│   ├── bin/                # Executable binaries/wrappers siap pakai (fe, gb)
 │   ├── src/                # Source code mentah aplikasi CLI
 │   │   ├── fex/            # File Explorer (Go) — fzf + tmux
 │   │   │   ├── cmd/        # Command handlers (root.go, search_mode.go, tree_mode.go)
@@ -33,9 +33,7 @@ goblin-vault/
 │   │   │   ├── helpers/    # Helper utilities (fzf-pick.sh, tmux-split.sh, dll)
 │   │   │   └── internal/   # Internal packages (config, fzf, session, tmux, tree, ui, util)
 │   │   ├── gb/             # GitHub Assistant TUI (Node.js)
-│   │   ├── goblin-control/ # Control center core (Node.js)
-│   │   ├── notes/          # Notes utility (Node.js)
-│   │   └── ocm/            # OpenCode Configurator TUI (Node.js)
+│   │   └── gn/             # Goblin Nexus Core CLI (TypeScript)
 │   ├── tests/              # Laboratorium uji coba (scratchpad)
 │   └── docs/               # Dokumentasi dan manual
 ├── scripts/                # Utilities shell & js (doctor, install, worktree, dll)
@@ -135,8 +133,12 @@ Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
 - **Branch/Worktree**: gunakan `scripts/worktree.sh` untuk isolasi pekerjaan.
 - **Git hooks & CI**: repo dilengkapi `scripts/install-hooks.sh` (pre-commit + pre-push
   blocking) dan GitHub Actions `.github/workflows/ci.yml` (lint + build otomatis).
-  - `pre-commit hook`: Menjalankan `scripts/check_syntax.sh --staged` (fast staged mode, hanya mengecek file yang di-`git add`).
-  - `pre-push hook`: Menjalankan `scripts/check_syntax.sh` (full repo scan menyeluruh untuk Bash, Go, JS, dan TS).
+  - `pre-commit hook`: Menjalankan `scripts/check_syntax.js --staged` (hanya mengecek file yang di-`git add`).
+  - `pre-push hook`: Menjalankan `scripts/check_syntax.js --full` (full repo scan menyeluruh untuk Bash, Go, JS, TS, dan executable permissions).
+  - **Syntax Checker Modes (`scripts/check_syntax.js`)**:
+    - `./scripts/check_syntax.js --staged` (`-s`): Fast scan khusus file yang di-stage (`git diff --cached`).
+    - `./scripts/check_syntax.js --working` (`-w`): Scan file modified & file baru untracked di working directory.
+    - `./scripts/check_syntax.js --full` (`-f`): Full repo scan menyeluruh untuk seluruh workspace.
 - **Prosedur Release & Branch Sync (PENTING)**: Gunakan `./scripts/release.sh` untuk automated release (terintegrasi dengan health audit, git tagging, dan GitHub Release).
   - **Standard Workflow**: Semua perubahan wajib lahir di branch `dev` terlebih dahulu, kemudian lakukan Pull Request (PR) `dev -> main`. Eksekusi script release dilakukan setelah PR di-merge ke `main` atau langsung dari branch `main` lokal yang sudah ter-sync dengan remote.
   - **Single Source of Truth**: Dilarang keras meng-edit atau membuat commit langsung di branch `main`.
@@ -146,7 +148,7 @@ Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
     ```
     Tujuannya agar branch `dev` tidak tertinggal (*divergent*) dan menghindari terjadinya merge conflict yang menyebalkan di rilis berikutnya.
   - **Global Release**: `./scripts/release.sh vault <patch|minor|major>` untuk merilis versi global repo vault (memperbarui `VERSION`, commit changelog, membuat git tag `vX.Y.Z`, dan otomatis mempublikasikan **GitHub Release resmi** via `gh release create` dengan menyertakan release notes dari `CHANGELOG.md`).
-  - **Modular Tool Release**: `./scripts/release.sh <tool_name> <patch|minor|major>` (e.g. `fex`, `gn`, `zf`, `ocm`, `sup`, `gb`) untuk memperbarui versi internal tool dan menulis changelog modular di `docs/CHANGELOG/<tool>.md`.
+  - **Modular Tool Release**: `./scripts/release.sh <tool_name> <patch|minor|major>` (e.g. `fex`, `gn`, `zf`, `sup`, `gb`) untuk memperbarui versi internal tool dan menulis changelog modular di `docs/CHANGELOG/<tool>.md`.
 
 ---
 
@@ -154,7 +156,7 @@ Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
 
 **Lakukan:**
 - Cek `README.md`, `CHANGELOG.md`, `docs/CHANGELOG/`, dan struktur `tools-cli/` sebelum mengubah.
-- Jalankan `scripts/doctor.sh` & `scripts/check_syntax.sh` sebelum anggap selesai.
+- Jalankan `scripts/doctor.js` & `scripts/check_syntax.js` sebelum anggap selesai.
 - Pertahankan kompatibilitas dengan tools yang sudah dipakai BOSS harian.
 - Tulis perubahan kecil, fokused, dan reversible.
 
@@ -164,6 +166,10 @@ Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
 - Ubah struktur `bin/` tanpa update README & PATH guidance.
 - Tambah dependency besar tanpa alasan yang jelas & terukur.
 - Biarkan error di-swallow diam-diam.
+
+**Dilarang:**
+- commit, add, push tanpa persetujuan 
+- cat and read secret, env, key
 
 ---
 

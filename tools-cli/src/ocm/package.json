@@ -1,7 +1,0 @@
-{
-  "name": "ocm",
-  "version": "1.2.1",
-  "description": "OpenCode Configurator TUI",
-  "main": "index.js",
-  "dependencies": {}
-}

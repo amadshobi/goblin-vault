@@ -101,7 +101,7 @@ export function formatCost(num: number): string {
  * formatProgressBar(1.0)         // "[████████████████████] 100%"
  * formatProgressBar(0)           // "[░░░░░░░░░░░░░░░░░░░░] 0%"
  */
-export function formatProgressBar(fraction: number, width: number = 20): string {
+export function formatProgressBar(fraction: number, width: number = 12): string {
   return formatQuotaBar(fraction, undefined, width);
 }
 
@@ -109,15 +109,11 @@ export function formatProgressBar(fraction: number, width: number = 20): string 
  * Architect-spec alias: `formatQuotaBar(used, total?, width?)`.
  * Jika `total` diberikan, fraction = used/total. Jika tidak,
  * `used` diperlakukan sebagai fraction langsung (0..1).
- *
- * @example
- * formatQuotaBar(0.42)              // sama dengan formatProgressBar
- * formatQuotaBar(420, 1000, 20)     // "[████████░░░░░░░░░░░░] 42%"
  */
 export function formatQuotaBar(
   used: number,
   total?: number,
-  width: number = 20
+  width: number = 12
 ): string {
   const safeWidth = Math.max(1, Math.floor(width));
   const fraction = total !== undefined && total > 0
@@ -126,10 +122,18 @@ export function formatQuotaBar(
   const clamped = Math.max(0, Math.min(1, fraction));
   const filled = Math.round(clamped * safeWidth);
   const empty = safeWidth - filled;
-  const filledStr = "█".repeat(filled);
-  const emptyStr = "░".repeat(empty);
   const pct = Math.round(clamped * 100);
-  return `[${filledStr}${emptyStr}] ${pct}%`;
+
+  let color = ANSI_GREEN;
+  if (pct >= 100) {
+    color = ANSI_RED;
+  } else if (pct >= 70) {
+    color = ANSI_YELLOW;
+  }
+
+  const filledStr = `${color}${"━".repeat(filled)}${ANSI_RESET}`;
+  const emptyStr = `${ANSI_GRAY}${"─".repeat(empty)}${ANSI_RESET}`;
+  return `${filledStr}${emptyStr}`;
 }
 
 // ─── Status Badge ───────────────────────────────────────────
@@ -154,18 +158,18 @@ export function formatStatusBadge(status: string): string {
   const s = status.toLowerCase().trim();
   switch (s) {
     case "ok":
-      return "🟢 OK";
+      return "󰄬 OK";
     case "warn":
     case "warning":
-      return "🟡 WARN";
+      return "󰀦 WARN";
     case "error":
     case "failed":
     case "exhausted":
-      return "🔴 ERROR";
+      return "󰅚 ERROR";
     case "critical":
-      return "🔴 CRITICAL";
+      return "󰅚 CRITICAL";
     default:
-      return "⚪ UNUSED";
+      return "󰅖 UNUSED";
   }
 }
 
@@ -249,13 +253,13 @@ function isSameDay(a: Date, b: Date): boolean {
  */
 export function formatProviderBadge(provider: string): string {
   const p = provider.toLowerCase();
-  if (p.includes("google")) return "🤖 Google";
-  if (p.includes("openai")) return "🔑 OpenAI";
-  if (p.includes("anthropic") || p.includes("claude")) return "🧠 Anthropic";
-  if (p.includes("copilot") || p.includes("github")) return "🐙 GitHub";
-  if (p.includes("ollama")) return "🦙 Ollama";
-  if (p.includes("goblin") || p.includes("nexus")) return "👹 Goblin Nexus";
-  return `🔌 ${provider}`;
+  if (p.includes("google")) return "󰘚 Google";
+  if (p.includes("openai")) return "󰘚 OpenAI";
+  if (p.includes("anthropic") || p.includes("claude")) return "󰘚 Anthropic";
+  if (p.includes("copilot") || p.includes("github")) return "󰊤 GitHub";
+  if (p.includes("ollama")) return "󰘚 Ollama";
+  if (p.includes("goblin") || p.includes("nexus")) return "󰚌 Goblin Nexus";
+  return `󰘚 ${provider}`;
 }
 
 /**
@@ -301,10 +305,9 @@ export function formatResetCountdown(resetsAt: number): string {
   const days = Math.floor(totalMin / (60 * 24));
   const hours = Math.floor((totalMin % (60 * 24)) / 60);
   const minutes = totalMin % 60;
-
-  if (days > 0) return `resets in ${days}d ${hours}h`;
-  if (hours > 0) return `resets in ${hours}h ${minutes}m`;
-  return `resets in ${minutes}m`;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }
 
 // ─── Table Renderer ─────────────────────────────────────────
@@ -433,12 +436,11 @@ function isNumericColumn(colValues: string[]): boolean {
  * untuk perfect alignment butuh grapheme cluster lib — out of scope).
  */
 export function visibleLength(s: string): string {
-  // Step 1: strip ANSI
-  return s.replace(/\x1b\[[0-9;]*m/g, "");
+  return s.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "");
 }
 
 export function visibleWidth(s: string): number {
-  return visibleLength(s).length;
+  return Array.from(visibleLength(s)).length;
 }
 
 // ─── Header / Banner ────────────────────────────────────────
@@ -467,4 +469,76 @@ export function formatHeader(title: string): string {
 export function printGnHeader(subtitle?: string): void {
   const text = formatHeader(subtitle ?? "GOBLIN NEXUS");
   console.log(text);
+}
+
+/**
+ * Format solid Unicode Box Table matching `opencode stats --models` style.
+ * Uses `┌`, `┬`, `┐`, `├`, `┼`, `┤`, `└`, `┴`, `┘` borders and `│` column dividers.
+ * Ensures 100% pixel-perfect straight vertical right border alignment across all terminals.
+ */
+export function formatBoxTable(
+  title: string | null,
+  headers: string[],
+  rows: string[][]
+): string {
+  if (headers.length === 0 && rows.length === 0) return "";
+
+  const colCount = Math.max(headers.length, ...rows.map((r) => r.length));
+  const normalizedRows = rows.map((row) => {
+    const cells = row.map((c) => String(c ?? ""));
+    while (cells.length < colCount) cells.push("");
+    return cells.slice(0, colCount);
+  });
+
+  // Strip ANSI to calculate exact visible width per column
+  const colWidths: number[] = [];
+  for (let c = 0; c < colCount; c++) {
+    const colValues = normalizedRows.map((r) => r[c] ?? "");
+    const maxW = Math.max(...colValues.map((v) => visibleWidth(v)));
+    colWidths.push(maxW);
+  }
+
+  // Inner row width = sum(colWidths) + 2 spaces per col + 3 chars per divider (" │ ")
+  const rowInnerWidth = colWidths.reduce((a, b) => a + b, 0) + (colCount > 1 ? (colCount - 1) * 3 : 0) + 2;
+
+  const titleVisLen = title ? visibleWidth(title) : 0;
+  const totalBoxWidth = Math.max(rowInnerWidth, titleVisLen + 4);
+
+  const lines: string[] = [];
+
+  // 1. Top border
+  lines.push(`┌${"─".repeat(totalBoxWidth)}┐`);
+
+  // 2. Title row
+  if (title) {
+    const titlePad = totalBoxWidth - titleVisLen;
+    const padL = Math.floor(titlePad / 2);
+    const padR = totalBoxWidth - padL - titleVisLen;
+    lines.push(`│${" ".repeat(padL)}${ANSI_BOLD_WHITE}${title}${ANSI_RESET}${" ".repeat(padR)}│`);
+    lines.push(`├${"─".repeat(totalBoxWidth)}┤`);
+  }
+
+  // 3. Data Rows
+  for (const r of normalizedRows) {
+    const formattedCells = r.map((cell, idx) => {
+      const visLen = visibleWidth(cell);
+      const isNumeric = /^\d+/.test(visibleLength(cell).trim());
+      const pad = Math.max(0, colWidths[idx] - visLen);
+      if (isNumeric && idx === 1) {
+        return `${" ".repeat(pad)}${cell}`;
+      }
+      return `${cell}${" ".repeat(pad)}`;
+    });
+
+    const content = ` ${formattedCells.join(" │ ")} `;
+    const contentVisLen = visibleWidth(content);
+    const rightFill = " ".repeat(Math.max(0, totalBoxWidth - contentVisLen));
+
+    lines.push(`│${content}${rightFill}│`);
+  }
+
+  // 4. Bottom Border
+  lines.push(`└${"─".repeat(totalBoxWidth)}┘`);
+
+  return lines.join("\n");
 }

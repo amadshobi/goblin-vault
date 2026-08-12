@@ -14,6 +14,18 @@
 
 ---
 
+## [Unreleased]
+
+- **`gn` v2.0.0 Refactor**: Storage cache terpusat di `~/.config/gn/cache/` dengan auto-migration, dual-mode execution (`gn ping` & `gn bench` cache instant ~5ms vs `--force` live hit), upgrade total icons CLI ke Nerd Font (`󰄬`, `󰅚`, `󰀦`, `󰓅`, `󰒓`, `󱈸`, `󱎫`, `󰋼`, `󰑐`, `󰈙`, `󰓹`, `󰋽`, `󰚌`, `󰘚`), layout `gn usage` 1-line padat dengan thin-line progress bar (`━━━━────────`), Daily Tokens & Subagent Activity Tree (`gn u -t`), File Modification Audit Mode (`gn u -f`), Compact Table mode (`gn u -t -m`), Session Explorer (`gn s list`), Dual-Level Help Standard, dan fuzzy Levenshtein error matcher (`utils/error.ts`). → [detail](docs/CHANGELOG/gn.md)
+- **`gn ping` Live Probe Reliability**: Perbaikan mode `gn p <provider> --force` dengan Clack spinner per-model tanpa label berisik, payload probe valid (`Reply with only: ok`, `max_tokens: 50`), timeout default 10 detik, dan preservasi tampilan cache boxed table. → [detail](docs/CHANGELOG/gn.md)
+- **`check_syntax.js` & `doctor.js` JS Engine Migration**: Migrasi total script validator repositori dari Bash kuno (`check_syntax.sh` & `doctor.sh`) ke Node.js / Bun Engine yang jauh lebih cepat, paralel, dan kaya fitur.
+- **Multi-Language & Executable Permission Check**: Penambahan audit ijin eksekusi (`+x`) pada semua binary & scripts, rincian per-file `.go`, `.js`, `.ts`, dan `.sh`, serta parser error presisi (`file:line:col`) dengan format Arrow Identifier (`↳`) dan Goblin Roast Summary (`🤨 NIH BOSS FILE YANG ERROR:`).
+- **Flexible CLI Flags**: Dukungan flag `--staged` (`-s`), `--working` (`-w`, mengecek modified & untracked files), dan `--full` (`-f`).
+### Removed
+- **Legacy Bash Wrappers**: Penghapusan total file wrapper `scripts/check_syntax.sh` dan `scripts/doctor.sh`.
+
+---
+
 ## [v0.3.32] - 2026-08-06
 
 ### Added

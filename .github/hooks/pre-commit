@@ -7,8 +7,8 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
 echo "🐙 goblin pre-commit: running fast syntax check on staged files..."
-if ! bash "$REPO_ROOT/scripts/check_syntax.sh" --staged; then
-  echo "❌ check_syntax.sh gagal — commit dibatalkan. Fix dulu ya bos." >&2
+if ! "$REPO_ROOT/scripts/check_syntax.js" --staged; then
+  echo "❌ check_syntax.js gagal — commit dibatalkan. Fix dulu ya bos." >&2
   exit 1
 fi
 

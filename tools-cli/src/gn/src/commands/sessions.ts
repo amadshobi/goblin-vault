@@ -1,245 +1,125 @@
 #!/usr/bin/env bun
 // ─────────────────────────────────────────────────────────────
-// Goblin Nexus — Command: `gn sessions` / `gn ses`
+// Goblin Nexus — Command: `gn sessions` / `gn s`
 //
-// Detail lengkap per-sesi OpenCode dengan format vertikal identik
-// dengan token-stats.ts + kalkulasi Est. Cost via price.json.
+// Session Search & Explorer CLI Tool (Plan 2).
+// Digunakan untuk mencari dan mendaftar riwayat sesi berdasarkan:
+//   - `--title <query>` / `-t <query>`
+//   - `--limit N` / `-n N`
+//   - `--json`
 // ─────────────────────────────────────────────────────────────
 
-import { stderr, exit } from "node:process";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { existsSync, readFileSync } from "node:fs";
-
-import type { SessionDetail } from "../types";
-import { OpenCodeAdapter } from "../adapters/opencode";
+import { queryOpenCodeCli, parseModelName, type OpenCodeCliSessionRow } from "../utils/opencode-cli";
 import {
-  printGnHeader,
-  formatNumber,
-  formatCost,
-  formatDate,
   ANSI_BOLD,
   ANSI_RESET,
   ANSI_GRAY,
   ANSI_CYAN,
-  ANSI_GREEN,
   ANSI_YELLOW,
 } from "../utils/formatter";
 
-// ─── Pricing Engine (tools-cli/src/gn/config/price.json) ─────
-
-type PriceSpec = { input: number; output: number; cache?: number };
-let PRICING: Record<string, PriceSpec> = {};
-
-// Prioritas 1: `tools-cli/src/gn/config/price.json` di dalam monorepo vault
-// Prioritas 2: Fallback ke `~/.opencode/scripts/price.json` jika file monorepo tidak ada
-const monorepoPricePath = join(__dirname, "..", "..", "config", "price.json");
-const fallbackPricePath = join(homedir(), ".opencode", "scripts", "price.json");
-
-if (existsSync(monorepoPricePath)) {
-  try {
-    PRICING = JSON.parse(readFileSync(monorepoPricePath, "utf-8"));
-  } catch {}
-} else if (existsSync(fallbackPricePath)) {
-  try {
-    PRICING = JSON.parse(readFileSync(fallbackPricePath, "utf-8"));
-  } catch {}
-}
-
-function calculateEstCost(modelId: string, inputTokens: number, outputTokens: number, cacheReadTokens: number): number {
-  // Extract model name (misal "google-antigravity/gemini-3.6-flash" -> "gemini-3.6-flash")
-  const parts = modelId.split("/");
-  const cleanModel = parts[parts.length - 1].split(":")[0];
-  const price = PRICING[cleanModel] || PRICING[modelId];
-
-  if (!price) return 0;
-  const inCost = (inputTokens / 1_000_000) * (price.input || 0);
-  const outCost = (outputTokens / 1_000_000) * (price.output || 0);
-  const cacheCost = (cacheReadTokens / 1_000_000) * (price.cache || 0);
-  return inCost + outCost + cacheCost;
-}
-
-// ─── CLI Args ────────────────────────────────────────────────
-
-interface SessionsArgs {
+interface SessionArgs {
+  titleQuery: string | null;
   limit: number;
-  prefix: string | null;
+  json: boolean;
   help: boolean;
 }
 
-const DEFAULT_LIMIT = 10;
-const MAX_LIMIT = 50;
-
-function parseSessionsArgs(argv: string[]): SessionsArgs {
-  const args: SessionsArgs = {
-    limit: DEFAULT_LIMIT,
-    prefix: null,
+function parseSessionArgs(argv: string[]): SessionArgs {
+  const args: SessionArgs = {
+    titleQuery: null,
+    limit: 15,
+    json: false,
     help: false,
   };
-  for (const a of argv) {
-    if (a === "-h" || a === "--help") args.help = true;
-    else if (a.startsWith("-s=")) {
-      const n = parseInt(a.slice(3), 10);
-      if (Number.isFinite(n) && n > 0) {
-        args.limit = Math.min(n, MAX_LIMIT);
-      }
-    } else if (a.startsWith("--limit=")) {
-      const n = parseInt(a.slice(8), 10);
-      if (Number.isFinite(n) && n > 0) {
-        args.limit = Math.min(n, MAX_LIMIT);
-      }
-    } else if (!a.startsWith("-")) {
-      args.prefix = args.prefix ?? a;
+
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--json") {
+      args.json = true;
+    } else if (a === "-h" || a === "--help") {
+      args.help = true;
+    } else if (a === "-t" || a === "--title") {
+      if (argv[i + 1]) args.titleQuery = argv[++i];
+    } else if (a.startsWith("--title=")) {
+      args.titleQuery = a.split("=")[1];
+    } else if (a === "-n" || a === "--limit") {
+      if (argv[i + 1]) args.limit = parseInt(argv[++i], 10) || 15;
+    } else if (a.startsWith("-n=") || a.startsWith("--limit=")) {
+      args.limit = parseInt(a.split("=")[1], 10) || 15;
+    } else if (!a.startsWith("-") && a !== "list") {
+      args.titleQuery = a;
     }
   }
   return args;
 }
 
-// ─── Help (Level 2) ──────────────────────────────────────────
-
 function printSessionsHelp(): void {
-  const lines = [
-    "",
-    "GN SESSIONS — OpenCode Live Session Detail",
-    "═════════════════════════════════════════════════════════════════════════════════════════════════════════",
-    "",
-    "DESKRIPSI:",
-    "  Tampilkan detail lengkap N sesi terbaru OpenCode dengan format vertikal presisi",
-    "  lengkap dengan rincian token, estimasi cost USD, tool usage, dan file ter-modify.",
-    "",
-    "PENGGUNAAN:",
-    "  gn sessions [flags] [session-id-prefix]",
-    "  gn ses     [flags] [session-id-prefix]",
-    "",
-    "FLAGS:",
-    "  -s=N             Limit sesi (default: 10, max: 50)",
-    "      --limit=N    Alias untuk -s=N",
-    "  [session-id-prefix]  Filter sesi by ID prefix",
-    "  -h, --help       Tampilkan help ini",
-    "",
-    "CONTOH:",
-    "  gn sessions                # 10 sesi terbaru",
-    "  gn sessions -s=5           # 5 sesi terbaru",
-    "  gn ses --limit=20          # 20 sesi (max: 50)",
-    "  gn sessions ses_abc        # Filter ID prefix 'ses_abc'",
-    "",
-  ];
-  console.log(lines.join("\n"));
+  console.log(`
+GN SESSIONS — OpenCode Session Search & Explorer
+════════════════════════════════════════════════════════════
+
+PENGGUNAAN:
+  gn sessions [command/flags]
+  gn s        [command/flags]
+
+COMMAND & FLAGS:
+  gn s list                    Tampilkan 15 sesi terbaru
+  gn s --title "refactor"      Cari sesi berdasarkan judul
+  gn s -n 25                   Set limit jumlah sesi (default: 15)
+  --json                       Output JSON mentah
+
+CONTOH:
+  gn s list                    # 15 sesi terbaru
+  gn s "ocm"                   # Cari sesi yang memuat kata "ocm"
+  gn s --title "vault" -n 5    # 5 sesi teratas ber-title "vault"
+`);
 }
 
-// ─── Handler ─────────────────────────────────────────────────
-
 export async function handleSessionsCommand(argv: string[]): Promise<number> {
-  const args = parseSessionsArgs(argv);
+  const args = parseSessionArgs(argv);
 
   if (args.help) {
     printSessionsHelp();
     return 0;
   }
 
-  const adapter = new OpenCodeAdapter();
+  let sql = `SELECT id, parent_id, title, directory, agent, model, cost, tokens_input, tokens_output, time_created, time_updated FROM session WHERE (parent_id IS NULL OR parent_id = '')`;
 
-  if (!adapter.isAvailable()) {
-    printGnHeader("OPENCODE SESSIONS");
-    console.log(`\n${ANSI_GRAY}⚠️  opencode.db tidak ditemukan.${ANSI_RESET}`);
-    return 1;
+  if (args.titleQuery) {
+    const sanitized = args.titleQuery.replace(/'/g, "''");
+    sql += ` AND title LIKE '%${sanitized}%'`;
   }
 
-  let sessions: SessionDetail[];
-  try {
-    sessions = adapter.fetchRecentSessions(args.limit);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    stderr.write(`❌ Fetch sessions gagal: ${msg}\n`);
-    return 1;
-  }
+  sql += ` ORDER BY time_updated DESC LIMIT ${args.limit}`;
 
-  const filtered = args.prefix
-    ? sessions.filter((s) => s.id.startsWith(args.prefix!))
-    : sessions;
+  const rows = queryOpenCodeCli<OpenCodeCliSessionRow>(sql);
 
-  if (filtered.length === 0) {
-    printGnHeader("OPENCODE SESSIONS");
-    console.log(`\n${ANSI_GRAY}ℹ️  Tidak ada sesi ditemukan${args.prefix ? ` dengan prefix "${args.prefix}"` : ""}.${ANSI_RESET}\n`);
+  if (args.json) {
+    console.log(JSON.stringify(rows, null, 2));
     return 0;
   }
 
-  printGnHeader("OPENCODE SESSIONS");
+  console.log(`\n  ${ANSI_BOLD}󰈙 OPENCODE SESSION EXPLORER${ANSI_RESET} ${ANSI_GRAY}(Limit ${args.limit})${ANSI_RESET}\n`);
 
-  const SOLID_LINE = "─────────────────────────────────────────────────────────────────────────────────────────────────────────";
+  if (rows.length === 0) {
+    console.log(`  ${ANSI_GRAY}󰋽 Tidak ada sesi ditemukan.${ANSI_RESET}\n`);
+    return 0;
+  }
 
-  console.log(`\n${ANSI_BOLD}RINCIAN PENGGUNAAN TOKEN PER SESI (${filtered.length} SESI DITAMPILKAN)${ANSI_RESET}`);
-  console.log(SOLID_LINE);
+  console.log(`  ${ANSI_BOLD}${"SESSION ID".padEnd(28)}  ${"TITLE".padEnd(32)}  ${"MODEL".padEnd(20)}  ${"COST".padEnd(10)}${ANSI_RESET}`);
+  console.log(`  ${ANSI_GRAY}${"─".repeat(95)}${ANSI_RESET}`);
 
-  let grandTotalCost = 0;
+  for (const r of rows) {
+    const model = parseModelName(r.model);
+    const title = r.title.length > 30 ? r.title.slice(0, 27) + "..." : r.title.padEnd(30);
+    const id = r.id.padEnd(28);
+    const modelStr = model.length > 18 ? model.slice(0, 15) + "..." : model.padEnd(18);
+    const costStr = `$ ${r.cost.toFixed(2)}`;
 
-  filtered.forEach((s, idx) => {
-    const inp = s.tokensInput || 0;
-    const out = s.tokensOutput || 0;
-    const reas = s.tokensReasoning || 0;
-    const cRead = s.tokensCacheRead || 0;
-
-    const cost = calculateEstCost(s.modelId, inp, out, cRead);
-    grandTotalCost += cost;
-
-    const dateStr = formatDate(s.timeCreated);
-
-    // Format tool usage
-    const toolSummaryStr =
-      s.toolCount && Object.keys(s.toolCount).length > 0
-        ? Object.entries(s.toolCount)
-            .sort((a, b) => b[1] - a[1])
-            .map(([t, c]) => `${t} (${c}x)`)
-            .join(", ")
-        : "-";
-
-    console.log(`[${idx + 1}] Session ID : ${s.id}`);
-    console.log(`    Waktu      : ${dateStr}`);
-    console.log(`    Title      : ${s.title || "-"}`);
-    console.log(`    Directory  : ${s.directory || "-"}`);
-    console.log(`    Model      : ${s.modelId}`);
-    console.log(`    Tokens     : Input: ${formatNumber(inp)} | Output: ${formatNumber(out)} | Reasoning: ${formatNumber(reas)}`);
-    console.log(`    Cache Read : ${formatNumber(cRead)} Tokens`);
-    console.log(`    Est. Cost  : ${formatCost(cost)} USD`);
-    console.log(`    Tool Usage : ${toolSummaryStr}`);
-
-    if (s.modifiedFiles && s.modifiedFiles.length > 0) {
-      console.log(`    Modified   :`);
-      s.modifiedFiles.forEach((f) => console.log(`       - ${f}`));
-    }
-
-    if (idx < filtered.length - 1) {
-      console.log(SOLID_LINE);
-    }
-  });
-
-  console.log(SOLID_LINE);
-  console.log(`${ANSI_BOLD}TOTAL SESI DITAMPILKAN : ${filtered.length} Sesi${ANSI_RESET}`);
-  console.log(`${ANSI_BOLD}TOTAL ESTIMASI COST    : ${formatCost(grandTotalCost)} USD${ANSI_RESET}`);
-  console.log(SOLID_LINE + "\n");
+    console.log(`  ${ANSI_CYAN}${id}${ANSI_RESET}  ${ANSI_BOLD}${title}${ANSI_RESET}  ${ANSI_YELLOW}${modelStr}${ANSI_RESET}  ${ANSI_GRAY}${costStr}${ANSI_RESET}`);
+  }
+  console.log();
 
   return 0;
-}
-
-// ─── Entry point ─────────────────────────────────────────────
-
-const isMainModule = (() => {
-  const arg1 = process.argv[1];
-  if (!arg1) return false;
-  try {
-    const selfPath = new URL(import.meta.url).pathname;
-    return selfPath === arg1 || arg1.endsWith("sessions.ts");
-  } catch {
-    return arg1.endsWith("sessions.ts");
-  }
-})();
-
-if (isMainModule) {
-  handleSessionsCommand(process.argv.slice(2))
-    .then((code) => exit(code))
-    .catch((err) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      stderr.write(`💥 gn sessions crash: ${msg}\n`);
-      exit(1);
-    });
 }
