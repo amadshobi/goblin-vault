@@ -14,7 +14,7 @@
 
 ---
 
-## [Unreleased]
+## [v0.3.34] - 2026-08-12
 
 - **`gn` v2.0.0 Refactor**: Storage cache terpusat di `~/.config/gn/cache/` dengan auto-migration, dual-mode execution (`gn ping` & `gn bench` cache instant ~5ms vs `--force` live hit), upgrade total icons CLI ke Nerd Font (`󰄬`, `󰅚`, `󰀦`, `󰓅`, `󰒓`, `󱈸`, `󱎫`, `󰋼`, `󰑐`, `󰈙`, `󰓹`, `󰋽`, `󰚌`, `󰘚`), layout `gn usage` 1-line padat dengan thin-line progress bar (`━━━━────────`), Daily Tokens & Subagent Activity Tree (`gn u -t`), File Modification Audit Mode (`gn u -f`), Compact Table mode (`gn u -t -m`), Session Explorer (`gn s list`), Dual-Level Help Standard, dan fuzzy Levenshtein error matcher (`utils/error.ts`). → [detail](docs/CHANGELOG/gn.md)
 - **`gn ping` Live Probe Reliability**: Perbaikan mode `gn p <provider> --force` dengan Clack spinner per-model tanpa label berisik, payload probe valid (`Reply with only: ok`, `max_tokens: 50`), timeout default 10 detik, dan preservasi tampilan cache boxed table. → [detail](docs/CHANGELOG/gn.md)
