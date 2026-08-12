@@ -38,6 +38,12 @@ jobs:
       - name: Add tools-cli/bin to PATH
         run: echo "$GITHUB_WORKSPACE/tools-cli/bin" >> $GITHUB_PATH
 
+      - name: Install tool dependencies (gn, gb & sup)
+        run: |
+          cd tools-cli/src/gn && bun install
+          cd ../gb && bun install
+          cd ../sup && bun install
+
       - name: Shell & JS syntax check
         run: ./scripts/check_syntax.js --full
 
