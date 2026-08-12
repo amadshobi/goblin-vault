@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as p from "@clack/prompts";
 import { getOpenCodeDb } from "../utils/db";
 import { readGnCache, writeGnCache } from "../utils/paths";
-import { resolveProviderAlias, formatModelDisplayId } from "../utils/config-alias";
+import { resolveProviderAlias, formatModelDisplayId, parseModelsYml } from "../utils/ping-config";
 import {
   printGnHeader,
   formatBoxTable,
@@ -251,7 +251,7 @@ async function pingProviderLive(provider: string): Promise<PingCachePayload> {
     }
 
     const data = (await res.json()) as { data?: Array<{ id: string; owned_by?: string }> };
-    const allModels = data.data || [];
+    const allModels = [...(data.data || []), ...parseModelsYml()];
     const filtered = allModels.filter((m) => {
       const owned = (m.owned_by || "").toLowerCase();
       const id = (m.id || "").toLowerCase();
@@ -270,9 +270,9 @@ async function pingProviderLive(provider: string): Promise<PingCachePayload> {
       return { timestamp: Date.now(), provider, items };
     }
 
-    console.log(`  ${ANSI_GRAY}Live test: ${filtered.length > 15 ? "first 15 models" : `${filtered.length} models`}${ANSI_RESET}\n`);
+    console.log(`  ${ANSI_GRAY}Live test: ${filtered.length} models${ANSI_RESET}\n`);
 
-    const sampleModels = filtered.slice(0, 15);
+    const sampleModels = filtered;
     const displayIds = sampleModels.map((m) => formatModelDisplayId(m.id, provider));
     const modelWidth = getPingModelWidth(displayIds);
 
@@ -288,13 +288,29 @@ async function pingProviderLive(provider: string): Promise<PingCachePayload> {
       const spinner = p.spinner();
       spinner.start(truncateMiddle(displayId, 42));
 
+      let pingUrl = "http://127.0.0.1:4000/v1/chat/completions";
+      const pingHeaders: Record<string, string> = { "Content-Type": "application/json" };
+      let payloadModelId = model.id;
+
+      const customModels = parseModelsYml();
+      const customModel = customModels.find((cm) => cm.id === model.id);
+      if (customModel && customModel.baseUrl) {
+        const apiType = customModel.api || "openai-completions";
+        const suffix = apiType === "openai-responses" ? "/responses" : "/chat/completions";
+        const cleanBase = customModel.baseUrl.endsWith("/") ? customModel.baseUrl.slice(0, -1) : customModel.baseUrl;
+        pingUrl = `${cleanBase}${suffix}`;
+        payloadModelId = customModel.localId;
+        if (customModel.apiKey) {
+          pingHeaders["Authorization"] = `Bearer ${customModel.apiKey}`;
+        }
+      }
 
       try {
-        const pingRes = await fetch("http://127.0.0.1:4000/v1/chat/completions", {
+        const pingRes = await fetch(pingUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: pingHeaders,
           body: JSON.stringify({
-            model: model.id,
+            model: payloadModelId,
             messages: [{ role: "user", content: "Reply with only: ok" }],
             max_tokens: PING_MAX_TOKENS,
           }),

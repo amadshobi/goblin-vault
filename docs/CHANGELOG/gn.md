@@ -36,6 +36,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **Fuzzy Levenshtein Error Matcher & Migration Hints (`utils/error.ts`)**:
   - Modul error handling dedicated dengan fuzzy suggestion untuk subcommand typo (`gn usag` -> `usage`) dan migration hints untuk command legacy (`gn stats`, `gn ollama`, `gn ocm`).
 
+### Fixed
+- **`gn ping` Model Limitation**: Menghapus batasan slice 15 model pada `gn ping <provider>` sehingga secara default menge-ping seluruh model yang dimiliki oleh provider tersebut (e.g. 503 model untuk `kilo`). Ini memperbaiki kelakuan di mana `gn p kilo` nampak kosong di cache mode karena 15 model pertama yang di-slice semuanya mengembalikan status non-200.
+
 ### Refactored
 - **Dual-Level Help Standard**:
   - Level-1 (`gn --help`): Tampilan makro ringkas daftar subcommand utama.
@@ -68,6 +71,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **Legacy Shell & Bench Scripts Cleanup**:
   - Dihapus: `quarantine.sh`, `config.ts`, `bench.ts`, `bench-roles.ts`, `bench-storage.ts`, `pool-manager.ts`, `agent.sh`, `picker.sh`, `price.ts`, dan `doctor.sh`.
   - Pembersihan total sisa rujukan dead code `price` dan `doctor.sh` dari `help-formatter.sh` & `gn.sh`.
+
+## [v2.0.1] - 2026-08-12
+
+### Added
+- **`gn ping / p` Custom Provider Live Probe (`ping-config.ts`)**:
+  - Modul baru `utils/ping-config.ts` menggantikan `config-alias.ts` — berisi parser `models.yml` (`~/.omp/agent/models.yml`) untuk auto-discovery custom model beserta `baseUrl`, `apiKey`, dan protokol `api` masing-masing.
+  - Ping live custom model otomatis me-route ke `baseUrl` provider dengan suffix protokol yang tepat (`openai-responses` → `/responses`, selainnya → `/chat/completions`), plus `Authorization: Bearer` dari `apiKey` custom.
+  - Payload model ID custom memakai `localId` asli dari `models.yml` alih-alih ID prefixed.
+
+### Changed
+- **`gn ping` Live Model Unification**: Model dari API response (gateway) kini digabung dengan model custom dari `models.yml` (`[...data.data, ...parseModelsYml()]`) sehingga semua model custom ikut ter-probe — tanpa lagi pembatasan slice 15 model pertama.
 
 ## [Unreleased]
 
