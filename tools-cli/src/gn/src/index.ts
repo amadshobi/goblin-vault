@@ -28,7 +28,7 @@ import {
 } from "./commands/doctor";
 
 /** Versi gn standalone v2.0.0 (Control Plane & Telemetry Core). */
-export const GN_VERSION = "2.0.0";
+export const GN_VERSION = "2.0.1";
 
 /**
  * Peta subcommand → handler.
