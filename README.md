@@ -89,7 +89,7 @@ Filosofi inti:
 | **[`fex`](tools-cli/src/fex/)** | File Explorer TUI — navigasi super cepat dengan fzf + tmux split mode. Subcommand: `tree`, `search`, `create`, `editor`, `path`, `kill`. Bookmark & state-machine navigation. | Go 1.22, Cobra, fzf, tmux | `fex` |
 | **[`gn`](tools-cli/src/gn/)** `v2.0.0` | Goblin Nexus CLI — Control Center core, AI adapter broker, bench tools, price/telemetry tracking, configuration manager. | Shell, TypeScript, Bun | `gn` |
 | **[`zf`](tools-cli/src/zf/)** | Zoxide & Tmux Helper — rapid directory navigation, session switcher, auto-launcher tools integration. | Pure Shell (Zsh) | `zf` |
-| **[`gb`](tools-cli/src/gb/)** `v2.1.1` | GitHub Assistant TUI — kelola Issue, PR, Auth, & Release GitHub langsung dari terminal. | Node.js, Clack TUI | `gb` |
+| **[`gb`](tools-cli/src/gb/)** `v2.2.0` | GitHub Assistant TUI & CLI — kelola Issue, PR, Auth, Releases, & GitHub App Bot actions (`status`, `token`, `comment`, `config`) langsung dari terminal. | Node.js, Clack TUI | `gb` |
 
 ---
 

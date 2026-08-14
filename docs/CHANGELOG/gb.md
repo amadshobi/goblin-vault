@@ -7,6 +7,26 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v2.2.0] - 2026-08-14
+
+### Added
+- **GitHub App Bot Persona Actions (`gb bot`)**:
+  - `gb bot status` / `gb bot info`: Memeriksa konektivitas kredensial GitHub App, identitas bot, repositori yang diizinkan (scope), dan daftar permissions secara visual via Clack UI.
+  - `gb bot token`: Menghasilkan short-lived installation access token (RS256 JWT auth) dan langsung mengalirkan token mentah (**raw stdout only**) tanpa formatting untuk keperluan shell piping (`export GITHUB_TOKEN=$(gb bot token)`).
+  - `gb bot comment <issueOrPR> [message]`: Memposting komentar resmi dari identitas Bot ke Issue atau Pull Request, mendukung opsi `--repo owner/repo` (auto-detect CWD repo) dan `--body-file <path>` untuk file komentar panjang/markdown report.
+  - `gb bot config`: Setup wizard interaktif via Clack untuk mengkonfigurasi App ID, Installation ID, dan Private Key (.pem / path) ke `~/.config/gb/settings.json` secara atomik dengan permission file terkunci `0600`.
+- **Hybrid Credential & File-Ref Expansion Architecture (`src/config/settings.ts`, `src/services/bot/credentials.ts`)**:
+  - Hirarki resolusi kredensial: Environment Variables (`GB_BOT_APP_ID`, `GB_BOT_INSTALLATION_ID`, `GB_BOT_PRIVATE_KEY`) > `~/.config/gb/settings.json` > `{file:...}` expansion.
+  - Mendukung file reference expansion `{file:/path/to/secret.json}` atau `{file:~/.secrets/key.pem}` untuk integrasi secret manager tanpa hardcoding key.
+- **Native RS256 JWT & Zero-Dependency Transport (`src/services/bot/jwt.ts`, `src/services/bot/client.ts`)**:
+  - Implementasi signing RS256 JWT murni menggunakan `node:crypto.createSign("RSA-SHA256")` dengan payload backdate `iat` 60s dan lifetime 120s.
+  - Client REST GitHub API berbasis native `node:https` tanpa library pihak ketiga tambahan.
+- **Dual-Level Help System for Bot**:
+  - Level 1 (`gb --help`) menambahkan topic `bot`.
+  - Level 2 (`gb help bot` / `gb bot --help`) menyajikan panduan manual mendalam untuk seluruh subcommand, flags, dan credential hierarchy.
+
+---
+
 ## [v2.1.3] - 2026-08-06
 
 ### Added

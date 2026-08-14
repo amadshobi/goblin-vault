@@ -14,6 +14,17 @@
 
 ---
 
+## [v0.3.35] - 2026-08-14
+
+### Added
+- **`gb` v2.2.0 (GitHub App Bot Persona Actions & Native RS256 JWT Auth)**:
+  - Peluncuran subcommand `gb bot` untuk automasi menggunakan identitas GitHub App resmi (App ID, Installation ID, dan Private Key .pem).
+  - Subcommands: `gb bot status` (visual audit koneksi, scopes, dan repositori via Clack), `gb bot token` (raw token minting khusus shell piping `export GITHUB_TOKEN=$(gb bot token)`), `gb bot comment <issue/PR> [pesan]` (+ `--repo` & `--body-file`), dan `gb bot config` (wizard interaktif konfigurasi).
+  - **Hybrid Credential & File-Ref Resolution**: Prioritas Env Vars (`GB_BOT_*`) > `~/.config/gb/settings.json` (mode `0600`) > `{file:...}` expansion untuk integrasi secret manager.
+  - **Native RS256 JWT & Zero-Dependency Client**: Pembuatan token JWT langsung menggunakan `node:crypto.createSign("RSA-SHA256")` dan HTTP transport native `node:https`. → [detail](docs/CHANGELOG/gb.md)
+
+---
+
 ## [v0.3.34] - 2026-08-12
 
 - **`gn` v2.0.0 Refactor**: Storage cache terpusat di `~/.config/gn/cache/` dengan auto-migration, dual-mode execution (`gn ping` & `gn bench` cache instant ~5ms vs `--force` live hit), upgrade total icons CLI ke Nerd Font (`󰄬`, `󰅚`, `󰀦`, `󰓅`, `󰒓`, `󱈸`, `󱎫`, `󰋼`, `󰑐`, `󰈙`, `󰓹`, `󰋽`, `󰚌`, `󰘚`), layout `gn usage` 1-line padat dengan thin-line progress bar (`━━━━────────`), Daily Tokens & Subagent Activity Tree (`gn u -t`), File Modification Audit Mode (`gn u -f`), Compact Table mode (`gn u -t -m`), Session Explorer (`gn s list`), Dual-Level Help Standard, dan fuzzy Levenshtein error matcher (`utils/error.ts`). → [detail](docs/CHANGELOG/gn.md)
