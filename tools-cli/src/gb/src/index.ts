@@ -50,6 +50,7 @@ import { releaseMenu } from "./services/release/menu";
 import { repoMenu, viewRepo, openRepo } from "./services/repo/menu";
 import { authMenu } from "./services/auth/menu";
 import { configMenu } from "./services/config/menu";
+import { botStatus, botToken, botComment, botConfig } from "./services/bot/actions";
 import { clearLastLines } from "./utils/format";
 import type { GHIssue } from "./types";
 
@@ -89,13 +90,39 @@ ${color.bold("Command:")}
   ${color.cyan("profile")}      Lihat & edit GitHub profile
   ${color.cyan("pr")}           Pull Requests (${color.cyan("pr review")} = AI review)
   ${color.cyan("issue")}        Issues (${color.cyan("issue view")}, ${color.cyan("issue summarize")}, ${color.cyan("issue analyze")})
+  ${color.cyan("bot")}          GitHub App Bot (${color.cyan("bot status")}, ${color.cyan("bot token")}, ${color.cyan("bot comment")}, ${color.cyan("bot config")})
 
 ${color.bold("Dual-Level Help:")}
   gb --help            Level 1: daftar command (ini)
   gb help <topic>      Level 2: manual per subcommand
   gb <cmd> --help      Level 2: manual per subcommand (alias)
 
-${color.dim("Topics: profile, pr, issue. Contoh: gb help pr / gb pr review --help")}
+${color.dim("Topics: profile, pr, issue, bot. Contoh: gb help bot / gb bot --help")}
+`;
+
+const HELP_BOT = `${color.bold("gb bot")} — GitHub App bot persona actions (native JWT auth)
+
+${color.bold("Penggunaan:")}
+  gb bot status                     Cek koneksi, identitas bot, permissions & repo scope
+  gb bot token                      Mint raw ephemeral installation token (machine-readable)
+  gb bot comment <id> <pesan>       Kirim komentar sebagai bot ke Issue/PR
+  gb bot config                     Setup konfigurasi bot interaktif (~/.config/gb/settings.json)
+  gb bot --help                     Tampilkan bantuan ini
+
+${color.bold("Flags & Opsi:")}
+  --repo <owner/repo>               Target repository (default: auto-detect repo aktif)
+  --body-file <path>                Baca pesan komentar dari file markdown/teks
+
+${color.bold("Credential Hierarchy:")}
+  1. Env Vars:     GB_BOT_APP_ID, GB_BOT_INSTALLATION_ID, GB_BOT_PRIVATE_KEY
+  2. Settings:     ~/.config/gb/settings.json (mode 0600)
+  3. File Ref:     Support pola {file:/path/to/key.pem} atau {file:~/.secrets/bot.json}
+
+${color.bold("Contoh:")}
+  gb bot status
+  export GITHUB_TOKEN=$(gb bot token)
+  gb bot comment 24 "✅ Build and test passed!"
+  gb bot comment 24 --body-file /tmp/ai-review.md --repo amadshobi/goblin-vault
 `;
 
 const HELP_PROFILE = `${color.bold("gb profile")} — lihat & edit GitHub profile
@@ -184,6 +211,8 @@ async function runCli(argv: string[]): Promise<number> {
       console.log(HELP_PR_REVIEW);
     } else if (cmd === "issue") {
       console.log(HELP_ISSUE);
+    } else if (cmd === "bot") {
+      console.log(HELP_BOT);
     } else {
       console.log(HELP_LEVEL1);
     }
@@ -193,6 +222,7 @@ async function runCli(argv: string[]): Promise<number> {
     if (sub === "profile") console.log(HELP_PROFILE);
     else if (sub === "pr") console.log(HELP_PR_REVIEW);
     else if (sub === "issue") console.log(HELP_ISSUE);
+    else if (sub === "bot") console.log(HELP_BOT);
     else console.log(HELP_LEVEL1);
     return 0;
   }
@@ -374,6 +404,63 @@ async function runCli(argv: string[]): Promise<number> {
 
     console.error(color.red(`Subcommand issue tidak dikenal: ${sub || "(kosong)"}`));
     console.log(HELP_ISSUE);
+    return 1;
+  }
+
+  // ---- Bot (GitHub App Bot Actions) ----
+  if (cmd === "bot") {
+    if (sub === "status" || sub === "info") {
+      return await botStatus();
+    }
+
+    if (sub === "token") {
+      return await botToken();
+    }
+
+    if (sub === "comment") {
+      let issueNum: string | undefined;
+      let explicitRepo: string | undefined;
+      let bodyFile: string | undefined;
+      const messageTokens: string[] = [];
+
+      for (let i = 2; i < argv.length; i++) {
+        const arg = argv[i];
+        if (arg === "--repo" || arg === "-r") {
+          explicitRepo = argv[++i];
+        } else if (arg.startsWith("--repo=")) {
+          explicitRepo = arg.slice(7);
+        } else if (arg === "--body-file" || arg === "-f") {
+          bodyFile = argv[++i];
+        } else if (arg.startsWith("--body-file=")) {
+          bodyFile = arg.slice(12);
+        } else if (arg.startsWith("-")) {
+          // ignore other unknown flags
+        } else if (!issueNum) {
+          issueNum = arg;
+        } else {
+          messageTokens.push(arg);
+        }
+      }
+
+      if (!issueNum) {
+        console.error(color.red("Nomor issue/PR wajib diisi. Contoh: gb bot comment 24 'Pesan'"));
+        return 1;
+      }
+
+      const inlineMessage = messageTokens.join(" ");
+
+      return await botComment(issueNum, inlineMessage, {
+        repo: explicitRepo,
+        bodyFile,
+      });
+    }
+
+    if (sub === "config") {
+      return await botConfig();
+    }
+
+    console.error(color.red(`Subcommand bot tidak dikenal: ${sub || "(kosong)"}`));
+    console.log(HELP_BOT);
     return 1;
   }
 
