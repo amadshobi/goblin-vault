@@ -21,7 +21,7 @@ export interface GBSettings extends Record<string, unknown> {
 /**
  * Expand tilde (~) prefix in file path to user's home directory.
  */
-function expandHome(filepath: string): string {
+export function expandHome(filepath: string): string {
   if (filepath.startsWith('~/') || filepath === '~') {
     return path.join(os.homedir(), filepath.slice(1));
   }
@@ -103,12 +103,18 @@ export function setBotSettings(partial: Partial<BotSettings>): GBSettings {
   const current = loadSettings();
   const currentBot = current.bot && typeof current.bot === 'object' ? current.bot : {};
   
+  const mergedBot: BotSettings = { ...currentBot, ...partial };
+
+  // Strip keys explicitly set to undefined or null to support key cleanup
+  for (const key of Object.keys(mergedBot)) {
+    if (mergedBot[key] === undefined || mergedBot[key] === null) {
+      delete mergedBot[key];
+    }
+  }
+
   const updatedSettings: GBSettings = {
     ...current,
-    bot: {
-      ...currentBot,
-      ...partial,
-    },
+    bot: mergedBot,
   };
 
   saveSettings(updatedSettings);

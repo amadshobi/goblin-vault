@@ -1,20 +1,11 @@
 import fs from 'fs';
-import path from 'path';
-import os from 'os';
-import { getBotSettings, resolveFileRef } from '../../config/settings';
+import { getBotSettings, resolveFileRef, expandHome } from '../../config/settings';
 
 export interface GBBotCredentials {
   readonly appId: string;
   readonly installationId: string;
   readonly privateKey: string;
   readonly source: 'env' | 'settings' | 'file-ref';
-}
-
-function expandHome(filepath: string): string {
-  if (filepath.startsWith('~/') || filepath === '~') {
-    return path.join(os.homedir(), filepath.slice(1));
-  }
-  return filepath;
 }
 
 /**
@@ -103,11 +94,21 @@ export function loadBotCredentials(): GBBotCredentials {
     );
   }
 
+  const isFileRef =
+    (typeof rawBotSettings.file === 'string' && rawBotSettings.file.startsWith('{file:')) ||
+    (typeof rawBotSettings.app_id === 'string' && rawBotSettings.app_id.startsWith('{file:')) ||
+    (typeof rawBotSettings.installation_id === 'string' && rawBotSettings.installation_id.startsWith('{file:')) ||
+    (typeof rawBotSettings.private_key === 'string' && rawBotSettings.private_key.startsWith('{file:')) ||
+    (typeof rawBotSettings.private_key_path === 'string' && rawBotSettings.private_key_path.startsWith('{file:'));
+
+  const credentialSource: 'env' | 'settings' | 'file-ref' = 
+    (envAppId || envInstId || envKey) ? 'env' : (isFileRef ? 'file-ref' : 'settings');
+
   return {
     appId: finalAppId,
     installationId: finalInstId,
     privateKey: resolvePrivateKey(finalKeyRaw),
-    source: (envAppId || envInstId || envKey) ? 'env' : 'settings',
+    source: credentialSource,
   };
 }
 

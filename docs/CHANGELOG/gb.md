@@ -10,6 +10,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [v2.2.0] - 2026-08-14
 
 ### Added
+
 - **GitHub App Bot Persona Actions (`gb bot`)**:
   - `gb bot status` / `gb bot info`: Memeriksa konektivitas kredensial GitHub App, identitas bot, repositori yang diizinkan (scope), dan daftar permissions secara visual via Clack UI.
   - `gb bot token`: Menghasilkan short-lived installation access token (RS256 JWT auth) dan langsung mengalirkan token mentah (**raw stdout only**) tanpa formatting untuk keperluan shell piping (`export GITHUB_TOKEN=$(gb bot token)`).
@@ -25,17 +26,24 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
   - Level 1 (`gb --help`) menambahkan topic `bot`.
   - Level 2 (`gb help bot` / `gb bot --help`) menyajikan panduan manual mendalam untuk seluruh subcommand, flags, dan credential hierarchy.
 
+### Fixed
+
+- **Stale Key Overwrite in Bot Config**: Menghapus field `private_key` saat pengguna mengonfigurasi path file (dan sebaliknya) agar tidak tertimpa kunci lama di `settings.json`.
+- **Short Flag Leaking in CLI Parser**: Memperbaiki pemindaian argv `gb bot comment` agar opsi `-f` dan `-r` tidak bocor ke dalam body pesan komentar.
+- **DRY Path Utility Deduplication**: Menyatukan fungsi `expandHome` ke `config/settings.ts` untuk digunakan bersama di seluruh service bot.
+
 ---
 
 ## [v2.1.3] - 2026-08-06
 
 ### Added
+
 - **FinOps Token & Cost Analytics Logger (`~/.config/gb/logs/`)**:
   - Otomatis mencatat metadata pemanggilan LLM, total token (input & output), timestamp, dan kalkulasi estimasi biaya dalam USD ke file JSONL terpisah (`pr-review.jsonl`, `issue-summarize.jsonl`, `issue-analyze.jsonl`).
   - **Token Price Config (`~/.config/gb/price.json`)**: Konfigurasi harga token independen per model (USD/1M tokens) dengan fallback rate `$0` jika model belum terdaftar.
 - **Modular Hybrid Prompt System (`src/prompts/` & `~/.config/gb/prompts/`)**:
   - Memisahkan built-in system prompt ke file Markdown terpisah (`pr-review.md`, `issue-summarize.md`, `issue-analyze.md`) dengan instruksi eksplisit output Bahasa Indonesia yang profesional dan tajam.
-  - Menghadirkan *Hybrid Prompt Engine*: User dapat meng-override system prompt per-fitur via `~/.config/gb/prompts/<name>.md`.
+  - Menghadirkan _Hybrid Prompt Engine_: User dapat meng-override system prompt per-fitur via `~/.config/gb/prompts/<name>.md`.
 - **Simple Model & Variant Manager (`~/.config/gb/models.json`)**:
   - Konfigurasi simpel `models.default` (id + variant) serta mapping preset `high`, `medium`, `low`.
   - Terintegrasi dengan CLI flags `--high`, `--medium`, `--low` di seluruh subcommand AI.
@@ -43,11 +51,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **Deep AI Technical Analysis Issue (`gb issue analyze <number>`)**: Subcommand analisis teknis mendalam per-issue.
 
 ### Security
+
 - **PAGER Env Hardening (`src/services/issue/view.ts`)**: Refactor `showInPager` dari `execSync` template literal ke `spawnSync` dengan array argv verbatim + allowlist pager aman (`less`, `more`, `most`, `bat`, `pg`, `view`) untuk mencegah Command Injection RCE.
 - **System Prompt File Isolation (`src/services/llm.ts`)**: System prompt multiline ditulis ke temporary file `@gb-sysprompt-*.txt` di `os.tmpdir()` untuk mencegah Shell Argument Splitting & limit `E2BIG`.
 - **READ-ONLY PR Review Boundaries (`src/services/pr/review.ts`)**: Membatasi tools OMP pada PR review khusus ke read-only tools (`read,glob,grep` - tanpa `bash`) agar AI Reviewer 100% fokus pada analisis diff tanpa melakukan mutasi repo/command sotoy.
 
 ### Changed
+
 - **OMP System Prompt Isolation & Smart Tool Usage**: Memanggil OMP CLI dengan `--system-prompt=@${sysTmpFile}` ditambah `--tools=read,glob,grep --approval-mode=yolo` untuk mengabaikan `~/.omp/SYSTEM.md` global 100%, menghemat token hingga 70%, serta menginstruksikan LLM untuk menggunakan tool secara efisien tanpa loop.
 - **Ultra-Clean TUI Streamer Layout & Dual-Level Help**:
   - Menyempurnakan layout TUI dengan header kontekstual (`omp/issue-summarize`, `omp/pr-review`), footer sejajar (`token count` + `cost USD`), serta penggantian ikon tool ke bullet `•` (sukses) dan `x` merah (gagal) tanpa fake micro-timer.
@@ -57,6 +67,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **Deep AI Technical Analysis Issue (`gb issue analyze <number>`)**: Subcommand analisis teknis mendalam per-issue.
 
 ### Changed
+
 - **OMP System Prompt Isolation**: Memanggil OMP CLI dengan `--system-prompt="<CUSTOM_PROMPT>"` ditambah `--no-tools --no-rules --no-skills` untuk mengabaikan `~/.omp/SYSTEM.md` global 100%, menghemat token hingga 70%, dan menghilangkan basa-basi pembuka.
 
 ---
@@ -64,6 +75,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [v2.1.2] - 2026-08-06
 
 ### Changed
+
 - **Pure OMP Single Engine Architecture**:
   - Menyederhanakan seluruh LLM execution layer (`src/services/llm.ts`) menjadi 100% berbasis OMP CLI (`omp --mode=json --no-session --hide-thinking`).
   - Menghapus ketergantungan fallback `opencode` & `curl` untuk menjamin zero-session-trash di disk dan respon yang ultra-fast & stateless.
@@ -74,6 +86,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [v2.1.1] - 2026-08-06
 
 ### Changed
+
 - **NDJSON LLM Streaming Engine & OMP Auto-Selection**:
   - `streamLLM` di `tools-cli/src/gb/src/services/llm.ts` kini otomatis mendeteksi keberadaan CLI `omp` (`hasCmd("omp")`) sebagai backend streaming non-TUI utama.
   - Memasang flag `--mode=json` dan `--print-thoughts` saat memanggil `omp` sehingga event `thinking_start`, `thinking_delta`, `thinking_end`, dan `tool_execution` diparsing secara real-time.
@@ -81,7 +94,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
   - Pembaruan label header visual terminal box menjadi `omp/assistant` saat mode OMP aktif.
 
 ## [v2.1.0] - 2026-08-06
+
 ### Changed
+
 - **Full TypeScript Porting & Sub Core Engine Adoption (`tools-cli/src/gb/src/`)**:
   - Porting 100% codebase `gb` dari JavaScript CJS mentah ke ESM TypeScript terstruktur di bawah `src/`.
   - Adopsi core engine dari `sub` (`renderer.ts`, `stream.ts`, `scanner.ts`, `session.ts`) untuk mendukung **Live Streaming LLM Output** real-time.
@@ -89,6 +104,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
   - Pembersihan total (purge) 100% file JS legacy lama di `commands/`, `utils/`, dan `index.js`.
 
 ### Added
+
 - **Subcommand Baru `gb issue summarize <number>` & `gb issue analyze`**:
   - `gb issue summarize`: Meringkas thread issue & komentar secara cerdas berbasis LLM dengan output Markdown streaming.
   - `gb issue analyze`: Mengkalkulasi severity & statistik backlog issue secara instant.
@@ -98,6 +114,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [v2.0.0] - 2026-08-06
 
 ### Changed
+
 - **Refactoring Rename `gh-blin` → `gb`**: Seluruh referensi tool `gh-blin` di-rename menjadi `gb` secara menyeluruh — binary, source code, changelog, dokumentasi, scripts, CI/CD, dan issue templates. Nama baru lebih ringkas dan konsisten dengan konvensi nama tool lain di Goblin Vault.
 
 ---
@@ -105,6 +122,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [v0.1.0] - 2026-08-06
 
 ### Added
+
 - **Subcommand Baru `gb profile` (View & Edit GitHub Profile via API)**:
   - Subcommand `gb profile view` / `gb profile` dengan tampilan visual **ANSI Box Card** yang rapi & presisi.
   - Interactive Edit Mode berbasis `@clack/prompts` untuk memperbarui Bio, Display Name, Company, Location, & Blog URL.
@@ -116,6 +134,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [0.0.4] - 2026-08-02
 
 ### Added
+
 - **OMP File Reference `@file` Prompt Handling**: `callOmp()` di `utils/ai.js` kini menulis prompt review ke temporary file `/tmp/gb-prompt-xxxx.txt` dan memanggil `omp -p "@${tmpFile}" --no-session --hide-thinking`. Ini secara mutlak menghapus limit OS `E2BIG` (Argument list too long) sehingga diff PR raksasa dapat di-review via `omp` tanpa crash.
 - **Accurate Model Reporting on Strategy Fallback**: `generateReview()` & `callLLM()` kini menyinkronkan nama model & backend aktual yang berhasil merespon ke metadata footer terminal box dan log JSON.
 - **Updated Default OMP Models (`models.json`)**: Default model `omp` untuk variant `high`, `medium`, `low`, dan `auto` diset ke `google-antigravity/gemini-3.6-flash`, sedangkan variant `none` diset ke `peezy/deepseek-v4-flash-0731`.
@@ -123,6 +142,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [0.0.3] - 2026-08-02
 
 ### Added
+
 - **5 Reasoning Effort Variant Flags** (`--high`, `--medium`, `--low`, `--auto`, `--none`):
   - Nested backend mapping default di `utils/models.json` (`models.backends[backend][variant]`) untuk dua backend: `opencode` dan `omp`.
   - Backend-aware resolver `resolveBackendVariantModel(backendName, variantOrModelName, cliOptions)` di `utils/config.js`:
@@ -143,13 +163,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [0.0.3] - 2026-08-02
 
 ### Added
-- **Backend `omp` Integration (Magic 3-Letter Syntax)**: Eksekusi AI review via runner `omp` (`omp -p ... --no-session --hide-thinking`) hanya dengan menambahkan kata `omp` di ujung perintah CLI (`gb pr review <number> omp`). Sifatnya *stateless & ephemeral* (0 file sampah session tersimpan di disk).
+
+- **Backend `omp` Integration (Magic 3-Letter Syntax)**: Eksekusi AI review via runner `omp` (`omp -p ... --no-session --hide-thinking`) hanya dengan menambahkan kata `omp` di ujung perintah CLI (`gb pr review <number> omp`). Sifatnya _stateless & ephemeral_ (0 file sampah session tersimpan di disk).
 - **5 Reasoning Effort / Variant Presets**: Dukungan 5 tingkat reasoning effort pada `gb` dan `omp`: `--high` (`claude-3-5-sonnet` / `high`), `--medium` (`gemini-3.5-flash` / `medium`), `--low` (`gemini-2.5-flash` / `low`), `--eff-auto` / `--variant auto` (`gemini-2.0-flash` / `auto`), dan `--none` (`deepseek-chat` / `off` / non-reasoning instan).
 - **Nested Backend Model Mapping (`utils/models.json`)**: Single source of truth yang memetakan model default dan variant presets secara terpisah antara backend `opencode` dan backend `omp`.
 
 ### Fixed
+
 - **CLI Flag Collision Fix**: Memisahkan makna flag `--auto` (khusus batch review seluruh PRs) dari variant effort `auto` (`--eff-auto` / `--variant auto`) untuk menghindari tabrakan logika.
-- **Error Context Preservation**: Tangkap `stderr` & error status dari `omp` (`callOmp`) agar tidak gagal diam-diam (*silent null return*).
+- **Error Context Preservation**: Tangkap `stderr` & error status dari `omp` (`callOmp`) agar tidak gagal diam-diam (_silent null return_).
 - **Subprocess Cache**: Penambahan in-memory cache pada `hasCmd()` per-process lifetime untuk mencegah puluhan subprocess `--version` tak perlu di batch mode.
 - **Precedence Warning**: Peringatan ramah di CLI jika flag `--model` dan `--variant` diset bersamaan, menjamin explicit `--model` selalu meng-override preset.
 - **Visual Box Alignment**: Pembungkusan `truncateVisual` pada footer terminal box `formatReview` agar lebar border kotak tetap persis 62 karakter secara konsisten meski nama model/variant sangat panjang.
@@ -157,6 +179,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [0.0.2] - 2026-08-01
 
 ### Added
+
 - **Model Variant Presets (`high`, `medium`, `low`)**:
   - `DEFAULT_VARIANTS` preset terdefinisi di `utils/config.js`: `high` (Default Utama: `claude-3-5-sonnet`), `medium` (`goblin-nexus/gemini-3.5-flash`), `low` (`gemini-2.5-flash`).
   - Helper `resolveVariantModel()` di `utils/config.js` untuk resolusi otomatis variant, active variant config (`config.variant`), dan custom model override per-variant (`variants.high`, `variants.medium`, `variants.low`).
@@ -197,5 +220,6 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [0.0.1] - 2026-07-06
 
 ### Added
+
 - `gb` — GitHub CLI wrapper.
 - `gh_tui` — GitHub TUI (issues, PRs, releases, repos).

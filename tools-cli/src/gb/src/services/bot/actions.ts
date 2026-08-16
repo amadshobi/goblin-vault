@@ -1,6 +1,4 @@
 import fs from 'fs';
-import path from 'path';
-import os from 'os';
 import color from 'picocolors';
 import {
   intro,
@@ -19,15 +17,8 @@ import {
   listInstallationRepos,
   postIssueComment,
 } from './client';
-import { setBotSettings, getBotSettings } from '../../config/settings';
+import { setBotSettings, getBotSettings, expandHome, type BotSettings } from '../../config/settings';
 import { getCurrentRepo } from '../gh';
-
-function expandHome(filepath: string): string {
-  if (filepath.startsWith('~/') || filepath === '~') {
-    return path.join(os.homedir(), filepath.slice(1));
-  }
-  return filepath;
-}
 
 export interface BotCommentOptions {
   repo?: string;
@@ -234,7 +225,7 @@ export async function botConfig(): Promise<number> {
   }
 
   const trimmedKey = String(keyInput).trim();
-  const partialUpdate: Record<string, string> = {
+  const partialUpdate: Partial<BotSettings> = {
     app_id: String(appId).trim(),
     installation_id: String(installationId).trim(),
   };
@@ -242,9 +233,10 @@ export async function botConfig(): Promise<number> {
   if (trimmedKey !== '(sudah ada PEM)') {
     if (trimmedKey.includes('-----BEGIN')) {
       partialUpdate.private_key = trimmedKey;
-      delete (partialUpdate as { private_key_path?: string }).private_key_path;
+      partialUpdate.private_key_path = undefined; // Strip path key from settings
     } else {
       partialUpdate.private_key_path = trimmedKey;
+      partialUpdate.private_key = undefined; // Strip inline PEM key from settings
     }
   }
 

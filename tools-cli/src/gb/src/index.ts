@@ -418,16 +418,36 @@ async function runCli(argv: string[]): Promise<number> {
     }
 
     if (sub === "comment") {
-      const issueNum = rest[0];
-      if (!issueNum || issueNum.startsWith("--")) {
+      let issueNum: string | undefined;
+      let explicitRepo: string | undefined;
+      let bodyFile: string | undefined;
+      const messageTokens: string[] = [];
+
+      for (let i = 2; i < argv.length; i++) {
+        const arg = argv[i];
+        if (arg === "--repo" || arg === "-r") {
+          explicitRepo = argv[++i];
+        } else if (arg.startsWith("--repo=")) {
+          explicitRepo = arg.slice(7);
+        } else if (arg === "--body-file" || arg === "-f") {
+          bodyFile = argv[++i];
+        } else if (arg.startsWith("--body-file=")) {
+          bodyFile = arg.slice(12);
+        } else if (arg.startsWith("-")) {
+          // ignore other unknown flags
+        } else if (!issueNum) {
+          issueNum = arg;
+        } else {
+          messageTokens.push(arg);
+        }
+      }
+
+      if (!issueNum) {
         console.error(color.red("Nomor issue/PR wajib diisi. Contoh: gb bot comment 24 'Pesan'"));
         return 1;
       }
 
-      const explicitRepo = getFlagValue(argv, "--repo") || getFlagValue(argv, "-r");
-      const bodyFile = getFlagValue(argv, "--body-file") || getFlagValue(argv, "-f");
-      const messageParts = rest.slice(1).filter((arg) => !arg.startsWith("--"));
-      const inlineMessage = messageParts.join(" ");
+      const inlineMessage = messageTokens.join(" ");
 
       return await botComment(issueNum, inlineMessage, {
         repo: explicitRepo,
