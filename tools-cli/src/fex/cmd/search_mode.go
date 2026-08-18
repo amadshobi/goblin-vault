@@ -57,9 +57,7 @@ func runSearchMode(sess *session.Session, initialQuery string, prevMode string) 
 			"esc", "?",
 			kb.SwitchMode, kb.Help, kb.CopyPath,
 			kb.MarkCopy, kb.MarkMove, kb.Paste,
-		}
-		if kb.Paste == "ctrl-v" {
-			expectedKeys = append(expectedKeys, "alt-v")
+			"alt-v", "alt-p", "ctrl-v",
 		}
 		seenKeys := make(map[string]bool)
 		var uniqueExpected []string
@@ -154,7 +152,7 @@ func runSearchMode(sess *session.Session, initialQuery string, prevMode string) 
 			}
 			continue
 
-		case pressed == strings.ToLower(kb.Paste) || pressed == "alt-v":
+		case pressed == strings.ToLower(kb.Paste) || pressed == "alt-v" || pressed == "alt-p" || pressed == "ctrl-v":
 			msg, err := ExecutePaste(dir)
 			if err != nil {
 				toast = fmt.Sprintf("⚠ [%s]", err.Error())

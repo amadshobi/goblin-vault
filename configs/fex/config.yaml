@@ -49,7 +49,7 @@ keybindings:
   # Clipboard & File Operations
   mark_copy: alt-c          # Tandai untuk Salin (Copy)
   mark_move: alt-m          # Tandai untuk Pindah (Move / Cut)
-  paste: ctrl-v             # Paste ke direktori aktif
+  paste: alt-v              # Paste ke direktori aktif (fallback: alt-p, ctrl-v)
   rename: ctrl-r            # Ganti nama (Rename)
   delete: ctrl-d            # Hapus (Delete dialog)
   new_file: ctrl-n          # Buat file baru (Tree mode)

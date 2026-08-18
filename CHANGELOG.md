@@ -31,7 +31,7 @@
   - **Master Vault Config & Auto-Migration**: Standardisasi config path ke `~/.config/fex/config.yaml` (bookmarks: `~/.cache/fex-bookmarks`) dengan fallback auto-migrasi dari legacy `~/.config/fe/` dan template master di `configs/fex/config.yaml`.
   - **Subcommand `fex backup` & `fex restore`**: Dukungan sinkronisasi config `fex backup fex|micro|nvim|all` dan `fex restore fex|micro|nvim|all`.
   - **Instant Mode Switcher (`Tab`)**: Beralih instan antara **Tree Mode (`🌳`)** dan **Flat Find (`🔍`)** tanpa keluar dari sesi.
-  - **Interactive File Clipboard Engine**: Tandai salin (`Alt-c`), pindah (`Alt-m`), dan tempel (`Ctrl-v`) dengan penanganan tabrakan nama otomatis, rekursif, dan retensi posisi kursor (`load:pos`).
+  - **Interactive File Clipboard Engine**: Tandai salin (`Alt-c`), pindah (`Alt-m`), dan tempel (`Alt-v` / `Ctrl-v`) dengan penanganan tabrakan nama otomatis, rekursif, dan retensi posisi kursor (`load:pos`).
   - **Context-Aware Git Action (`Ctrl-G`)**: Membuka Git History & Diff Viewer Split saat kursor di FILE, atau meluncurkan `lazygit` TUI saat kursor di FOLDER.
   - **Large Directory Warning Guard**: Popup peringatan fzf saat memindai direktori besar (`$HOME` / `/`) pada Flat Find untuk mencegah lag/freeze.
 - **Master Neovim Configuration by amadshobi (`configs/nvim/`)**:

@@ -105,15 +105,13 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 			headerPrefix, GetClipboardBadge(), kb.SwitchMode, kb.Git, kb.MarkCopy, kb.MarkMove, kb.Paste, kb.Help, kb.NewFile, kb.NewFolder, kb.Rename, kb.Delete, kb.Search, kb.CopyPath)
 		toast = "" // reset toast setelah dipakai
 
-		// Compile expected keys
+		// Compile expected keys (always accept alt-v, alt-p, ctrl-v as paste triggers)
 		expectedKeys := []string{
 			"esc", "?",
 			kb.SwitchMode, kb.Search, kb.Git, kb.Help, kb.CopyPath,
 			kb.MarkCopy, kb.MarkMove, kb.Paste, kb.Rename, kb.Delete,
 			kb.NewFile, kb.NewFolder,
-		}
-		if kb.Paste == "ctrl-v" {
-			expectedKeys = append(expectedKeys, "alt-v")
+			"alt-v", "alt-p", "ctrl-v",
 		}
 		// Dedup expected keys
 		seenKeys := make(map[string]bool)
@@ -293,7 +291,7 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 			}
 			continue
 
-		case pressed == strings.ToLower(kb.Paste) || pressed == "alt-v":
+		case pressed == strings.ToLower(kb.Paste) || pressed == "alt-v" || pressed == "alt-p" || pressed == "ctrl-v":
 			// Execute paste to currentDir
 			clipItem, _ := ReadClipboard()
 			if clipItem != nil {

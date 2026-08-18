@@ -160,7 +160,7 @@ keybindings:
   copy_path: ctrl-y # Copy path (OSC 52)
   mark_copy: alt-c # Copy mark
   mark_move: alt-m # Move mark
-  paste: ctrl-v # Paste
+  paste: alt-v # Paste (fallback: alt-p, ctrl-v)
   rename: ctrl-r # Rename
   delete: ctrl-d # Delete
   new_file: ctrl-n # New file

@@ -59,14 +59,12 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 			headerPrefix, GetClipboardBadge(), kb.SwitchMode, kb.Git, kb.MarkCopy, kb.MarkMove, kb.Paste, kb.Help, kb.Rename, kb.Delete, kb.Search, kb.Bookmark, kb.Unbookmark, kb.CopyPath)
 		toast = "" // reset toast setelah dipasang ke header
 
-		// Compile expected keys
+		// Compile expected keys (always accept alt-v, alt-p, ctrl-v as paste triggers)
 		expectedKeys := []string{
 			"?",
 			kb.SwitchMode, kb.Search, kb.Git, kb.Help, kb.CopyPath,
 			kb.MarkCopy, kb.MarkMove, kb.Paste, kb.Rename, kb.Delete,
-		}
-		if kb.Paste == "ctrl-v" {
-			expectedKeys = append(expectedKeys, "alt-v")
+			"alt-v", "alt-p", "ctrl-v",
 		}
 		// Dedup expected keys
 		seenKeys := make(map[string]bool)
@@ -188,7 +186,7 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 			}
 			continue
 
-		case pressed == strings.ToLower(kb.Paste) || pressed == "alt-v":
+		case pressed == strings.ToLower(kb.Paste) || pressed == "alt-v" || pressed == "alt-p" || pressed == "ctrl-v":
 			// Execute paste to current directory
 			clipItem, _ := ReadClipboard()
 			if clipItem != nil {
