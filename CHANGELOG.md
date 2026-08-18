@@ -5,6 +5,7 @@
 >
 > | Tool                                    | Changelog                                        |
 > | --------------------------------------- | ------------------------------------------------ |
+> | `pm` — Universal Package & Registry Mgr | [`docs/CHANGELOG/pm.md`](docs/CHANGELOG/pm.md)   |
 > | `sup` — Smart Universal Package Updater | [`docs/CHANGELOG/sup.md`](docs/CHANGELOG/sup.md) |
 > | `fex` — File Explorer (Go)              | [`docs/CHANGELOG/fex.md`](docs/CHANGELOG/fex.md) |
 > | `gn` — Goblin Nexus CLI                 | [`docs/CHANGELOG/gn.md`](docs/CHANGELOG/gn.md)   |
@@ -46,6 +47,14 @@
 ---
 
 ### Added
+
+- **`pm` v0.1.0 (Universal Package & Registry Manager — Rust + Ratatui + Tokio)**:
+  - **Refactor Sup & Peleburan `ins.sh`**: Menggantikan script updater TypeScript (`sup`) dan pencarian bash glue (`ins.sh`) menjadi satu binary Rust native yang komprehensif.
+  - **Unified 3-Tab Split-Pane TUI**: Tab 1 (Outdated Updates dengan background scanner & batch updater), Tab 2 (Live Multi-Registry Search & Install: Crates.io, NPM, PyPI, APT, Brew), Tab 3 (Installed Packages Browser).
+  - **10 Ekosistem Terpadu**: Dukungan `apt`, `snap`, `flatpak`, `bun`, `omp`, `rustup`, `brew`, `pip`, `npm`, `cargo`.
+  - **Safe Sudo Engine**: In-memory `Zeroizing<String>` buffer protection dengan injeksi aman stdin `sudo -S -p ""` (anti bentrok TTY).
+  - **Non-Blocking Async Event Loop**: UI render instan (<1ms) dengan streaming update via Tokio unbounded channel.
+  - **Backward-Compatible Shims**: `tools-cli/bin/sup` & `scripts/shell/ins.sh` otomatis mendelegasikan perintah ke `pm`. → [detail](docs/CHANGELOG/pm.md)
 
 - **`gn` v2.0.2 (Leaderboard Benchmark, Native OMP Usage Forwarding, & Tree Auth Matrix)**:
   - **Speed Leaderboard & Visual Benchmark Matrix (`gn bench`)**: Rombak total benchmark menjadi leaderboard terurut berdasarkan throughput (`tok/s`), visual throughput gauge bar (`████████░░░░`), **Smart Ping Cache Synergy** (otomatis hanya menguji model `200 OK` dari ping cache), Champion summary card, dan opsi `--top <N>` serta `--all`.

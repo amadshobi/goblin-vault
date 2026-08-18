@@ -213,7 +213,18 @@ install_tool_deps() {
     fi
 }
 
-# ── Step 3: Build Go Binary (fex) ────────────────────────────────────────────
+# ── Step 3: Build Rust Binary (pm) & Go Binary (fex) ─────────────────────────
+build_pm() {
+    local pm_src="$ROOT_DIR/tools-cli/src/pm"
+    if command -v cargo &>/dev/null; then
+        mkdir -p "$TOOLS_BIN" "$LOCAL_BIN"
+        (cd "$pm_src" && cargo build --release)
+        chmod +x "$TOOLS_BIN/pm" 2>/dev/null || true
+    else
+        return 1
+    fi
+}
+
 build_fex() {
     local fex_src="$ROOT_DIR/tools-cli/src/fex"
     if command -v go &>/dev/null; then
@@ -228,7 +239,7 @@ build_fex() {
 # ── Step 4: Universal Symlinking ─────────────────────────────────────────────
 link_binaries() {
     mkdir -p "$LOCAL_BIN" "$TOOLS_BIN"
-    local tools=("fex" "gn" "gb" "sup" "zf")
+    local tools=("fex" "gn" "gb" "pm" "sup" "zf")
     for t in "${tools[@]}"; do
         if [[ -f "$TOOLS_BIN/$t" ]]; then
             chmod +x "$TOOLS_BIN/$t" 2>/dev/null || true
@@ -416,6 +427,12 @@ get_sup_version() {
     [[ -n "$v" ]] && echo "v$v" || echo "v1.1.0"
 }
 
+get_pm_version() {
+    local v
+    v=$(grep '^version = ' "$ROOT_DIR/tools-cli/src/pm/Cargo.toml" 2>/dev/null | grep -oP '"[^"]+"' | tr -d '"' || true)
+    [[ -n "$v" ]] && echo "v$v" || echo "v0.1.0"
+}
+
 # ── Main Installation Flow ───────────────────────────────────────────────────
 clear 2>/dev/null || true
 echo -e "\n${BOLD}${CYAN}  ██████╗  ██████╗ ██████╗ ██╗     ██╗███╗   ██╗"
@@ -446,15 +463,17 @@ if [[ "$TARGET" == "all" || "$TARGET" == "gn" || "$TARGET" == "gb" || "$TARGET" 
     fi
 fi
 
-if [[ "$TARGET" == "all" || "$TARGET" == "fex" ]]; then
-    echo -e "\n${BOLD}${BLUE}🐹 [3/6] Mengompilasi Native Go Binary (fex)...${RESET}"
+if [[ "$TARGET" == "all" || "$TARGET" == "fex" || "$TARGET" == "pm" ]]; then
+    echo -e "\n${BOLD}${BLUE}🐹 [3/6] Mengompilasi Native Binaries (fex & pm)...${RESET}"
     FEX_V=$(get_fex_version)
+    PM_V=$(get_pm_version)
     run_with_spinner "Membangun fex $FEX_V -> $TOOLS_BIN/fex" build_fex
+    run_with_spinner "Membangun pm $PM_V -> $TOOLS_BIN/pm" build_pm
 fi
 
-if [[ "$TARGET" == "all" || "$TARGET" == "fex" || "$TARGET" == "gn" || "$TARGET" == "gb" || "$TARGET" == "sup" || "$TARGET" == "zf" ]]; then
+if [[ "$TARGET" == "all" || "$TARGET" == "fex" || "$TARGET" == "gn" || "$TARGET" == "gb" || "$TARGET" == "pm" || "$TARGET" == "sup" || "$TARGET" == "zf" ]]; then
     echo -e "\n${BOLD}${BLUE}🔗 [4/6] Menghubungkan Universal Symlinks ke ~/.local/bin/...${RESET}"
-    run_with_spinner "Membuat symlinks universal fex, gn, gb, sup, zf" link_binaries
+    run_with_spinner "Membuat symlinks universal fex, gn, gb, pm, sup, zf" link_binaries
 fi
 
 if [[ "$TARGET" == "all" || "$TARGET" == "config" || "$TARGET" == "fex" ]]; then
@@ -476,6 +495,7 @@ FEX_DISP=$(get_fex_version)
 GN_DISP=$(get_gn_version)
 GB_DISP=$(get_gb_version)
 SUP_DISP=$(get_sup_version)
+PM_DISP=$(get_pm_version)
 
 echo -e "\n${BOLD}${GREEN}╭──────────────────────────────────────────────────────────────────────────╮${RESET}"
 echo -e "${BOLD}${GREEN}│  🎉 GOBLIN ARSENAL DEPLOYED & SIAP TEMPUR!                               │${RESET}"
@@ -483,6 +503,7 @@ echo -e "${BOLD}${GREEN}├─────────────────�
 printf "${BOLD}${GREEN}│${RESET}  ${BOLD}${YELLOW}📁 %-5s${RESET} %-8s │ File Explorer TUI (fzf + tmux + git diff)             ${BOLD}${GREEN}│${RESET}\n" "fex" "$FEX_DISP"
 printf "${BOLD}${GREEN}│${RESET}  ${BOLD}${CYAN}🌐 %-5s${RESET} %-8s │ Control Center & AI Telemetry Plane                  ${BOLD}${GREEN}│${RESET}\n" "gn" "$GN_DISP"
 printf "${BOLD}${GREEN}│${RESET}  ${BOLD}${MAGENTA}🐙 %-5s${RESET} %-8s │ GitHub Assistant & Bot Manager                       ${BOLD}${GREEN}│${RESET}\n" "gb" "$GB_DISP"
+printf "${BOLD}${GREEN}│${RESET}  ${BOLD}${RED}🦀 %-5s${RESET} %-8s │ Universal Package & Registry Manager                 ${BOLD}${GREEN}│${RESET}\n" "pm" "$PM_DISP"
 printf "${BOLD}${GREEN}│${RESET}  ${BOLD}${BLUE}📦 %-5s${RESET} %-8s │ Universal Granular Package Updater                   ${BOLD}${GREEN}│${RESET}\n" "sup" "$SUP_DISP"
 printf "${BOLD}${GREEN}│${RESET}  ${BOLD}${WHITE}⚡ %-5s${RESET} %-8s │ Zoxide & Tmux Rapid Directory Engine                 ${BOLD}${GREEN}│${RESET}\n" "zf" "v0.2.0"
 echo -e "${BOLD}${GREEN}╰──────────────────────────────────────────────────────────────────────────╯${RESET}"

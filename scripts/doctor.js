@@ -225,7 +225,7 @@ console.log(
 	`${colors.bold}${colors.magenta}🔑 Vault CLI Binaries Integrity${colors.reset}`,
 );
 
-const vaultBinaries = ["fex", "gb", "gn", "sup", "zf"];
+const vaultBinaries = ["fex", "gb", "gn", "pm", "sup", "zf"];
 
 vaultBinaries.forEach((bin) => {
 	const resolved = runCmd(`command -v ${bin}`) || runCmd(`which ${bin}`);

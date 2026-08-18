@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────
+# Wrapper executable untuk Goblin Vault Package Manager (pm)
+# Thin launcher — auto-build jika belum ada, lalu exec binary Rust.
+# ─────────────────────────────────────────────────────────────
+set -euo pipefail
+
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+BIN_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+export GOBLIN_VAULT_ROOT="$(cd -P "$BIN_DIR/../.." >/dev/null 2>&1 && pwd)"
+PM_SRC_DIR="$GOBLIN_VAULT_ROOT/tools-cli/src/pm"
+TARGET_BIN="$PM_SRC_DIR/target/release/pm"
+DEBUG_BIN="$PM_SRC_DIR/target/debug/pm"
+
+# 1. Gunakan release binary jika ada
+if [[ -f "$TARGET_BIN" && -x "$TARGET_BIN" ]]; then
+  exec "$TARGET_BIN" "$@"
+fi
+
+# 2. Gunakan debug binary jika release belum di-build
+if [[ -f "$DEBUG_BIN" && -x "$DEBUG_BIN" ]]; then
+  exec "$DEBUG_BIN" "$@"
+fi
+
+# 3. Fallback auto-build via cargo jika binary belum ada
+if command -v cargo &>/dev/null; then
+  echo "⚙️  Building pm binary (first time setup)..." >&2
+  cargo build --manifest-path "$PM_SRC_DIR/Cargo.toml" --release >&2
+  if [[ -f "$TARGET_BIN" && -x "$TARGET_BIN" ]]; then
+    exec "$TARGET_BIN" "$@"
+  fi
+fi
+
+echo "❌ Error: Binary pm tidak ditemukan dan cargo gagal meng-compile!" >&2
+echo "💡 Goblin Roast Hint: Pastikan Rust toolchain terinstall via 'rustup'!" >&2
+exit 1
