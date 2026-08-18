@@ -284,9 +284,7 @@ export async function handleBenchCommand(argv: string[]): Promise<number> {
 		? new Date(payload.timestamp).toLocaleString("id-ID")
 		: "Unknown";
 
-	printGnHeader(
-		`BENCHMARK ENGINE v${payload.engineVersion || "2.0.0"} — ${provider.toUpperCase()}`,
-	);
+	printGnHeader(`BENCHMARK ENGINE — ${provider.toUpperCase()}`);
 	console.log(
 		`  Source       : ${isFromCache ? `${ANSI_CYAN}CACHE (Instant ~5ms)${ANSI_RESET} [${cachePath}]` : `${ANSI_YELLOW}LIVE BENCHMARK HIT (--force)${ANSI_RESET}`}`,
 	);
