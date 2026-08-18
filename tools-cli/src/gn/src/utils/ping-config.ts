@@ -161,12 +161,17 @@ export function parseModelsYml(): CustomModel[] {
             const modelId = rawId.startsWith(currentProvider + "/")
               ? rawId
               : `${currentProvider}/${rawId}`;
+            let resolvedKey = currentApiKey;
+            if (currentApiKey && process.env[currentApiKey]) {
+              resolvedKey = process.env[currentApiKey]!;
+            }
+
             customModels.push({
               id: modelId,
               owned_by: currentProvider,
               localId: rawId,
               baseUrl: currentBaseUrl,
-              apiKey: currentApiKey,
+              apiKey: resolvedKey,
               api: currentApi
             });
           }

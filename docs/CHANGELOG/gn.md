@@ -25,6 +25,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- **`gn ping` Environment Variable Resolver for `models.yml` (`utils/ping-config.ts`)**:
+  - Menambahkan auto-resolution untuk nilai `apiKey` yang berupa nama environment variable (misal `OPENCODE_API_KEY`, `KILO_API_KEY`) di `~/.omp/agent/models.yml`.
+  - Mencegah pengiriman nama literal variabel sebagai token otentikasi saat mengeksekusi probe live (`gn p <provider> -f`), memastikan model kustom terotentikasi dengan benar.
 - **`gn u -t` & `gn u -f` Multi-Day Window & `--all` Historical Support (`commands/usage.ts`, `utils/opencode-cli.ts`)**:
   - Menambahkan dukungan parsing fleksibel untuk flag window hari: `--day <N>`, `--days <N>`, `-d <N>`, `--day=<N>`, `--days=<N>`, dan direct positional number (e.g. `gn u -t 7`).
   - Menambahkan dukungan `--all`, `-a`, `--all-time` untuk menarik seluruh rekaman sesi dan token historis sejak hari pertama di OpenCode DB.
