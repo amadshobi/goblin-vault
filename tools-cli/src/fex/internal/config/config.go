@@ -4,17 +4,72 @@
 // Basi dari config.sh: tool detection, preview command,
 // find depth, editor chain, bookmarks path.
 //
-// Pake viper buat load YAML dari ~/.config/fe/config.yaml.
+// Pake viper buat load YAML dari ~/.config/fex/config.yaml
+// (fallback auto-migrate dari ~/.config/fe/config.yaml bila ada).
 // Fallback default config kalo file ga ada.
 // ==============================================================
 package config
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/viper"
 )
+
+// KeybindingsConfig — mapping shortcut aksi ke key fzf/terminal.
+type KeybindingsConfig struct {
+	// Navigation & Mode Switching
+	SwitchMode string `mapstructure:"switch_mode"` // default: tab
+	Search     string `mapstructure:"search"`      // default: ctrl-f
+	Git        string `mapstructure:"git"`         // default: ctrl-g
+	Help       string `mapstructure:"help"`        // default: ctrl-h
+	CopyPath   string `mapstructure:"copy_path"`   // default: ctrl-y
+
+	// Clipboard & File CRUD
+	MarkCopy  string `mapstructure:"mark_copy"`  // default: alt-c
+	MarkMove  string `mapstructure:"mark_move"`  // default: alt-m
+	Paste     string `mapstructure:"paste"`      // default: ctrl-v
+	Rename    string `mapstructure:"rename"`     // default: ctrl-r
+	Delete    string `mapstructure:"delete"`     // default: ctrl-d
+	NewFile   string `mapstructure:"new_file"`   // default: ctrl-n
+	NewFolder string `mapstructure:"new_folder"` // default: ctrl-k
+
+	// In-TUI Preview & Bookmarks
+	TogglePreview string `mapstructure:"toggle_preview"` // default: ctrl-p
+	ToggleLayout  string `mapstructure:"toggle_layout"`  // default: ctrl-s
+	Bookmark      string `mapstructure:"bookmark"`       // default: ctrl-b
+	Unbookmark    string `mapstructure:"unbookmark"`     // default: ctrl-x
+	TmuxPane      string `mapstructure:"tmux_pane"`      // default: ctrl-o
+
+	// Custom raw fzf bindings (opsional)
+	Custom map[string]string `mapstructure:"custom"`
+}
+
+// DefaultKeybindings — default keys untuk semua aksi fex.
+func DefaultKeybindings() KeybindingsConfig {
+	return KeybindingsConfig{
+		SwitchMode:    "tab",
+		Search:        "ctrl-f",
+		Git:           "ctrl-g",
+		Help:          "ctrl-h",
+		CopyPath:      "ctrl-y",
+		MarkCopy:      "alt-c",
+		MarkMove:      "alt-m",
+		Paste:         "ctrl-v",
+		Rename:        "ctrl-r",
+		Delete:        "ctrl-d",
+		NewFile:       "ctrl-n",
+		NewFolder:     "ctrl-k",
+		TogglePreview: "ctrl-p",
+		ToggleLayout:  "ctrl-s",
+		Bookmark:      "ctrl-b",
+		Unbookmark:    "ctrl-x",
+		TmuxPane:      "ctrl-o",
+		Custom:        map[string]string{},
+	}
+}
 
 // Config — struktur utama config YAML.
 // Padanan struct dari variable-variable di config.sh + defaults.
@@ -32,23 +87,25 @@ type Config struct {
 	EditorOpts string `mapstructure:"editor_opts"` // flags tambahan buat editor
 
 	// Tmux
-	TmuxPrefix   string `mapstructure:"tmux_prefix"`   // misal: C-b, C-a
+	TmuxPrefix   string `mapstructure:"tmux_prefix"`    // misal: C-b, C-a
 	TmuxSplitPct int    `mapstructure:"tmux_split_pct"` // default 30
 
-	// FZF
-	FzfOpts map[string]string `mapstructure:"fzf_opts"` // keybinding overrides
+	// Keybindings
+	Keybindings KeybindingsConfig `mapstructure:"keybindings"`
+
+	// FZF Legacy / Direct Map
+	FzfOpts map[string]string `mapstructure:"fzf_opts"` // extra keybinding overrides
 
 	// Layout
 	PreviewSize string `mapstructure:"preview_size"` // responsive, auto-detect dari terminal height
 }
 
 // DefaultConfig — fallback values kalo file config ga ada.
-// Nilai-nilai ini nyocokin sama default dari config.sh.
 func DefaultConfig() *Config {
 	home, _ := os.UserHomeDir()
 	return &Config{
-		BookmarksFile: filepath.Join(home, ".cache", "fe-bookmarks"),
-		ConfigHome:    filepath.Join(home, ".config", "fe"),
+		BookmarksFile: filepath.Join(home, ".cache", "fex-bookmarks"),
+		ConfigHome:    filepath.Join(home, ".config", "fex"),
 		FindDepth:     5,
 		FindFilter:    `-not -path "*/.npm/*" -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/__pycache__/*" -not -path "*/vendor/*" -not -path "*/target/debug/*" -not -path "*/dist/*"`,
 		PreviewCmd:    "", // auto-detect di Init()
@@ -56,12 +113,14 @@ func DefaultConfig() *Config {
 		Editor:        "", // auto-detect
 		TmuxPrefix:    "C-b",
 		TmuxSplitPct:  30,
+		Keybindings:   DefaultKeybindings(),
 		FzfOpts:       map[string]string{},
 		PreviewSize:   "up:75%",
 	}
 }
 
-// Load — load YAML config dari ~/.config/fe/config.yaml.
+// Load — load YAML config dari ~/.config/fex/config.yaml.
+// Kalo belum ada tapi ~/.config/fe/config.yaml ada, otomatis copy migrasi.
 // Kalo file ga ada, init default + create file.
 func Load() (*Config, error) {
 	home, err := os.UserHomeDir()
@@ -69,20 +128,30 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	configDir := filepath.Join(home, ".config", "fe")
+	configDir := filepath.Join(home, ".config", "fex")
 	configFile := filepath.Join(configDir, "config.yaml")
 
-	// Ensure config dir exists
+	legacyConfigDir := filepath.Join(home, ".config", "fe")
+	legacyConfigFile := filepath.Join(legacyConfigDir, "config.yaml")
+
+	// Ensure new config dir exists
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return nil, err
+	}
+
+	// Auto-migrate dari legacy ~/.config/fe/config.yaml jika ~/.config/fex/config.yaml belum ada
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		if _, legErr := os.Stat(legacyConfigFile); legErr == nil {
+			_ = copyFile(legacyConfigFile, configFile)
+		}
 	}
 
 	v := viper.New()
 	v.SetConfigFile(configFile)
 	v.SetConfigType("yaml")
 
-	// Bind env vars (uppercase, underscore)
-	v.SetEnvPrefix("FE")
+	// Bind env vars: FEX_* (prioritas utama) dan FE_* (legacy backward compatibility)
+	v.SetEnvPrefix("FEX")
 	v.AutomaticEnv()
 
 	// Set defaults dari DefaultConfig
@@ -98,6 +167,23 @@ func Load() (*Config, error) {
 	v.SetDefault("tmux_prefix", dc.TmuxPrefix)
 	v.SetDefault("tmux_split_pct", dc.TmuxSplitPct)
 	v.SetDefault("preview_size", dc.PreviewSize)
+	v.SetDefault("keybindings.switch_mode", dc.Keybindings.SwitchMode)
+	v.SetDefault("keybindings.search", dc.Keybindings.Search)
+	v.SetDefault("keybindings.git", dc.Keybindings.Git)
+	v.SetDefault("keybindings.help", dc.Keybindings.Help)
+	v.SetDefault("keybindings.copy_path", dc.Keybindings.CopyPath)
+	v.SetDefault("keybindings.mark_copy", dc.Keybindings.MarkCopy)
+	v.SetDefault("keybindings.mark_move", dc.Keybindings.MarkMove)
+	v.SetDefault("keybindings.paste", dc.Keybindings.Paste)
+	v.SetDefault("keybindings.rename", dc.Keybindings.Rename)
+	v.SetDefault("keybindings.delete", dc.Keybindings.Delete)
+	v.SetDefault("keybindings.new_file", dc.Keybindings.NewFile)
+	v.SetDefault("keybindings.new_folder", dc.Keybindings.NewFolder)
+	v.SetDefault("keybindings.toggle_preview", dc.Keybindings.TogglePreview)
+	v.SetDefault("keybindings.toggle_layout", dc.Keybindings.ToggleLayout)
+	v.SetDefault("keybindings.bookmark", dc.Keybindings.Bookmark)
+	v.SetDefault("keybindings.unbookmark", dc.Keybindings.Unbookmark)
+	v.SetDefault("keybindings.tmux_pane", dc.Keybindings.TmuxPane)
 
 	// Try read config file
 	if _, err := os.Stat(configFile); err == nil {
@@ -108,7 +194,6 @@ func Load() (*Config, error) {
 		// File ga ada — write default config
 		if err := v.SafeWriteConfigAs(configFile); err != nil {
 			// Non-fatal: maybe concurrent write, just log
-			// TODO: log warning
 		}
 	}
 
@@ -121,6 +206,24 @@ func Load() (*Config, error) {
 	cfg.Init()
 
 	return &cfg, nil
+}
+
+// copyFile — helper untuk migrasi config file sederhana.
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	return err
 }
 
 // Init — auto-detect tools di sistem (padanan config.sh lines 17-61).

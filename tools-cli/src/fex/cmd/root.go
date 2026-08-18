@@ -19,8 +19,8 @@ import (
 
 // Build-time vars — diisi pas build (ldflags)
 var (
-	Version = "0.2.0"
-	Date    = "2026-07-25"
+	Version = "0.3.16"
+	Date    = "2026-08-18"
 )
 
 // flagVars — holds parsed CLI flags
@@ -167,7 +167,7 @@ Keybindings (in TUI):
 				fallthrough
 			default:
 				prevMode = "find"
-				nextMode, err := runFindMode(sess, sess.GetCwd(), extFilter, cfg, flagFindMode)
+				nextMode, err := runFindMode(sess, sess.GetCwd(), extFilter, cfg, true)
 				if err != nil || nextMode == "" {
 					return err
 				}

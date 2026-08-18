@@ -2,8 +2,10 @@
 // cmd/backup.go — Backup & restore configs to/from goblin-vault
 //
 // Usage:
-//   fex backup micro    — backup micro config → goblin-vault/configs/micro/
-//   fex restore micro   — restore micro config → ~/.config/micro/
+//
+//	fex backup micro    — backup micro config → goblin-vault/configs/micro/
+//	fex restore micro   — restore micro config → ~/.config/micro/
+//
 // ==============================================================
 package cmd
 
@@ -133,9 +135,87 @@ func runRestoreMicro(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// ── resolveFexDirs ───────────────────────────────────────────
+func resolveFexDirs() (configDir string, vaultDir string, err error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", "", fmt.Errorf("home dir: %w", err)
+	}
+	configDir = filepath.Join(home, ".config", "fex")
+	vaultDir = filepath.Join(goblinVaultRoot(), "configs", "fex")
+	return configDir, vaultDir, nil
+}
+
+// ── backupFex — copy ~/.config/fex/config.yaml → configs/fex/ ──
+func runBackupFex(cmd *cobra.Command, args []string) error {
+	configDir, vaultDir, err := resolveFexDirs()
+	if err != nil {
+		return err
+	}
+
+	src := filepath.Join(configDir, "config.yaml")
+	dst := filepath.Join(vaultDir, "config.yaml")
+
+	// Skip if source doesn't exist
+	if _, err := os.Stat(src); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "  ⏭  skip (not found): ~/.config/fex/config.yaml\n")
+		return nil
+	}
+
+	if err := copyFile(src, dst); err != nil {
+		fmt.Fprintf(os.Stderr, "  ❌  %s\n", err)
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "  ✅  config.yaml\n")
+	fmt.Fprintf(os.Stderr, "\n📦  Backed up fex config to %s\n", vaultDir)
+	return nil
+}
+
+// ── restoreFex — copy configs/fex/config.yaml → ~/.config/fex/ ─
+func runRestoreFex(cmd *cobra.Command, args []string) error {
+	configDir, vaultDir, err := resolveFexDirs()
+	if err != nil {
+		return err
+	}
+
+	src := filepath.Join(vaultDir, "config.yaml")
+	dst := filepath.Join(configDir, "config.yaml")
+
+	if _, err := os.Stat(src); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "  ⏭  skip (not found in vault): configs/fex/config.yaml\n")
+		return nil
+	}
+
+	if err := copyFile(src, dst); err != nil {
+		fmt.Fprintf(os.Stderr, "  ❌  %s\n", err)
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "  ✅  → config.yaml\n")
+	fmt.Fprintf(os.Stderr, "\n📦  Restored fex config to %s\n", configDir)
+	return nil
+}
+
+// ── backupAll — backup micro + fex ───────────────────────────
+func runBackupAll(cmd *cobra.Command, args []string) error {
+	fmt.Fprintf(os.Stderr, "📦 [1/2] Backing up micro config...\n")
+	_ = runBackupMicro(cmd, args)
+	fmt.Fprintf(os.Stderr, "\n📦 [2/2] Backing up fex config...\n")
+	_ = runBackupFex(cmd, args)
+	return nil
+}
+
+// ── restoreAll — restore micro + fex ─────────────────────────
+func runRestoreAll(cmd *cobra.Command, args []string) error {
+	fmt.Fprintf(os.Stderr, "📦 [1/2] Restoring micro config...\n")
+	_ = runRestoreMicro(cmd, args)
+	fmt.Fprintf(os.Stderr, "\n📦 [2/2] Restoring fex config...\n")
+	_ = runRestoreFex(cmd, args)
+	return nil
+}
+
 // ── Cobra commands ───────────────────────────────────────────
 var backupCmd = &cobra.Command{
-	Use:   "backup",
+	Use:   "backup [micro|fex|all]",
 	Short: "Backup configs to goblin-vault",
 	Long:  `Backup editor/tool configs from ~/.config/ into goblin-vault/configs/.`,
 }
@@ -147,8 +227,22 @@ var backupMicroCmd = &cobra.Command{
 	RunE:  runBackupMicro,
 }
 
+var backupFexCmd = &cobra.Command{
+	Use:   "fex",
+	Short: "Backup fex file explorer config",
+	Long:  `Copy fex config file from ~/.config/fex/config.yaml to goblin-vault/configs/fex/config.yaml.`,
+	RunE:  runBackupFex,
+}
+
+var backupAllCmd = &cobra.Command{
+	Use:   "all",
+	Short: "Backup all tool configs (micro + fex)",
+	Long:  `Copy all tracked configs from ~/.config/ to goblin-vault/configs/.`,
+	RunE:  runBackupAll,
+}
+
 var restoreCmd = &cobra.Command{
-	Use:   "restore",
+	Use:   "restore [micro|fex|all]",
 	Short: "Restore configs from goblin-vault",
 	Long:  `Restore editor/tool configs from goblin-vault/configs/ into ~/.config/.`,
 }
@@ -160,10 +254,28 @@ var restoreMicroCmd = &cobra.Command{
 	RunE:  runRestoreMicro,
 }
 
+var restoreFexCmd = &cobra.Command{
+	Use:   "fex",
+	Short: "Restore fex file explorer config",
+	Long:  `Copy fex config file from goblin-vault/configs/fex/config.yaml to ~/.config/fex/config.yaml.`,
+	RunE:  runRestoreFex,
+}
+
+var restoreAllCmd = &cobra.Command{
+	Use:   "all",
+	Short: "Restore all tool configs (micro + fex)",
+	Long:  `Copy all tracked configs from goblin-vault/configs/ to ~/.config/.`,
+	RunE:  runRestoreAll,
+}
+
 func init() {
 	rootCmd.AddCommand(backupCmd)
 	backupCmd.AddCommand(backupMicroCmd)
+	backupCmd.AddCommand(backupFexCmd)
+	backupCmd.AddCommand(backupAllCmd)
 
 	rootCmd.AddCommand(restoreCmd)
 	restoreCmd.AddCommand(restoreMicroCmd)
+	restoreCmd.AddCommand(restoreFexCmd)
+	restoreCmd.AddCommand(restoreAllCmd)
 }

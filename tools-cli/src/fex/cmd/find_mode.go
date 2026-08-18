@@ -25,11 +25,28 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 	toast := ""
 	lastFocusItem := ""
 
+	// ── Large Directory Warning Guard ──
+	// Jika user memindai direktori besar (seperti $HOME atau /) tanpa ekstensi khusus
+	homeDir, _ := os.UserHomeDir()
+	cleanDir := filepath.Clean(dir)
+	if ext == "" && (cleanDir == homeDir || cleanDir == "/" || cleanDir == filepath.Dir(homeDir)) {
+		if !largeDirWarningDialog(cleanDir) {
+			// User batal scan ➔ switch balik ke tree mode dengan aman
+			return "tree", nil
+		}
+	}
+
 	for {
 		// ── Get file list ──
 		fileList := getFileList(dir, ext, cfg)
 		if fileList == "" {
 			return "", nil
+		}
+
+		// ── Dynamic Keybindings & Expected Keys ──
+		kb := config.DefaultKeybindings()
+		if sess.Config != nil {
+			kb = sess.Config.Keybindings
 		}
 
 		// ── Fzf opts ──
@@ -38,9 +55,30 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 		if headerPrefix != "" {
 			headerPrefix += " | "
 		}
-		opts.Header = headerPrefix + GetClipboardBadge() + "Enter:open | Tab:tree | Ctrl-g:git-diff | Alt-c:copy | Alt-m:move | Ctrl-v:paste | Ctrl-h:help | Ctrl-r:ren | Ctrl-d:del | Ctrl-f:search | Ctrl-b:bm | Ctrl-x:unbm | Ctrl-y:clip"
+		opts.Header = fmt.Sprintf("%s%sEnter:open | %s:tree | %s:git-diff | %s:copy | %s:move | %s:paste | %s:help | %s:ren | %s:del | %s:search | %s:bm | %s:unbm | %s:clip",
+			headerPrefix, GetClipboardBadge(), kb.SwitchMode, kb.Git, kb.MarkCopy, kb.MarkMove, kb.Paste, kb.Help, kb.Rename, kb.Delete, kb.Search, kb.Bookmark, kb.Unbookmark, kb.CopyPath)
 		toast = "" // reset toast setelah dipasang ke header
-		opts.Expected = "ctrl-r,ctrl-d,alt-c,alt-m,ctrl-v,alt-v,ctrl-h,?,tab,ctrl-g,ctrl-y,ctrl-f"
+
+		// Compile expected keys
+		expectedKeys := []string{
+			"?",
+			kb.SwitchMode, kb.Search, kb.Git, kb.Help, kb.CopyPath,
+			kb.MarkCopy, kb.MarkMove, kb.Paste, kb.Rename, kb.Delete,
+		}
+		if kb.Paste == "ctrl-v" {
+			expectedKeys = append(expectedKeys, "alt-v")
+		}
+		// Dedup expected keys
+		seenKeys := make(map[string]bool)
+		var uniqueExpected []string
+		for _, k := range expectedKeys {
+			k = strings.TrimSpace(strings.ToLower(k))
+			if k != "" && !seenKeys[k] {
+				seenKeys[k] = true
+				uniqueExpected = append(uniqueExpected, k)
+			}
+		}
+		opts.Expected = strings.Join(uniqueExpected, ",")
 		if findMode {
 			opts.BorderLabel = fmt.Sprintf(" 🔍 %s%s ", filepath.Base(dir), extStr(ext))
 		} else {
@@ -52,7 +90,7 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 		opts.Cycle = true
 
 		// ── In-fzf bindings ──
-		opts.Bindings = buildFindModeBindings(dir, sess.GetBookmarksFile(), tmux.RightPaneID())
+		opts.Bindings = buildFindModeBindings(dir, sess.GetBookmarksFile(), tmux.RightPaneID(), kb)
 
 		// ── Maintain cursor focus on the active / pasted item ──
 		if lastFocusItem != "" {
@@ -78,16 +116,17 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 		}
 
 		// ── Route by pressed key ──
-		switch result.ExpectedKey {
-		case "tab":
+		pressed := strings.ToLower(result.ExpectedKey)
+		switch {
+		case pressed == strings.ToLower(kb.SwitchMode):
 			// Switch mode: Flat Find ➔ Tree Mode
 			return "tree", nil
 
-		case "ctrl-f":
+		case pressed == strings.ToLower(kb.Search):
 			// Switch mode: Flat Find ➔ Interactive Search Mode
 			return "search", nil
 
-		case "ctrl-g":
+		case pressed == strings.ToLower(kb.Git):
 			// Open interactive per-file Git History & Diff Viewer Split
 			if len(result.Selected) == 0 {
 				continue
@@ -99,7 +138,7 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 			}
 			continue
 
-		case "ctrl-y":
+		case pressed == strings.ToLower(kb.CopyPath):
 			// Copy relative/abs path to system clipboard (OSC 52 + tools)
 			if len(result.Selected) == 0 {
 				continue
@@ -113,15 +152,15 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 			}
 			continue
 
-		case "ctrl-h", "?":
+		case pressed == strings.ToLower(kb.Help) || pressed == "?":
 			// Open interactive keybindings help popup
 			if len(result.Selected) > 0 {
 				lastFocusItem = result.Selected[0]
 			}
-			helpDialog()
+			helpDialog(sess.Config)
 			continue
 
-		case "alt-c":
+		case pressed == strings.ToLower(kb.MarkCopy):
 			// Mark selected file/dir for copy
 			if len(result.Selected) == 0 {
 				continue
@@ -135,7 +174,7 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 			}
 			continue
 
-		case "alt-m":
+		case pressed == strings.ToLower(kb.MarkMove):
 			// Mark selected file/dir for move
 			if len(result.Selected) == 0 {
 				continue
@@ -149,7 +188,7 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 			}
 			continue
 
-		case "ctrl-v", "alt-v":
+		case pressed == strings.ToLower(kb.Paste) || pressed == "alt-v":
 			// Execute paste to current directory
 			clipItem, _ := ReadClipboard()
 			if clipItem != nil {
@@ -163,7 +202,7 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 			}
 			continue
 
-		case "ctrl-r":
+		case pressed == strings.ToLower(kb.Rename):
 			// Rename — exit fzf → Go dialog → loop
 			if len(result.Selected) == 0 {
 				continue
@@ -179,8 +218,9 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 				continue
 			}
 			lastFocusItem = newName
+			continue
 
-		case "ctrl-d":
+		case pressed == strings.ToLower(kb.Delete):
 			// Delete — exit fzf → Go dialog → loop
 			if len(result.Selected) == 0 {
 				continue
@@ -193,6 +233,7 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 					toast = fmt.Sprintf("🗑️ [Deleted: %s]", filepath.Base(target))
 				}
 			}
+			continue
 
 		default:
 			// Normal Enter — open file

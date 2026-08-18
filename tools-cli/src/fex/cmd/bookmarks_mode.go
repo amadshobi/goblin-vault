@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"civil/goblin-vault/tools-cli/src/fex/internal/config"
 	"civil/goblin-vault/tools-cli/src/fex/internal/fzf"
 	"civil/goblin-vault/tools-cli/src/fex/internal/session"
 	"civil/goblin-vault/tools-cli/src/fex/internal/tmux"
@@ -39,8 +40,12 @@ func runBookmarksMode(sess *session.Session) error {
 		opts.Cycle = true
 
 		// ── In-fzf bindings ──
+		kb := config.DefaultKeybindings()
+		if sess.Config != nil {
+			kb = sess.Config.Keybindings
+		}
 		dir := sess.GetCwd()
-		opts.Bindings = buildFindModeBindings(dir, sess.GetBookmarksFile(), tmux.RightPaneID())
+		opts.Bindings = buildFindModeBindings(dir, sess.GetBookmarksFile(), tmux.RightPaneID(), kb)
 
 		result, err := fzf.Run(strings.Join(bookmarks, "\n"), opts)
 		if err != nil {

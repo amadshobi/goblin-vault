@@ -30,7 +30,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **Universal Clipboard & Search Switcher (`cmd/dialogs.go`, `cmd/clipboard.go`)**:
   - **`Ctrl-Y` Universal Clipboard**: Menggunakan ANSI sequence universal **OSC 52** (kompatibel penuh dengan Tmux, WezTerm, Alacritty, Kitty, Windows Terminal) + fallback `wl-copy`, `xclip`, `pbcopy` dan menampilkan In-TUI toast status.
   - **`Ctrl-F` Live Ripgrep Search Switcher**: Menekan `Ctrl-F` di mode browse langsung beralih ke pencarian konten file interaktif via Ripgrep, dengan tombol **`Esc`** untuk kembali instan ke mode browsing sebelumnya.
-  - **`Ctrl-H` / `?` Keybindings Help Popup**: Menampilkan cheatsheet panduan shortcut keyboard interaktif langsung dari dalam TUI dengan retensi posisi kursor saat ditutup.
+  - **Full Customizable Keybindings & Master Vault Config (`internal/config/config.go`, `cmd/backup.go`, `cmd/bindings.go`, `cmd/tree_mode.go`, `cmd/find_mode.go`, `cmd/search_mode.go`, `cmd/dialogs.go`)**:
+  - **Master Vault Configuration**: Menyimpan master template di `configs/fex/config.yaml` dan migrasi standardisasi runtime ke `~/.config/fex/config.yaml` dengan auto-migrasi dari legacy `~/.config/fe/`.
+  - **Subcommand `fex backup` & `fex restore`**: Dukungan command sinkronisasi `fex backup fex`, `fex restore fex`, `fex backup all`, dan `fex restore all`.
+  - **Dynamic Runtime Keybindings**: Seluruh keybinding (mode switch, search, git, help, copy path, clipboard CRUD, preview layout, bookmark) kini dapat di-override bebas via `config.yaml` tanpa hardcode string.
+  - **Large Directory Warning Guard**: Menampilkan dialog peringatan fzf saat memindai direktori besar (`$HOME` / `/`) pada mode Flat Find (baik via CLI `fex -f` maupun via tombol `Tab`) untuk mencegah terminal freeze, dengan opsi pembatalan instan (`Esc`).
+  - **Dynamic In-TUI Header & Help Popup**: Baris petunjuk header dan dialog bantuan `Ctrl-H` otomatis menyesuaikan dengan keybinding kustom yang sedang aktif.
 
 ---
 
@@ -90,7 +95,7 @@ _Migrasi total dari bash ke Go hybrid. Reinkarnasi dari `fe`._
 
 - 🦫 **Go core** — Cobra CLI, Viper config, proper error handling, concurrent-safe session.
 - 🎯 **4 modes**: find, tree, search, bookmarks — unified under `fex [mode] [args]`.
-- ⚙️ **YAML config** — `~/.config/fe/config.yaml` + env override (`FE_` prefix).
+- ⚙️ **YAML config** — `~/.config/fex/config.yaml` + env override (`FEX_` / `FE_` prefix).
 - 🔧 **Tool auto-detect** — `bat > cat`, `micro > nano > vim`, `fd > WalkFiles`.
 - 🗑️ **Delete confirm** — fzf dialog, bukan `rm -i`.
 - ✏️ **Rename dialog** — interactive, bukan `read -p`.

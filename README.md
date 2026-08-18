@@ -8,7 +8,7 @@
     <img src="https://img.shields.io/github/actions/workflow/status/amadshobi/goblin-vault/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI&color=10B981&labelColor=1F2937&logoColor=white" alt="CI Status" />
   </a>
   <img src="https://img.shields.io/badge/License-MIT-00E5FF?style=for-the-badge&logo=open-source-initiative&logoColor=black&labelColor=1F2937" alt="License MIT" />
-  <img src="https://img.shields.io/badge/Version-0.3.26-A855F7?style=for-the-badge&labelColor=1F2937" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-0.3.36-A855F7?style=for-the-badge&labelColor=1F2937" alt="Version" />
   <img src="https://img.shields.io/badge/Architecture-Three--Tier-EC4899?style=for-the-badge&labelColor=1F2937" alt="Architecture" />
   <br/><br/>
   <img src="https://img.shields.io/badge/Bun-%E2%89%A5%201.0-FFFDF5?style=for-the-badge&logo=bun&logoColor=black&labelColor=1F2937" alt="Bun" />
@@ -83,13 +83,13 @@ Filosofi inti:
 
 ## The Arsenal
 
-| Tool                                     | Deskripsi                                                                                                                                                                                                                      | Stack                      | Command |
-| :--------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------- | :------ |
-| **[`sup`](tools-cli/src/sup/)** `v1.1.0` | Smart Universal Package Updater — granular multi-select updater untuk NPM, PIP3, System, Rustup, Bun, OMP. Mode verbose streaming (`-v`), proactive sudo handling.                                                             | TypeScript, Bun, Clack TUI | `sup`   |
-| **[`fex`](tools-cli/src/fex/)**          | File Explorer TUI — navigasi super cepat dengan fzf + tmux split mode. Subcommand: `tree`, `search`, `create`, `editor`, `path`, `kill`. Bookmark & state-machine navigation.                                                  | Go 1.22, Cobra, fzf, tmux  | `fex`   |
-| **[`gn`](tools-cli/src/gn/)** `v2.0.2`   | Goblin Nexus CLI — Control Center core & Telemetry Plane: `omp usage` forwarding, token activity tree (`-t`), file diffs (`-f`), connectivity probe (`ping`), speed leaderboard (`bench`), tree health doctor, config manager. | TypeScript, Bun            | `gn`    |
-| **[`zf`](tools-cli/src/zf/)**            | Zoxide & Tmux Helper — rapid directory navigation, session switcher, auto-launcher tools integration.                                                                                                                          | Pure Shell (Zsh)           | `zf`    |
-| **[`gb`](tools-cli/src/gb/)** `v2.2.0`   | GitHub Assistant TUI & CLI — kelola Issue, PR, Auth, Releases, & GitHub App Bot actions (`status`, `token`, `comment`, `config`) langsung dari terminal.                                                                       | Node.js, Clack TUI         | `gb`    |
+| Tool                                      | Deskripsi                                                                                                                                                                                                                                                                         | Stack                      | Command |
+| :---------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------- | :------ |
+| **[`sup`](tools-cli/src/sup/)** `v1.1.0`  | Smart Universal Package Updater — granular multi-select updater untuk NPM, PIP3, System, Rustup, Bun, OMP. Mode verbose streaming (`-v`), proactive sudo handling.                                                                                                                | TypeScript, Bun, Clack TUI | `sup`   |
+| **[`fex`](tools-cli/src/fex/)** `v0.3.16` | File Explorer TUI — navigasi super cepat dengan fzf + tmux split mode. Full dynamic keybindings, in-memory mode switcher (`Tab`), interactive clipboard (`Alt-c`/`Alt-m`/`Ctrl-v`), context git (`Ctrl-g`), OSC 52 (`Ctrl-y`), dan master vault config sync (`backup`/`restore`). | Go 1.22, Cobra, fzf, tmux  | `fex`   |
+| **[`gn`](tools-cli/src/gn/)** `v2.0.2`    | Goblin Nexus CLI — Control Center core & Telemetry Plane: `omp usage` forwarding, token activity tree (`-t`), file diffs (`-f`), connectivity probe (`ping`), speed leaderboard (`bench`), tree health doctor, config manager.                                                    | TypeScript, Bun            | `gn`    |
+| **[`zf`](tools-cli/src/zf/)**             | Zoxide & Tmux Helper — rapid directory navigation, session switcher, auto-launcher tools integration.                                                                                                                                                                             | Pure Shell (Zsh)           | `zf`    |
+| **[`gb`](tools-cli/src/gb/)** `v2.2.0`    | GitHub Assistant TUI & CLI — kelola Issue, PR, Auth, Releases, & GitHub App Bot actions (`status`, `token`, `comment`, `config`) langsung dari terminal.                                                                                                                          | Node.js, Clack TUI         | `gb`    |
 
 ---
 

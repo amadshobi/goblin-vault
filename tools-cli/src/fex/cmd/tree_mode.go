@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"civil/goblin-vault/tools-cli/src/fex/internal/config"
 	"civil/goblin-vault/tools-cli/src/fex/internal/fzf"
 	"civil/goblin-vault/tools-cli/src/fex/internal/session"
 	"civil/goblin-vault/tools-cli/src/fex/internal/tmux"
@@ -88,15 +89,43 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 			return "", fmt.Errorf("write state: %w", err)
 		}
 
+		// ── Dynamic Keybindings & Expected Keys ──
+		kb := config.DefaultKeybindings()
+		if sess.Config != nil {
+			kb = sess.Config.Keybindings
+		}
+
 		// ── Fzf opts ──
 		opts := fzf.DefaultFzfOpts()
 		headerPrefix := toast
 		if headerPrefix != "" {
 			headerPrefix += " | "
 		}
-		opts.Header = headerPrefix + GetClipboardBadge() + "Enter:open/in | Tab:find | Ctrl-g:lazygit | Alt-c:copy | Alt-m:move | Ctrl-v:paste | Ctrl-h:help | Ctrl-n:file | Ctrl-k:folder | Ctrl-r:ren | Ctrl-d:del | Ctrl-f:search | Ctrl-y:clip"
+		opts.Header = fmt.Sprintf("%s%sEnter:open/in | %s:find | %s:git | %s:copy | %s:move | %s:paste | %s:help | %s:file | %s:folder | %s:ren | %s:del | %s:search | %s:clip",
+			headerPrefix, GetClipboardBadge(), kb.SwitchMode, kb.Git, kb.MarkCopy, kb.MarkMove, kb.Paste, kb.Help, kb.NewFile, kb.NewFolder, kb.Rename, kb.Delete, kb.Search, kb.CopyPath)
 		toast = "" // reset toast setelah dipakai
-		opts.Expected = "ctrl-r,ctrl-d,ctrl-n,ctrl-k,esc,alt-c,alt-m,ctrl-v,alt-v,ctrl-h,?,tab,ctrl-g,ctrl-y,ctrl-f"
+
+		// Compile expected keys
+		expectedKeys := []string{
+			"esc", "?",
+			kb.SwitchMode, kb.Search, kb.Git, kb.Help, kb.CopyPath,
+			kb.MarkCopy, kb.MarkMove, kb.Paste, kb.Rename, kb.Delete,
+			kb.NewFile, kb.NewFolder,
+		}
+		if kb.Paste == "ctrl-v" {
+			expectedKeys = append(expectedKeys, "alt-v")
+		}
+		// Dedup expected keys
+		seenKeys := make(map[string]bool)
+		var uniqueExpected []string
+		for _, k := range expectedKeys {
+			k = strings.TrimSpace(strings.ToLower(k))
+			if k != "" && !seenKeys[k] {
+				seenKeys[k] = true
+				uniqueExpected = append(uniqueExpected, k)
+			}
+		}
+		opts.Expected = strings.Join(uniqueExpected, ",")
 		opts.BorderLabel = fmt.Sprintf(" 🌳 %s ", filepath.Base(currentDir))
 		opts.Prompt = " 🌳 ❯ "
 
@@ -123,7 +152,7 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 		opts.Cycle = true
 
 		// ── In-fzf bindings ──
-		opts.Bindings = buildTreeModeBindings(currentDir, tmux.RightPaneID())
+		opts.Bindings = buildTreeModeBindings(currentDir, tmux.RightPaneID(), kb)
 
 		// ── Maintain cursor focus on the active / pasted item ──
 		if lastFocusName != "" {
@@ -168,18 +197,19 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 		}
 
 		// ── Route by pressed key ──
-		switch result.ExpectedKey {
-		case "tab":
+		pressed := strings.ToLower(result.ExpectedKey)
+		switch {
+		case pressed == strings.ToLower(kb.SwitchMode):
 			// Switch mode: Tree ➔ Flat Find Mode
 			sess.SetCwd(currentDir)
 			return "find", nil
 
-		case "ctrl-f":
+		case pressed == strings.ToLower(kb.Search):
 			// Switch mode: Tree ➔ Interactive Search Mode
 			sess.SetCwd(currentDir)
 			return "search", nil
 
-		case "ctrl-g":
+		case pressed == strings.ToLower(kb.Git):
 			// Context-Aware Git Action:
 			// - Jika kursor di FILE ➔ Buka Git History & Diff Viewer Split untuk file tersebut
 			// - Jika kursor di FOLDER (atau "..") ➔ Buka full lazygit TUI
@@ -202,7 +232,7 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 			}
 			continue
 
-		case "ctrl-y":
+		case pressed == strings.ToLower(kb.CopyPath):
 			// Copy relative/abs path to system clipboard (OSC 52 + tools)
 			if len(result.Selected) == 0 {
 				continue
@@ -219,17 +249,17 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 			}
 			continue
 
-		case "ctrl-h", "?":
+		case pressed == strings.ToLower(kb.Help) || pressed == "?":
 			// Open interactive keybindings help popup
 			if len(result.Selected) > 0 {
 				if entry := findEntry(result.Selected[0]); entry != nil {
 					lastFocusName = entry.name
 				}
 			}
-			helpDialog()
+			helpDialog(sess.Config)
 			continue
 
-		case "alt-c":
+		case pressed == strings.ToLower(kb.MarkCopy):
 			// Mark entry for copy
 			if len(result.Selected) == 0 {
 				continue
@@ -246,7 +276,7 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 			}
 			continue
 
-		case "alt-m":
+		case pressed == strings.ToLower(kb.MarkMove):
 			// Mark entry for move
 			if len(result.Selected) == 0 {
 				continue
@@ -263,7 +293,7 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 			}
 			continue
 
-		case "ctrl-v", "alt-v":
+		case pressed == strings.ToLower(kb.Paste) || pressed == "alt-v":
 			// Execute paste to currentDir
 			clipItem, _ := ReadClipboard()
 			if clipItem != nil {
@@ -277,7 +307,7 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 			}
 			continue
 
-		case "ctrl-r":
+		case pressed == strings.ToLower(kb.Rename):
 			// Rename
 			if len(result.Selected) == 0 {
 				continue
@@ -296,8 +326,9 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 				continue
 			}
 			lastFocusName = newName
+			continue
 
-		case "ctrl-d":
+		case pressed == strings.ToLower(kb.Delete):
 			// Delete
 			if len(result.Selected) == 0 {
 				continue
@@ -313,8 +344,9 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 					toast = fmt.Sprintf("🗑️ [Deleted: %s]", entry.name)
 				}
 			}
+			continue
 
-		case "ctrl-n":
+		case pressed == strings.ToLower(kb.NewFile):
 			// New file
 			name := newFileDialog(currentDir)
 			if name == "" {
@@ -334,9 +366,9 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 			if err := editorCmd.Run(); err != nil {
 				fmt.Fprintf(os.Stderr, "editor: %v\n", err)
 			}
-			// Don't set lastOpened — keep search input clean on re-render
+			continue
 
-		case "ctrl-k":
+		case pressed == strings.ToLower(kb.NewFolder):
 			// New folder
 			name := newFolderDialog(currentDir)
 			if name == "" {
@@ -348,9 +380,9 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 				continue
 			}
 			lastFocusName = name
-			// Don't set lastOpened — keep search input clean on re-render
+			continue
 
-		case "esc":
+		case pressed == "esc":
 			// Esc: naik satu folder
 			parent := filepath.Dir(currentDir)
 			// Boundary: don't go above home dir — exit instead
@@ -359,6 +391,7 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 			}
 			currentDir = parent
 			sess.SetTreeCwd(currentDir)
+			lastFocusName = filepath.Base(currentDir)
 			continue
 
 		default:

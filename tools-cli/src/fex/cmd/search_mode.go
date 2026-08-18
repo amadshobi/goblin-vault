@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"civil/goblin-vault/tools-cli/src/fex/internal/config"
 	"civil/goblin-vault/tools-cli/src/fex/internal/fzf"
 	"civil/goblin-vault/tools-cli/src/fex/internal/session"
 	"civil/goblin-vault/tools-cli/src/fex/internal/ui"
@@ -37,14 +38,39 @@ func runSearchMode(sess *session.Session, initialQuery string, prevMode string) 
 	dirQuoted := util.ShEscape(dir)
 
 	for {
+		// ── Dynamic Keybindings & Expected Keys ──
+		kb := config.DefaultKeybindings()
+		if sess.Config != nil {
+			kb = sess.Config.Keybindings
+		}
+
 		opts := fzf.DefaultFzfOpts()
 		headerPrefix := toast
 		if headerPrefix != "" {
 			headerPrefix += " | "
 		}
-		opts.Header = headerPrefix + GetClipboardBadge() + fmt.Sprintf("Enter:open@line | Esc:back (%s) | Tab:find | Alt-c:copy | Alt-m:move | Ctrl-v:paste | Ctrl-h:help | Ctrl-y:clip", prevMode)
+		opts.Header = fmt.Sprintf("%s%sEnter:open@line | Esc:back (%s) | %s:find | %s:copy | %s:move | %s:paste | %s:help | %s:clip",
+			headerPrefix, GetClipboardBadge(), prevMode, kb.SwitchMode, kb.MarkCopy, kb.MarkMove, kb.Paste, kb.Help, kb.CopyPath)
 		toast = "" // reset toast setelah dipakai
-		opts.Expected = "alt-c,alt-m,ctrl-v,alt-v,ctrl-h,?,tab,ctrl-y,esc"
+
+		expectedKeys := []string{
+			"esc", "?",
+			kb.SwitchMode, kb.Help, kb.CopyPath,
+			kb.MarkCopy, kb.MarkMove, kb.Paste,
+		}
+		if kb.Paste == "ctrl-v" {
+			expectedKeys = append(expectedKeys, "alt-v")
+		}
+		seenKeys := make(map[string]bool)
+		var uniqueExpected []string
+		for _, k := range expectedKeys {
+			k = strings.TrimSpace(strings.ToLower(k))
+			if k != "" && !seenKeys[k] {
+				seenKeys[k] = true
+				uniqueExpected = append(uniqueExpected, k)
+			}
+		}
+		opts.Expected = strings.Join(uniqueExpected, ",")
 		opts.BorderLabel = fmt.Sprintf(" 🔍 Live Ripgrep: %s ", filepath.Base(dir))
 		opts.Prompt = " 🔍 ❯ "
 		opts.Delimiter = ":"
@@ -67,15 +93,16 @@ func runSearchMode(sess *session.Session, initialQuery string, prevMode string) 
 		}
 
 		// ── Route expected keys ──
-		switch result.ExpectedKey {
-		case "esc":
+		pressed := strings.ToLower(result.ExpectedKey)
+		switch {
+		case pressed == "esc":
 			// Escape: cancel search and return to previous mode (tree/find)
 			return "back", nil
 
-		case "tab":
+		case pressed == strings.ToLower(kb.SwitchMode):
 			return "find", nil
 
-		case "ctrl-y":
+		case pressed == strings.ToLower(kb.CopyPath):
 			if len(result.Selected) == 0 {
 				continue
 			}
@@ -91,11 +118,11 @@ func runSearchMode(sess *session.Session, initialQuery string, prevMode string) 
 			}
 			continue
 
-		case "ctrl-h", "?":
-			helpDialog()
+		case pressed == strings.ToLower(kb.Help) || pressed == "?":
+			helpDialog(sess.Config)
 			continue
 
-		case "alt-c":
+		case pressed == strings.ToLower(kb.MarkCopy):
 			if len(result.Selected) == 0 {
 				continue
 			}
@@ -111,7 +138,7 @@ func runSearchMode(sess *session.Session, initialQuery string, prevMode string) 
 			}
 			continue
 
-		case "alt-m":
+		case pressed == strings.ToLower(kb.MarkMove):
 			if len(result.Selected) == 0 {
 				continue
 			}
@@ -127,7 +154,7 @@ func runSearchMode(sess *session.Session, initialQuery string, prevMode string) 
 			}
 			continue
 
-		case "ctrl-v", "alt-v":
+		case pressed == strings.ToLower(kb.Paste) || pressed == "alt-v":
 			msg, err := ExecutePaste(dir)
 			if err != nil {
 				toast = fmt.Sprintf("⚠ [%s]", err.Error())

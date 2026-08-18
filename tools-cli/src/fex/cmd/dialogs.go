@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"civil/goblin-vault/tools-cli/src/fex/internal/config"
 	"civil/goblin-vault/tools-cli/src/fex/internal/fzf"
 	"civil/goblin-vault/tools-cli/src/fex/internal/util"
 )
@@ -28,6 +29,30 @@ func confirmDeleteDialog(path string) bool {
 		return false
 	}
 	return result.ExpectedKey == "ctrl-d"
+}
+
+// largeDirWarningDialog — fzf confirm untuk direktori besar ($HOME / /).
+// Return true jika user setuju lanjut scan, false jika cancel (Esc / Enter di opsi batal).
+func largeDirWarningDialog(dir string) bool {
+	opts := fzf.DefaultFzfOpts()
+	opts.Header = fmt.Sprintf("⚠ PERINGATAN: Memindai direktori '%s' via Flat Find mungkin memakan waktu.", dir)
+	opts.BorderLabel = " ⚠ Large Directory Warning "
+	opts.Prompt = " ❯ "
+	opts.NoSort = true
+	opts.PreviewCmd = ""
+	opts.PreviewWindow = ""
+
+	choices := []string{
+		"▶ Lanjutkan Scan (Enter)",
+		"✖ Batal & Tetap di Tree Mode (Esc)",
+	}
+
+	result, err := fzf.Run(strings.Join(choices, "\n"), opts)
+	if err != nil || len(result.Selected) == 0 {
+		return false
+	}
+
+	return strings.HasPrefix(result.Selected[0], "▶")
 }
 
 // renameDialog — fzf popup: pre-filled dengan nama lama, user edit & Enter.
@@ -118,8 +143,8 @@ func executeDelete(path string) error {
 	return os.Remove(path)
 }
 
-// helpDialog — fzf popup: menampilkan panduan keybindings interaktif fex.
-func helpDialog() {
+// helpDialog — fzf popup: menampilkan panduan keybindings interaktif fex secara dinamis.
+func helpDialog(cfg *config.Config) {
 	opts := fzf.DefaultFzfOpts()
 	opts.Header = "⌨️ FEX Keybindings — Press Enter or ESC to return"
 	opts.BorderLabel = " ⌨️ Keybindings Help "
@@ -128,35 +153,40 @@ func helpDialog() {
 	opts.PreviewCmd = ""
 	opts.PreviewWindow = ""
 
+	kb := config.DefaultKeybindings()
+	if cfg != nil {
+		kb = cfg.Keybindings
+	}
+
 	helpText := []string{
 		"NAVIGATION:",
-		"  Enter         Buka file di Editor / Masuk folder",
-		"  Esc           Batal / Naik 1 direktori (Tree mode) / Back (Search)",
-		"  Tab           🔄 Ganti mode instan (Tree ⇄ Flat Find)",
+		fmt.Sprintf("  %-13s Buka file di Editor / Masuk folder", "Enter"),
+		fmt.Sprintf("  %-13s Batal / Naik 1 direktori (Tree mode) / Back (Search)", "Esc"),
+		fmt.Sprintf("  %-13s 🔄 Ganti mode instan (Tree ⇄ Flat Find)", kb.SwitchMode),
 		"",
 		"CLIPBOARD & FILE OPS:",
-		"  Alt-c         📋 Tandai untuk Salin (Copy)",
-		"  Alt-m         📦 Tandai untuk Pindah (Move / Cut)",
-		"  Ctrl-v        📥 Tempel (Paste) di direktori aktif",
-		"  Ctrl-r        ✏️ Ganti nama (Rename) file/folder",
-		"  Ctrl-d        🗑️ Hapus (Delete) file/folder",
-		"  Ctrl-n        📄 Buat file baru (Tree mode)",
-		"  Ctrl-k        📁 Buat folder baru (Tree mode)",
+		fmt.Sprintf("  %-13s 📋 Tandai untuk Salin (Copy)", kb.MarkCopy),
+		fmt.Sprintf("  %-13s 📦 Tandai untuk Pindah (Move / Cut)", kb.MarkMove),
+		fmt.Sprintf("  %-13s 📥 Tempel (Paste) di direktori aktif", kb.Paste),
+		fmt.Sprintf("  %-13s ✏️ Ganti nama (Rename) file/folder", kb.Rename),
+		fmt.Sprintf("  %-13s 🗑️ Hapus (Delete) file/folder", kb.Delete),
+		fmt.Sprintf("  %-13s 📄 Buat file baru (Tree mode)", kb.NewFile),
+		fmt.Sprintf("  %-13s 📁 Buat folder baru (Tree mode)", kb.NewFolder),
 		"",
 		"GIT INTEGRATION (CONTEXT-AWARE):",
-		"  Ctrl-g        🐙 lazygit TUI (di Folder) / Git History & Diff (di File)",
+		fmt.Sprintf("  %-13s 🐙 lazygit TUI (di Folder) / Git History & Diff (di File)", kb.Git),
 		"",
 		"SEARCH & UTILITIES:",
-		"  Ctrl-f        🔍 Live search konten file (ripgrep)",
-		"  Ctrl-y        📋 Salin path ke OS clipboard (Universal OSC 52)",
-		"  Ctrl-b        ⭐ Tambahkan ke Bookmarks",
-		"  Ctrl-x        ❌ Hapus dari Bookmarks",
-		"  Ctrl-o        🖥️ Buka direktori di Tmux pane sebelah",
+		fmt.Sprintf("  %-13s 🔍 Live search konten file (ripgrep)", kb.Search),
+		fmt.Sprintf("  %-13s 📋 Salin path ke OS clipboard (Universal OSC 52)", kb.CopyPath),
+		fmt.Sprintf("  %-13s ⭐ Tambahkan ke Bookmarks", kb.Bookmark),
+		fmt.Sprintf("  %-13s ❌ Hapus dari Bookmarks", kb.Unbookmark),
+		fmt.Sprintf("  %-13s 🖥️ Buka direktori di Tmux pane sebelah", kb.TmuxPane),
 		"",
 		"PREVIEW & HELP:",
-		"  Ctrl-p        👁️ Toggle preview pane",
-		"  Ctrl-s        🖥️ Toggle fullscreen layout preview",
-		"  Ctrl-h / ?    ❓ Buka dialog panduan bantuan ini",
+		fmt.Sprintf("  %-13s 👁️ Toggle preview pane", kb.TogglePreview),
+		fmt.Sprintf("  %-13s 🖥️ Toggle fullscreen layout preview", kb.ToggleLayout),
+		fmt.Sprintf("  %-13s ❓ Buka dialog panduan bantuan ini", kb.Help+" / ?"),
 	}
 
 	_, _ = fzf.Run(strings.Join(helpText, "\n"), opts)

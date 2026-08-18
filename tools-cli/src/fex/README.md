@@ -64,25 +64,25 @@ fex <subcommand> --help
 
 ## ⌨️ Pintasan Keyboard (Di Dalam UI Fzf)
 
-| Key          | Aksi                                                                                  |
-| :----------- | :------------------------------------------------------------------------------------ |
-| `Enter`      | Buka file di Editor default / Masuk direktori                                         |
-| `Tab`        | 🔄 Beralih mode secara instan (**Tree Mode ⇄ Flat Find Mode**)                        |
-| `Alt-c`      | 📋 Tandai file/folder untuk **Salin (Copy)**                                          |
-| `Alt-m`      | 📦 Tandai file/folder untuk **Pindah (Move / Cut)**                                   |
-| `Ctrl-v`     | 📥 **Tempel (Paste)** file/folder di direktori aktif                                  |
-| `Ctrl-d`     | 🗑️ Hapus file/folder (dengan konfirmasi aman)                                         |
-| `Ctrl-r`     | ✏️ Ganti nama file / direktori                                                        |
-| `Ctrl-n`     | 📄 Buat file baru (Tree mode)                                                         |
-| `Ctrl-k`     | 📁 Buat folder baru (Tree mode)                                                       |
-| `Ctrl-g` | 🐙 **Context-Aware Git**: **File Diff & Commit History** (jika kursor di file) / **lazygit TUI** (jika kursor di folder) |
-| `Ctrl-y`     | 📋 Salin path file ke clipboard OS (**Universal OSC 52 + Wayland/X11**)               |
-| `Ctrl-f`     | 🔍 Buka pencarian konten file interaktif (**ripgrep search mode**)                    |
-| `Ctrl-b`     | ⭐ Tambahkan direktori ke Bookmark                                                    |
-| `Ctrl-x`     | ❌ Hapus direktori dari Bookmark                                                      |
-| `Ctrl-o`     | 🖥️ Buka direktori di pane tmux sebelah                                                |
-| `Ctrl-s`     | 🖥️ Toggle tampilan preview ukuran penuh / half                                        |
-| `Ctrl-h / ?` | ❓ Buka dialog popup bantuan seluruh keybindings                                      |
+| Key          | Aksi                                                                                                                     |
+| :----------- | :----------------------------------------------------------------------------------------------------------------------- |
+| `Enter`      | Buka file di Editor default / Masuk direktori                                                                            |
+| `Tab`        | 🔄 Beralih mode secara instan (**Tree Mode ⇄ Flat Find Mode**)                                                           |
+| `Alt-c`      | 📋 Tandai file/folder untuk **Salin (Copy)**                                                                             |
+| `Alt-m`      | 📦 Tandai file/folder untuk **Pindah (Move / Cut)**                                                                      |
+| `Ctrl-v`     | 📥 **Tempel (Paste)** file/folder di direktori aktif                                                                     |
+| `Ctrl-d`     | 🗑️ Hapus file/folder (dengan konfirmasi aman)                                                                            |
+| `Ctrl-r`     | ✏️ Ganti nama file / direktori                                                                                           |
+| `Ctrl-n`     | 📄 Buat file baru (Tree mode)                                                                                            |
+| `Ctrl-k`     | 📁 Buat folder baru (Tree mode)                                                                                          |
+| `Ctrl-g`     | 🐙 **Context-Aware Git**: **File Diff & Commit History** (jika kursor di file) / **lazygit TUI** (jika kursor di folder) |
+| `Ctrl-y`     | 📋 Salin path file ke clipboard OS (**Universal OSC 52 + Wayland/X11**)                                                  |
+| `Ctrl-f`     | 🔍 Buka pencarian konten file interaktif (**ripgrep search mode**)                                                       |
+| `Ctrl-b`     | ⭐ Tambahkan direktori ke Bookmark                                                                                       |
+| `Ctrl-x`     | ❌ Hapus direktori dari Bookmark                                                                                         |
+| `Ctrl-o`     | 🖥️ Buka direktori di pane tmux sebelah                                                                                   |
+| `Ctrl-s`     | 🖥️ Toggle tampilan preview ukuran penuh / half                                                                           |
+| `Ctrl-h / ?` | ❓ Buka dialog popup bantuan seluruh keybindings                                                                         |
 
 ---
 
@@ -134,19 +134,51 @@ src/fex/
 
 ---
 
-## ⚙️ Konfigurasi (`~/.config/fe/config.yaml`)
+## ⚙️ Konfigurasi (`~/.config/fex/config.yaml`)
 
-File konfigurasi otomatis dibuat pada saat pertama kali `fex` dijalankan:
+File konfigurasi otomatis dibuat pada saat pertama kali `fex` dijalankan (dengan fallback auto-migrasi dari legacy `~/.config/fe/config.yaml`). Template master tersimpan di repositori vault pada `configs/fex/config.yaml`:
 
 ```yaml
-editor: micro
-preview: true
-preview_size: 15
-show_hidden: false
-max_depth: 8
-fd_binary: fd
-rg_binary: rg
+# General
+find_depth: 5
+find_filter: -not -path "*/.npm/*" -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/__pycache__/*" -not -path "*/vendor/*" -not -path "*/target/debug/*" -not -path "*/dist/*"
+bookmarks_file: ~/.cache/fex-bookmarks
+
+# Tools & Layout
+editor: "" # auto-detect (micro > nano > vim > vi)
+editor_opts: ""
+preview_cmd: "" # auto-detect (bat > batcat > cat -n)
+use_fd: true
+preview_size: up:75%
+
+# Keybindings Override
+keybindings:
+  switch_mode: tab # Tree ⇄ Flat find
+  search: ctrl-f # Live Ripgrep search
+  git: ctrl-g # Git history & diff / lazygit
+  help: ctrl-h # Keybindings popup
+  copy_path: ctrl-y # Copy path (OSC 52)
+  mark_copy: alt-c # Copy mark
+  mark_move: alt-m # Move mark
+  paste: ctrl-v # Paste
+  rename: ctrl-r # Rename
+  delete: ctrl-d # Delete
+  new_file: ctrl-n # New file
+  new_folder: ctrl-k # New folder
+  toggle_preview: ctrl-p # Toggle preview
+  toggle_layout: ctrl-s # Toggle layout
+  bookmark: ctrl-b # Bookmark
+  unbookmark: ctrl-x # Unbookmark
+  tmux_pane: ctrl-o # Tmux split right
 ```
+
+### 📦 Backup & Restore Config
+
+Integrasi sinkronisasi config langsung ke goblin-vault:
+
+- `fex backup fex` / `fex restore fex` — backup/restore config `fex`
+- `fex backup micro` / `fex restore micro` — backup/restore config `micro` editor
+- `fex backup all` / `fex restore all` — backup/restore seluruh tool configs sekaligus
 
 ---
 
