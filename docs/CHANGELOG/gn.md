@@ -7,11 +7,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ## [v2.0.2] - 2026-08-18
 
+### Added
+
+- **Native `omp usage` Forwarding Engine (`commands/usage.ts`)**: Default mode `gn u` kini langsung meneruskan eksekusi ke binary resmi `omp usage` di sistem, menghasilkan visual progress bar block (`████░░░░`), rincian akun multi-email, kalkulasi kapasitas total (`1.45x quota left`), dan filter provider instan dengan graceful fallback ke SQLite lokal jika `omp` tidak terpasang.
+
 ### Fixed
+
 - **`gn u -t` & `gn u -f` Multi-Day Window & `--all` Historical Support (`commands/usage.ts`, `utils/opencode-cli.ts`)**:
   - Menambahkan dukungan parsing fleksibel untuk flag window hari: `--day <N>`, `--days <N>`, `-d <N>`, `--day=<N>`, `--days=<N>`, dan direct positional number (e.g. `gn u -t 7`).
   - Menambahkan dukungan `--all`, `-a`, `--all-time` untuk menarik seluruh rekaman sesi dan token historis sejak hari pertama di OpenCode DB.
   - Menyelaraskan query `fetchAllSessionData` agar kombinasi filter kata kunci judul/sesi (`-s <query>`) tetap menghormati batas waktu (`--day N` / `--all`).
+  - Menampilkan riwayat file modified (`+lines -lines`) untuk Sesi Utama (Main Agent) di Tree Mode (`-t`) dan Compact Table (`-m`).
 - **`gn ping local` TCP Socket Timeout Fix (`commands/ping.ts`)**: Mengganti `Bun.connect` tanpa timeout dengan `net.Socket` bertimeout 1000ms untuk mencegah blocking/hang saat memeriksa port lokal yang tidak aktif (e.g. Ollama 11434).
 - **`gn doctor` Cache Path Alignment (`commands/doctor.ts`)**: Menyelaraskan pemeriksaan direktori cache ke `~/.config/gn/cache` (menggantikan path legacy `~/.cache/goblin-nexus`) untuk menghilangkan false warning.
 - **Smart Reasoning Auto-Fallback for Probe & Benchmark (`commands/ping.ts`, `commands/bench.ts`)**: Menambahkan auto-retry otomatis dengan `reasoning_effort: "low"` dan `max_tokens: 150` saat probe mendeteksi error `Thinking level MINIMAL is not supported`, membuka akses 200 OK untuk model reasoning `gemini-3.7-flash-tiered`, `gemini-3.7-flash`, dan `gemini-3.1-pro`.

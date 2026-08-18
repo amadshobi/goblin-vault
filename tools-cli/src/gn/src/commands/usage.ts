@@ -224,7 +224,20 @@ export async function handleUsageCommand(argv: string[]): Promise<number> {
 		return renderTokensDashboard(args);
 	}
 
-	// ── Init adapter ─────────────────────────────────────────
+	// ── Mode 1: Quota Dashboard — Wrap official `omp usage` if available ──
+	const ompPath = Bun.which("omp");
+	if (ompPath) {
+		const ompArgs = [
+			"usage",
+			...argv.filter((a) => a !== "u" && a !== "usage"),
+		];
+		const proc = Bun.spawnSync([ompPath, ...ompArgs], {
+			stdio: ["inherit", "inherit", "inherit"],
+		});
+		return proc.exitCode;
+	}
+
+	// ── Fallback: Internal SQLite Adapter ────────────────────
 	const adapter = new OmpQuotaAdapter();
 
 	if (args.json) {
