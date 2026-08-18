@@ -21,7 +21,7 @@
 
 ---
 
-> *Setiap hari kami menemukan friksi di terminal, setiap hari kami mengikisnya — sedikit demi sedikit — hingga tumpukan script acak ini berevolusi menjadi sebuah **Control Center** yang sesungguhnya.*
+> _Setiap hari kami menemukan friksi di terminal, setiap hari kami mengikisnya — sedikit demi sedikit — hingga tumpukan script acak ini berevolusi menjadi sebuah **Control Center** yang sesungguhnya._
 
 ---
 
@@ -83,13 +83,13 @@ Filosofi inti:
 
 ## The Arsenal
 
-| Tool | Deskripsi | Stack | Command |
-|:-----|:----------|:------|:--------|
-| **[`sup`](tools-cli/src/sup/)** `v1.1.0` | Smart Universal Package Updater — granular multi-select updater untuk NPM, PIP3, System, Rustup, Bun, OMP. Mode verbose streaming (`-v`), proactive sudo handling. | TypeScript, Bun, Clack TUI | `sup` |
-| **[`fex`](tools-cli/src/fex/)** | File Explorer TUI — navigasi super cepat dengan fzf + tmux split mode. Subcommand: `tree`, `search`, `create`, `editor`, `path`, `kill`. Bookmark & state-machine navigation. | Go 1.22, Cobra, fzf, tmux | `fex` |
-| **[`gn`](tools-cli/src/gn/)** `v2.0.0` | Goblin Nexus CLI — Control Center core, AI adapter broker, bench tools, price/telemetry tracking, configuration manager. | Shell, TypeScript, Bun | `gn` |
-| **[`zf`](tools-cli/src/zf/)** | Zoxide & Tmux Helper — rapid directory navigation, session switcher, auto-launcher tools integration. | Pure Shell (Zsh) | `zf` |
-| **[`gb`](tools-cli/src/gb/)** `v2.2.0` | GitHub Assistant TUI & CLI — kelola Issue, PR, Auth, Releases, & GitHub App Bot actions (`status`, `token`, `comment`, `config`) langsung dari terminal. | Node.js, Clack TUI | `gb` |
+| Tool                                     | Deskripsi                                                                                                                                                                                                                      | Stack                      | Command |
+| :--------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------- | :------ |
+| **[`sup`](tools-cli/src/sup/)** `v1.1.0` | Smart Universal Package Updater — granular multi-select updater untuk NPM, PIP3, System, Rustup, Bun, OMP. Mode verbose streaming (`-v`), proactive sudo handling.                                                             | TypeScript, Bun, Clack TUI | `sup`   |
+| **[`fex`](tools-cli/src/fex/)**          | File Explorer TUI — navigasi super cepat dengan fzf + tmux split mode. Subcommand: `tree`, `search`, `create`, `editor`, `path`, `kill`. Bookmark & state-machine navigation.                                                  | Go 1.22, Cobra, fzf, tmux  | `fex`   |
+| **[`gn`](tools-cli/src/gn/)** `v2.0.2`   | Goblin Nexus CLI — Control Center core & Telemetry Plane: `omp usage` forwarding, token activity tree (`-t`), file diffs (`-f`), connectivity probe (`ping`), speed leaderboard (`bench`), tree health doctor, config manager. | TypeScript, Bun            | `gn`    |
+| **[`zf`](tools-cli/src/zf/)**            | Zoxide & Tmux Helper — rapid directory navigation, session switcher, auto-launcher tools integration.                                                                                                                          | Pure Shell (Zsh)           | `zf`    |
+| **[`gb`](tools-cli/src/gb/)** `v2.2.0`   | GitHub Assistant TUI & CLI — kelola Issue, PR, Auth, Releases, & GitHub App Bot actions (`status`, `token`, `comment`, `config`) langsung dari terminal.                                                                       | Node.js, Clack TUI         | `gb`    |
 
 ---
 
@@ -97,15 +97,15 @@ Filosofi inti:
 
 ### Prasyarat
 
-| Dependency | Versi Minimum | Cek |
-|:-----------|:--------------|:----|
-| **Node.js** | `>= 20` | `node -v` |
-| **Bun** | `>= 1.0` | `bun -v` |
-| **Go** | `>= 1.22` | `go version` |
-| **fzf** | latest | `fzf --version` |
-| **tmux** | latest | `tmux -V` |
-| **zoxide** | latest | `zoxide --version` |
-| **gh** (GitHub CLI) | latest | `gh --version` |
+| Dependency          | Versi Minimum | Cek                |
+| :------------------ | :------------ | :----------------- |
+| **Node.js**         | `>= 20`       | `node -v`          |
+| **Bun**             | `>= 1.0`      | `bun -v`           |
+| **Go**              | `>= 1.22`     | `go version`       |
+| **fzf**             | latest        | `fzf --version`    |
+| **tmux**            | latest        | `tmux -V`          |
+| **zoxide**          | latest        | `zoxide --version` |
+| **gh** (GitHub CLI) | latest        | `gh --version`     |
 
 ### Instalasi
 
@@ -134,7 +134,7 @@ cd -
 bash scripts/install.sh
 
 # 7. Health check — pastikan semua dependency terdeteksi
-bash scripts/doctor.sh
+./scripts/doctor.js
 ```
 
 ### Verifikasi
@@ -143,7 +143,6 @@ bash scripts/doctor.sh
 sup --help       # Package updater TUI
 fex --help       # File explorer TUI
 gn --help        # Goblin Nexus CLI
-ocm --help       # OpenCode configurator
 zf --help        # Zoxide navigation
 gb --help        # GitHub assistant
 ```
@@ -199,6 +198,7 @@ bash scripts/install-hooks.sh
 ### CI (GitHub Actions)
 
 Setiap push/PR ke `main` atau `dev` memicu pipeline:
+
 - Lint & syntax check seluruh codebase
 - Build `fex` binary dari source
 - Validasi dependencies & types
@@ -225,14 +225,15 @@ Setiap push/PR ke `main` atau `dev` memicu pipeline:
 
 ## Konvensi & Rules
 
-| Dokumen | Isi |
-|:--------|:----|
-| [`AGENTS.md`](AGENTS.md) | Struktur repo, guideline engineering, coding standards, do/don't |
-| [`docs/rules/coding-style.md`](docs/rules/coding-style.md) | Immutability, file organization, error handling, input validation |
-| [`CHANGELOG.md`](CHANGELOG.md) | Master changelog + navigasi ke changelog per-tool |
-| [`docs/CHANGELOG/`](docs/CHANGELOG/) | Detail changelog per-tool (`sup.md`, `fex.md`, `gn.md`, `ocm.md`, `zf.md`, `gb.md`) |
+| Dokumen                                                    | Isi                                                                                 |
+| :--------------------------------------------------------- | :---------------------------------------------------------------------------------- |
+| [`AGENTS.md`](AGENTS.md)                                   | Struktur repo, guideline engineering, coding standards, do/don't                    |
+| [`docs/rules/coding-style.md`](docs/rules/coding-style.md) | Immutability, file organization, error handling, input validation                   |
+| [`CHANGELOG.md`](CHANGELOG.md)                             | Master changelog + navigasi ke changelog per-tool                                   |
+| [`docs/CHANGELOG/`](docs/CHANGELOG/)                       | Detail changelog per-tool (`sup.md`, `fex.md`, `gn.md`, `ocm.md`, `zf.md`, `gb.md`) |
 
 **Highlights:**
+
 - Bahasa dokumentasi: **Indonesia** (utama), English untuk istilah teknis.
 - Immutable data pattern sebagai default.
 - File kecil & fokus (200-400 baris ideal, 800 baris maks).
@@ -245,12 +246,12 @@ Setiap push/PR ke `main` atau `dev` memicu pipeline:
 
 Kami terbuka untuk kontribusi! Sebelum mulai, baca dokumen berikut:
 
-| Dokumen | Deskripsi |
-|:--------|:----------|
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Panduan lengkap cara berkontribusi, workflow PR, dan checklist |
-| [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | Standar perilaku & nilai komunitas |
-| [`SECURITY.md`](.github/SECURITY.md) | Kebijakan & pelaporan celah keamanan privat |
-| [`AGENTS.md`](AGENTS.md) | Panduan khusus untuk AI agent & kontributor otomatis |
+| Dokumen                                    | Deskripsi                                                      |
+| :----------------------------------------- | :------------------------------------------------------------- |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md)       | Panduan lengkap cara berkontribusi, workflow PR, dan checklist |
+| [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | Standar perilaku & nilai komunitas                             |
+| [`SECURITY.md`](.github/SECURITY.md)       | Kebijakan & pelaporan celah keamanan privat                    |
+| [`AGENTS.md`](AGENTS.md)                   | Panduan khusus untuk AI agent & kontributor otomatis           |
 
 **Checklist sebelum PR:**
 
