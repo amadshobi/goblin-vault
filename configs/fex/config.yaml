@@ -1,0 +1,68 @@
+# ==============================================================================
+# Goblin Vault — FEX Master Configuration
+# Target runtime: ~/.config/fex/config.yaml
+# ==============================================================================
+
+# ── General & Traversal ───────────────────────────────────────────────────────
+# Kedalaman sub-folder default saat flat file browsing
+find_depth: 5
+
+# Filter direktori yang diabaikan saat scanning
+find_filter: -not -path "*/.npm/*" -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/__pycache__/*" -not -path "*/vendor/*" -not -path "*/target/debug/*" -not -path "*/dist/*"
+
+# Lokasi penyimpanan daftar bookmark
+bookmarks_file: ~/.cache/fex-bookmarks
+
+# ── Tools & Editor ────────────────────────────────────────────────────────────
+# Editor default (kosongkan "" untuk auto-detect: micro > nano > vim > vi)
+editor: ""
+
+# Parameter tambahan untuk editor
+editor_opts: ""
+
+# Syntax highlight preview command (kosongkan "" untuk auto-detect: bat > batcat > cat -n)
+preview_cmd: ""
+
+# Gunakan binary fd untuk performa listing maksimal jika terpasang
+use_fd: true
+
+# ── Tmux & Layout ─────────────────────────────────────────────────────────────
+# Tmux prefix shortcut
+tmux_prefix: C-b
+
+# Persentase ukuran split pane
+tmux_split_pct: 30
+
+# Layout & rasio preview window (misal: up:75%, right:60%)
+preview_size: up:75%
+
+# ── Keybindings Configuration ─────────────────────────────────────────────────
+# Kustomisasi shortcut keyboard fex sesuai kebutuhan
+keybindings:
+  # Navigation & Mode Switching
+  switch_mode: tab          # Tree Mode <-> Flat Find
+  search: ctrl-f            # Live Ripgrep Search
+  git: ctrl-g               # Git History & Diff (file) / Lazygit (folder)
+  help: ctrl-h              # Keybindings Help Popup
+  copy_path: ctrl-y         # Copy path to OS Clipboard (OSC 52)
+
+  # Clipboard & File Operations
+  mark_copy: alt-c          # Tandai untuk Salin (Copy)
+  mark_move: alt-m          # Tandai untuk Pindah (Move / Cut)
+  paste: ctrl-v             # Paste ke direktori aktif
+  rename: ctrl-r            # Ganti nama (Rename)
+  delete: ctrl-d            # Hapus (Delete dialog)
+  new_file: ctrl-n          # Buat file baru (Tree mode)
+  new_folder: ctrl-k        # Buat folder baru (Tree mode)
+
+  # In-TUI Preview & Bookmarks
+  toggle_preview: ctrl-p    # Sembunyikan / Tampilkan preview pane
+  toggle_layout: ctrl-s     # Fullscreen / Split preview toggle
+  bookmark: ctrl-b          # Simpan ke bookmark
+  unbookmark: ctrl-x        # Hapus dari bookmark
+  tmux_pane: ctrl-o         # Buka direktori di right Tmux pane
+
+  # Custom raw fzf bindings (opsional)
+  custom:
+    shift-up: preview-page-up
+    shift-down: preview-page-down

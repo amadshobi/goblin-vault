@@ -5,7 +5,7 @@
 // tmux windows, config reference.
 //
 // Bookmark persistence: file-based, one path per line.
-// Default: ~/.cache/fe-bookmarks (dari Config.BookmarksFile).
+// Default: ~/.cache/fex-bookmarks (dari Config.BookmarksFile).
 // ==============================================================
 package session
 
@@ -33,9 +33,9 @@ type TmuxWindow struct {
 type Session struct {
 	mu sync.RWMutex
 
-	Cwd       string        // current working directory (abs path)
-	Bookmarks []string      // list bookmark paths (loaded dari file)
-	Windows   []TmuxWindow  // tracked tmux windows/panes
+	Cwd       string       // current working directory (abs path)
+	Bookmarks []string     // list bookmark paths (loaded dari file)
+	Windows   []TmuxWindow // tracked tmux windows/panes
 	Config    *config.Config
 
 	// Internal state untuk tree navigation (dulu pake FE_TREE_FILE)
@@ -108,7 +108,7 @@ func (s *Session) bookmarkFile() string {
 		return s.Config.BookmarksFile
 	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".cache", "fe-bookmarks")
+	return filepath.Join(home, ".cache", "fex-bookmarks")
 }
 
 // GetBookmarksFile — public accessor untuk bookmark file path.

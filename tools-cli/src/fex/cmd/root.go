@@ -19,8 +19,8 @@ import (
 
 // Build-time vars — diisi pas build (ldflags)
 var (
-	Version = "0.2.0"
-	Date    = "2026-07-25"
+	Version = "0.3.16"
+	Date    = "2026-08-18"
 )
 
 // flagVars — holds parsed CLI flags
@@ -49,17 +49,46 @@ Hybrid architecture: Go manages config, state, routing, error handling.
 Bash helpers handle external tool interaction (fzf, fd, rg, tmux, bat).
 
 Usage:
-  fex                    Browse files from current directory
-  fex <path>             Browse files from <path>
-  fex <extension>        Filter by extension (e.g. fex .js)
+  fex                    Explore folders (Tree Mode — default)
+  fex <path>             Explore folders from <path>
+  fex <extension>        Flat find filtered by extension (e.g. fex .go)
   fex <path> <extension> Both
-  fex --search <query>   Search file content
-  fex --tree             Tree navigation (folder explorer)
-  fex --bookmarks        Browse bookmarked files
-  fex -h, --help         Show help`,
-	SilenceUsage:   true,
-	SilenceErrors:  true,
-	Args:           cobra.ArbitraryArgs,
+  fex -f, --find         Flat file search across all subdirectories
+  fex -s, --search [q]   Live interactive Ripgrep content search
+  fex -t, --tree         Explore folders (explicit Tree mode)
+  fex -b, --bookmarks    Browse bookmarked files
+  fex -h, --help         Show help
+
+Keybindings (in TUI):
+  Navigation:
+    Enter                Buka file di Editor / Masuk folder
+    Esc                  Batal / Naik 1 direktori (Tree) / Kembali (Search)
+    Tab                  Beralih mode instan (Tree Mode ⇄ Flat Find Mode)
+
+  Clipboard & File Ops:
+    Alt-c                Tandai untuk Salin (Copy)
+    Alt-m                Tandai untuk Pindah (Move / Cut)
+    Ctrl-v               Tempel (Paste) di direktori aktif
+    Ctrl-r               Ganti nama (Rename) file/folder
+    Ctrl-d               Hapus (Delete) file/folder
+    Ctrl-n               Buat file baru (Tree mode)
+    Ctrl-k               Buat folder baru (Tree mode)
+
+  Search & Utilities:
+    Ctrl-f               Live interactive search konten file (ripgrep)
+    Ctrl-g               Buka lazygit (Tree mode) / File Git Diff Viewer (Find mode)
+    Ctrl-y               Salin path ke clipboard OS (Universal OSC 52)
+    Ctrl-b               Tambahkan ke Bookmarks
+    Ctrl-x               Hapus dari Bookmarks
+    Ctrl-o               Buka direktori di Tmux pane sebelah
+
+  Preview & Help:
+    Ctrl-p               Toggle preview pane
+    Ctrl-s               Toggle fullscreen layout preview
+    Ctrl-h, ?            Buka dialog panduan bantuan interaktif`,
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	Args:          cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// ── 1. Load config ──
 		cfg, err := config.Load()
@@ -96,22 +125,54 @@ Usage:
 			return fmt.Errorf("session init: %w", err)
 		}
 
-		// ── 5. Dispatcher ──
-		switch {
-		case flagTreeMode:
-			return runTreeMode(sess, absDir)
+		// ── 5. Dispatcher State Machine ──
+		currentMode := "tree" // Default starts in Tree Mode
+		prevMode := "tree"
 
-		case flagBookmarkMode:
-			return runBookmarksMode(sess)
+		if flagBookmarkMode {
+			currentMode = "bookmarks"
+		} else if flagSearchMode {
+			currentMode = "search"
+			prevMode = "tree"
+		} else if flagFindMode || extFilter != "" {
+			currentMode = "find"
+			prevMode = "tree"
+		}
 
-		case flagSearchMode:
-			return runSearchMode(sess, "")
+		for {
+			switch currentMode {
+			case "tree":
+				prevMode = "tree"
+				nextMode, err := runTreeMode(sess, sess.GetCwd())
+				if err != nil || nextMode == "" {
+					return err
+				}
+				currentMode = nextMode
 
-		case flagFindMode:
-			return runFindMode(sess, absDir, extFilter, cfg, true)
+			case "search":
+				nextMode, err := runSearchMode(sess, "", prevMode)
+				if err != nil || nextMode == "" {
+					return err
+				}
+				if nextMode == "back" {
+					currentMode = prevMode
+				} else {
+					currentMode = nextMode
+				}
 
-		default:
-			return runFindMode(sess, absDir, extFilter, cfg, false)
+			case "bookmarks":
+				return runBookmarksMode(sess)
+
+			case "find":
+				fallthrough
+			default:
+				prevMode = "find"
+				nextMode, err := runFindMode(sess, sess.GetCwd(), extFilter, cfg, true)
+				if err != nil || nextMode == "" {
+					return err
+				}
+				currentMode = nextMode
+			}
 		}
 	},
 }

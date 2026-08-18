@@ -8,13 +8,42 @@
 > | `sup` — Smart Universal Package Updater | [`docs/CHANGELOG/sup.md`](docs/CHANGELOG/sup.md) |
 > | `fex` — File Explorer (Go)              | [`docs/CHANGELOG/fex.md`](docs/CHANGELOG/fex.md) |
 > | `gn` — Goblin Nexus CLI                 | [`docs/CHANGELOG/gn.md`](docs/CHANGELOG/gn.md)   |
-> | `ocm` — OpenCode Configurator TUI       | [`docs/CHANGELOG/ocm.md`](docs/CHANGELOG/ocm.md) |
 > | `zf` — ZF Navigation Engine             | [`docs/CHANGELOG/zf.md`](docs/CHANGELOG/zf.md)   |
 > | `gb` — GitHub Assistant TUI             | [`docs/CHANGELOG/gb.md`](docs/CHANGELOG/gb.md)   |
 
 ---
 
-## [v0.3.36] - 2026-08-18
+## [v0.4.0] - 2026-08-18
+
+### 🚀 Major Evolution & Ecosystem Refactor
+
+- **Automated All-in-One Installer & 1-Line Remote cURL Bootstrap (`scripts/install.sh`)**:
+  - **Single-Entry Remote Bootstrap**: Dukungan eksekusi instan via `curl -fsSL https://raw.githubusercontent.com/amadshobi/goblin-vault/main/scripts/install.sh | bash` dengan auto-clone ke `~/civil/goblin-vault` dan delegasi instalasi otomatis.
+  - **Dynamic Braille Spinner UX**: Tampilan langkah instalasi 1-baris halus (`⠋ ⠙ ⠹...`) dengan pelacakan durasi per-task dan box error log merah saat terjadi kegagalan.
+  - **Universal Symlinking**: Distribusi seragam seluruh 5 binary CLI (`fex`, `gn`, `gb`, `sup`, `zf`) ke `~/.local/bin/` dengan canonical symlink resolver.
+  - **Modular Targets**: Dukungan argumen target modular (`./scripts/install.sh fex|gn|gb|sup|zf|config|lego`) dan non-interactive mode (`--yes` / `-y`).
+- **Lego Ecosystem Matrix & Diagnostic Engine (`scripts/doctor.js`)**:
+  - **Tier 1 (Core Drivers)**: Verifikasi `node`, `bun`, `go`, `fzf`, `tmux`, `zoxide`.
+  - **Tier 2 (Lego Power-Ups)**: Deteksi otomatis fitur `[UNLOCKED]` atau `[FALLBACK]` untuk `lazygit`, `ripgrep`, `bat`, `eza`, `fd`, `gh`, dan `clipboard` (`xclip`/`wl-copy`).
+  - **Interactive Lego Installer**: Prompt interaktif `[y/N]` terproteksi dengan visual Lego Card sebelum mengeksekusi instalasi paket sistem.
+- **`fex` v0.3.16 Major Upgrade (`tools-cli/src/fex/`)**:
+  - **Full Customizable Dynamic Keybindings**: Mapping seluruh aksi (navigasi, mode switch, clipboard CRUD, git, search, help) dapat di-override bebas via `~/.config/fex/config.yaml`.
+  - **Master Vault Config & Auto-Migration**: Standardisasi config path ke `~/.config/fex/config.yaml` (bookmarks: `~/.cache/fex-bookmarks`) dengan fallback auto-migrasi dari legacy `~/.config/fe/` dan template master di `configs/fex/config.yaml`.
+  - **Subcommand `fex backup` & `fex restore`**: Dukungan sinkronisasi config `fex backup fex|micro|nvim|all` dan `fex restore fex|micro|nvim|all`.
+  - **Instant Mode Switcher (`Tab`)**: Beralih instan antara **Tree Mode (`🌳`)** dan **Flat Find (`🔍`)** tanpa keluar dari sesi.
+  - **Interactive File Clipboard Engine**: Tandai salin (`Alt-c`), pindah (`Alt-m`), dan tempel (`Ctrl-v`) dengan penanganan tabrakan nama otomatis, rekursif, dan retensi posisi kursor (`load:pos`).
+  - **Context-Aware Git Action (`Ctrl-G`)**: Membuka Git History & Diff Viewer Split saat kursor di FILE, atau meluncurkan `lazygit` TUI saat kursor di FOLDER.
+  - **Large Directory Warning Guard**: Popup peringatan fzf saat memindai direktori besar (`$HOME` / `/`) pada Flat Find untuk mencegah lag/freeze.
+- **Master Neovim Configuration by amadshobi (`configs/nvim/`)**:
+  - Integrasi master LazyVim distribution dengan ergonomi navigasi hybrid Micro/VS Code (`Ctrl-S` save, `Ctrl-Z` undo, `Ctrl-X` quit, `whichwrap`), kecepatan autocompletion **Blink.cmp**, floating terminal **Snacks.nvim** (`<F4>` / `<Alt-t>`), OpenCode JSON schema validator, dan custom frontmatter dictionary.
+  - Dokumentasi lengkap di `configs/nvim/README.md`.
+- **Automated VHS Showcase Suite (`docs/vhs/`)**:
+  - 6 template tape Charmbracelet VHS (`fex.tape`, `gn.tape`, `gn-bench.tape`, `gn-usage.tape`, `gn-doctor.tape`, `sup.tape`, `gb.tape`, `zf.tape`, `installer.tape`) dan re-render seluruh GIF aset resolusi tinggi di `docs/assets/gif/`.
+- **Governance & Policy Consolidation**:
+  - Menggabungkan seluruh standar rekayasa ke `AGENTS.md` (Severity, Naming, Standar ASCII Banner, Pre-Change Checklist) dan menghapus folder usang `docs/rules/` serta media mentah yang kadaluarsa.
+  - Pembaruan GitHub Actions CI workflow dengan FEX Go unit tests, automated installer tests, dan 5-tool smoke test suite.
+
+---
 
 ### Added
 

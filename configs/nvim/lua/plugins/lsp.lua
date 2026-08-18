@@ -19,6 +19,19 @@ return {
         pylsp = {},
         gopls = {},
         ts_ls = {},
+        jsonls = {
+          settings = {
+            json = {
+              validate = { enable = true },
+              schemas = {
+                {
+                  fileMatch = { "opencode.json", "opencode.jsonc", ".opencode.json", "opencode/*.json" },
+                  url = "https://opencode.ai/config.json",
+                },
+              },
+            },
+          },
+        },
         marksman = { enabled = false },
       },
     },

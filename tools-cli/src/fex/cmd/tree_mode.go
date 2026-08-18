@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"civil/goblin-vault/tools-cli/src/fex/internal/config"
 	"civil/goblin-vault/tools-cli/src/fex/internal/fzf"
 	"civil/goblin-vault/tools-cli/src/fex/internal/session"
 	"civil/goblin-vault/tools-cli/src/fex/internal/tmux"
@@ -22,13 +23,16 @@ import (
 //   3. File → open
 //   4. Folder → recurse dengan folder sebagai root baru
 //   5. ".." entry → go up
+//   6. Tab → switch ke Flat Find mode
 
-func runTreeMode(sess *session.Session, currentDir string) error {
+func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 	showHidden := true // tampilin dotfiles biar berguna
 	homeDir, _ := os.UserHomeDir()
 	if homeDir == "" {
 		homeDir = "/home/shobixlinuxdev"
 	}
+	toast := ""
+	lastFocusName := ""
 
 	for {
 		// ── Navigasi ke folder file terakhir dibuka ──
@@ -43,7 +47,7 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 		// ── Baca isi directory ──
 		entries, err := tree.ListDirContents(currentDir, showHidden)
 		if err != nil {
-			return fmt.Errorf("list dir: %w", err)
+			return "", fmt.Errorf("list dir: %w", err)
 		}
 
 		// ── Build display lines ──
@@ -76,19 +80,52 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 
 		if len(displayLines) == 0 {
 			fmt.Fprintf(os.Stderr, "🌳 Directory is empty: %s\n", currentDir)
-			return nil
+			return "", nil
 		}
 
 		// ── State: temp file buat currentDir (preview shell bisa baca) ──
 		tmpFile := filepath.Join(os.TempDir(), fmt.Sprintf("fe-tree-%d", os.Getpid()))
 		if err := os.WriteFile(tmpFile, []byte(currentDir), 0644); err != nil {
-			return fmt.Errorf("write state: %w", err)
+			return "", fmt.Errorf("write state: %w", err)
+		}
+
+		// ── Dynamic Keybindings & Expected Keys ──
+		kb := config.DefaultKeybindings()
+		if sess.Config != nil {
+			kb = sess.Config.Keybindings
 		}
 
 		// ── Fzf opts ──
 		opts := fzf.DefaultFzfOpts()
-		opts.Header = "Enter:open/masuk | Ctrl-h:naik | Ctrl-n:file-baru | Ctrl-k:folder-baru | Ctrl-r:rename | Ctrl-d:del | Ctrl-g:git | Ctrl-p:preview | Ctrl-s:fullscreen"
-		opts.Expected = "ctrl-r,ctrl-d,ctrl-n,ctrl-k,ctrl-h,esc"
+		headerPrefix := toast
+		if headerPrefix != "" {
+			headerPrefix += " | "
+		}
+		opts.Header = fmt.Sprintf("%s%sEnter:open/in | %s:find | %s:git | %s:copy | %s:move | %s:paste | %s:help | %s:file | %s:folder | %s:ren | %s:del | %s:search | %s:clip",
+			headerPrefix, GetClipboardBadge(), kb.SwitchMode, kb.Git, kb.MarkCopy, kb.MarkMove, kb.Paste, kb.Help, kb.NewFile, kb.NewFolder, kb.Rename, kb.Delete, kb.Search, kb.CopyPath)
+		toast = "" // reset toast setelah dipakai
+
+		// Compile expected keys
+		expectedKeys := []string{
+			"esc", "?",
+			kb.SwitchMode, kb.Search, kb.Git, kb.Help, kb.CopyPath,
+			kb.MarkCopy, kb.MarkMove, kb.Paste, kb.Rename, kb.Delete,
+			kb.NewFile, kb.NewFolder,
+		}
+		if kb.Paste == "ctrl-v" {
+			expectedKeys = append(expectedKeys, "alt-v")
+		}
+		// Dedup expected keys
+		seenKeys := make(map[string]bool)
+		var uniqueExpected []string
+		for _, k := range expectedKeys {
+			k = strings.TrimSpace(strings.ToLower(k))
+			if k != "" && !seenKeys[k] {
+				seenKeys[k] = true
+				uniqueExpected = append(uniqueExpected, k)
+			}
+		}
+		opts.Expected = strings.Join(uniqueExpected, ",")
 		opts.BorderLabel = fmt.Sprintf(" 🌳 %s ", filepath.Base(currentDir))
 		opts.Prompt = " 🌳 ❯ "
 
@@ -106,7 +143,7 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 				`tree -L 2 "$dir/$item" 2>/dev/null || `+
 				`ls -1p "$dir/$item" 2>/dev/null; `+
 				`elif [ -f "$dir/$item" ]; then `+
-				filePreviewCmd + `; `+
+				filePreviewCmd+`; `+
 				`fi`,
 			tmpFile,
 		)
@@ -115,16 +152,32 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 		opts.Cycle = true
 
 		// ── In-fzf bindings ──
-		opts.Bindings = buildTreeModeBindings(currentDir, tmux.RightPaneID())
+		opts.Bindings = buildTreeModeBindings(currentDir, tmux.RightPaneID(), kb)
+
+		// ── Maintain cursor focus on the active / pasted item ──
+		if lastFocusName != "" {
+			opts.Sync = true
+			for i, entry := range entryLookup {
+				if entry.name == lastFocusName ||
+					entry.path == lastFocusName ||
+					strings.HasSuffix(entry.line, " "+lastFocusName) ||
+					strings.HasSuffix(entry.line, "/"+lastFocusName) {
+					pos := i + 1
+					opts.Bindings = append(opts.Bindings, fmt.Sprintf("load:pos(%d),start:pos(%d)", pos, pos))
+					break
+				}
+			}
+			lastFocusName = ""
+		}
 
 		result, err := fzf.Run(strings.Join(displayLines, "\n"), opts)
 		os.Remove(tmpFile) // cleanup state file
 		if err != nil {
-			return fmt.Errorf("fzf tree: %w", err)
+			return "", fmt.Errorf("fzf tree: %w", err)
 		}
 
 		if result.ExpectedKey == "" && len(result.Selected) == 0 {
-			return nil // cancelled
+			return "", nil // cancelled
 		}
 
 		// ── Helper: match selected line ke entry ──
@@ -144,8 +197,117 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 		}
 
 		// ── Route by pressed key ──
-		switch result.ExpectedKey {
-		case "ctrl-r":
+		pressed := strings.ToLower(result.ExpectedKey)
+		switch {
+		case pressed == strings.ToLower(kb.SwitchMode):
+			// Switch mode: Tree ➔ Flat Find Mode
+			sess.SetCwd(currentDir)
+			return "find", nil
+
+		case pressed == strings.ToLower(kb.Search):
+			// Switch mode: Tree ➔ Interactive Search Mode
+			sess.SetCwd(currentDir)
+			return "search", nil
+
+		case pressed == strings.ToLower(kb.Git):
+			// Context-Aware Git Action:
+			// - Jika kursor di FILE ➔ Buka Git History & Diff Viewer Split untuk file tersebut
+			// - Jika kursor di FOLDER (atau "..") ➔ Buka full lazygit TUI
+			if len(result.Selected) > 0 {
+				entry := findEntry(result.Selected[0])
+				if entry != nil {
+					lastFocusName = entry.name
+					if !entry.isDir && entry.path != "" {
+						if errToast := fileGitHistoryDialog(currentDir, entry.path); errToast != "" {
+							toast = errToast
+						}
+						continue
+					}
+				}
+			}
+
+			// Kursor di folder ➔ Buka full lazygit
+			if errToast := openLazygit(currentDir); errToast != "" {
+				toast = errToast
+			}
+			continue
+
+		case pressed == strings.ToLower(kb.CopyPath):
+			// Copy relative/abs path to system clipboard (OSC 52 + tools)
+			if len(result.Selected) == 0 {
+				continue
+			}
+			entry := findEntry(result.Selected[0])
+			if entry == nil || entry.path == "" {
+				continue
+			}
+			lastFocusName = entry.name
+			if err := CopyToSystemClipboard(entry.path); err != nil {
+				toast = "⚠ [Copy path failed]"
+			} else {
+				toast = fmt.Sprintf("📋 [Path copied: %s]", entry.name)
+			}
+			continue
+
+		case pressed == strings.ToLower(kb.Help) || pressed == "?":
+			// Open interactive keybindings help popup
+			if len(result.Selected) > 0 {
+				if entry := findEntry(result.Selected[0]); entry != nil {
+					lastFocusName = entry.name
+				}
+			}
+			helpDialog(sess.Config)
+			continue
+
+		case pressed == strings.ToLower(kb.MarkCopy):
+			// Mark entry for copy
+			if len(result.Selected) == 0 {
+				continue
+			}
+			entry := findEntry(result.Selected[0])
+			if entry == nil || entry.path == "" {
+				continue
+			}
+			lastFocusName = entry.name
+			if err := MarkClipboard(entry.path, ClipActionCopy); err != nil {
+				toast = "⚠ [Copy failed]"
+			} else {
+				toast = fmt.Sprintf("📋 [Marked Copy: %s]", entry.name)
+			}
+			continue
+
+		case pressed == strings.ToLower(kb.MarkMove):
+			// Mark entry for move
+			if len(result.Selected) == 0 {
+				continue
+			}
+			entry := findEntry(result.Selected[0])
+			if entry == nil || entry.path == "" {
+				continue
+			}
+			lastFocusName = entry.name
+			if err := MarkClipboard(entry.path, ClipActionMove); err != nil {
+				toast = "⚠ [Move failed]"
+			} else {
+				toast = fmt.Sprintf("📦 [Marked Move: %s]", entry.name)
+			}
+			continue
+
+		case pressed == strings.ToLower(kb.Paste) || pressed == "alt-v":
+			// Execute paste to currentDir
+			clipItem, _ := ReadClipboard()
+			if clipItem != nil {
+				lastFocusName = clipItem.Filename
+			}
+			msg, err := ExecutePaste(currentDir)
+			if err != nil {
+				toast = fmt.Sprintf("⚠ [%s]", err.Error())
+			} else {
+				toast = fmt.Sprintf("✅ [%s]", msg)
+			}
+			continue
+
+		case pressed == strings.ToLower(kb.Rename):
 			// Rename
 			if len(result.Selected) == 0 {
 				continue
@@ -160,13 +322,13 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 			}
 			newPath := filepath.Join(filepath.Dir(entry.path), newName)
 			if err := os.Rename(entry.path, newPath); err != nil {
-				fmt.Fprintf(os.Stderr, "\n⚠ rename error: %v\n", err)
-				fmt.Fprintf(os.Stderr, "  source: %s\n", entry.path)
-				fmt.Fprintf(os.Stderr, "  target: %s\n", newPath)
+				toast = fmt.Sprintf("⚠ [Rename: %v]", err)
 				continue
 			}
+			lastFocusName = newName
+			continue
 
-		case "ctrl-d":
+		case pressed == strings.ToLower(kb.Delete):
 			// Delete
 			if len(result.Selected) == 0 {
 				continue
@@ -177,22 +339,25 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 			}
 			if confirmDeleteDialog(entry.path) {
 				if err := executeDelete(entry.path); err != nil {
-					fmt.Fprintf(os.Stderr, "delete: %v\n", err)
+					toast = fmt.Sprintf("⚠ [Delete: %v]", err)
+				} else {
+					toast = fmt.Sprintf("🗑️ [Deleted: %s]", entry.name)
 				}
 			}
+			continue
 
-		case "ctrl-n":
+		case pressed == strings.ToLower(kb.NewFile):
 			// New file
 			name := newFileDialog(currentDir)
 			if name == "" {
 				continue
 			}
 			newPath := filepath.Join(currentDir, name)
-			if err := os.WriteFile(newPath, []byte{}, 0644); err != nil {
-				fmt.Fprintf(os.Stderr, "create file: %v\n", err)
+			if err := os.WriteFile(newPath, []byte(""), 0644); err != nil {
+				toast = fmt.Sprintf("⚠ [Create file: %v]", err)
 				continue
 			}
-			// Open the newly created file in editor
+			lastFocusName = name
 			editor := ui.DetectEditor()
 			editorCmd := exec.Command(editor, newPath)
 			editorCmd.Stdin = os.Stdin
@@ -201,9 +366,9 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 			if err := editorCmd.Run(); err != nil {
 				fmt.Fprintf(os.Stderr, "editor: %v\n", err)
 			}
-			// Don't set lastOpened — keep search input clean on re-render
+			continue
 
-		case "ctrl-k":
+		case pressed == strings.ToLower(kb.NewFolder):
 			// New folder
 			name := newFolderDialog(currentDir)
 			if name == "" {
@@ -211,37 +376,28 @@ func runTreeMode(sess *session.Session, currentDir string) error {
 			}
 			newPath := filepath.Join(currentDir, name)
 			if err := os.MkdirAll(newPath, 0755); err != nil {
-				fmt.Fprintf(os.Stderr, "create folder: %v\n", err)
+				toast = fmt.Sprintf("⚠ [Create folder: %v]", err)
 				continue
 			}
-			// Don't set lastOpened — keep search input clean on re-render
-
-		case "ctrl-h":
-			// Go up one directory (mirip bash: ctrl-h reload parent)
-			parent := filepath.Dir(currentDir)
-			// Boundary: don't go above home dir — exit instead
-			if currentDir == homeDir || !strings.HasPrefix(parent+"/", homeDir+"/") {
-				return nil
-			}
-			currentDir = parent
-			sess.SetTreeCwd(currentDir)
+			lastFocusName = name
 			continue
 
-		case "esc":
-			// Esc: naik satu folder (sama seperti ctrl-h)
+		case pressed == "esc":
+			// Esc: naik satu folder
 			parent := filepath.Dir(currentDir)
 			// Boundary: don't go above home dir — exit instead
 			if currentDir == homeDir || !strings.HasPrefix(parent+"/", homeDir+"/") {
-				return nil
+				return "", nil
 			}
 			currentDir = parent
 			sess.SetTreeCwd(currentDir)
+			lastFocusName = filepath.Base(currentDir)
 			continue
 
 		default:
 			// Normal Enter (or other key) — open or navigate
 			if len(result.Selected) == 0 {
-				return nil
+				return "", nil
 			}
 			entry := findEntry(result.Selected[0])
 			if entry == nil {

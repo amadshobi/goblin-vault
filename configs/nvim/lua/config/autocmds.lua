@@ -110,3 +110,14 @@ vim.api.nvim_create_autocmd("BufReadPost", {
 -- ============ STATUSLINE MINIMAL (Micro-style) ============
 -- Simple statusline: filename, modified, filetype, position
 vim.o.statusline = "%f%( %m%) %=%y %l:%c"
+
+-- ============ CUSTOM DICTIONARY AUTOCOMPLETE ============
+local dict_file = vim.fn.expand("~/.config/nvim/dict/fronmatter-yml.md")
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "markdown", "yaml", "yml" },
+  callback = function()
+    if vim.fn.filereadable(dict_file) == 1 then
+      vim.opt_local.dictionary:append(dict_file)
+    end
+  end,
+})
