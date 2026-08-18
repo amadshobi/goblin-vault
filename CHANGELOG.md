@@ -3,20 +3,35 @@
 > **Master Macro Changelog** — navigasi & ringkasan tingkat tinggi seluruh Goblin Vault.
 > Detail riwayat per-tool tersedia di changelog modular masing-masing:
 >
-> | Tool | Changelog |
-> |------|-----------|
+> | Tool                                    | Changelog                                        |
+> | --------------------------------------- | ------------------------------------------------ |
 > | `sup` — Smart Universal Package Updater | [`docs/CHANGELOG/sup.md`](docs/CHANGELOG/sup.md) |
-> | `fex` — File Explorer (Go) | [`docs/CHANGELOG/fex.md`](docs/CHANGELOG/fex.md) |
-> | `gn` — Goblin Nexus CLI | [`docs/CHANGELOG/gn.md`](docs/CHANGELOG/gn.md) |
-> | `ocm` — OpenCode Configurator TUI | [`docs/CHANGELOG/ocm.md`](docs/CHANGELOG/ocm.md) |
-> | `zf` — ZF Navigation Engine | [`docs/CHANGELOG/zf.md`](docs/CHANGELOG/zf.md) |
-> | `gb` — GitHub Assistant TUI | [`docs/CHANGELOG/gb.md`](docs/CHANGELOG/gb.md) |
+> | `fex` — File Explorer (Go)              | [`docs/CHANGELOG/fex.md`](docs/CHANGELOG/fex.md) |
+> | `gn` — Goblin Nexus CLI                 | [`docs/CHANGELOG/gn.md`](docs/CHANGELOG/gn.md)   |
+> | `ocm` — OpenCode Configurator TUI       | [`docs/CHANGELOG/ocm.md`](docs/CHANGELOG/ocm.md) |
+> | `zf` — ZF Navigation Engine             | [`docs/CHANGELOG/zf.md`](docs/CHANGELOG/zf.md)   |
+> | `gb` — GitHub Assistant TUI             | [`docs/CHANGELOG/gb.md`](docs/CHANGELOG/gb.md)   |
+
+---
+
+## [v0.3.36] - 2026-08-18
+
+### Added
+
+- **`gn` v2.0.2 (Leaderboard Benchmark, Native OMP Usage Forwarding, & Tree Auth Matrix)**:
+  - **Speed Leaderboard & Visual Benchmark Matrix (`gn bench`)**: Rombak total benchmark menjadi leaderboard terurut berdasarkan throughput (`tok/s`), visual throughput gauge bar (`████████░░░░`), **Smart Ping Cache Synergy** (otomatis hanya menguji model `200 OK` dari ping cache), Champion summary card, dan opsi `--top <N>` serta `--all`.
+  - **Native `omp usage` Forwarding (`gn usage`)**: Integrasi langsung dengan binary `omp usage` untuk visual progress bar block (`████░░░░`), multi-account breakdown, dan kalkulasi kapasitas total kuota.
+  - **Token Window & File Diffs (`gn u -t` & `gn u -f`)**: Dukungan fleksibel rentang hari (`--day <N>`, `-d <N>`, `--all`) dan pelacakan file modifications diff (`+lines -lines`) pada Main Agent.
+  - **Tree-Structured Doctor & Zero-Secret Auth Matrix (`gn doctor`)**: Layout berjenjang (`├──`, `└──`) dalam 4 kategori dan audit kredensial aman dari `agent.db` tanpa ekspos token/secret.
+  - **Smart Reasoning Auto-Fallback (`gn ping`, `gn bench`)**: Auto-retry otomatis dengan `reasoning_effort: "low"` saat mendeteksi error thinking MINIMAL, membuka akses model reasoning `gemini-3.7-flash-tiered` dan `gemini-3.1-pro`.
+  - **Reliability & Port Timeout Fix**: Timeout proteksi 1000ms via `net.Socket` pada `gn ping local` dan penyelarasan cache path ke `~/.config/gn/cache`. → [detail](docs/CHANGELOG/gn.md)
 
 ---
 
 ## [v0.3.35] - 2026-08-14
 
 ### Added
+
 - **`gb` v2.2.0 (GitHub App Bot Persona Actions & Native RS256 JWT Auth)**:
   - Peluncuran subcommand `gb bot` untuk automasi menggunakan identitas GitHub App resmi (App ID, Installation ID, dan Private Key .pem).
   - Subcommands: `gb bot status` (visual audit koneksi, scopes, dan repositori via Clack), `gb bot token` (raw token minting khusus shell piping `export GITHUB_TOKEN=$(gb bot token)`), `gb bot comment <issue/PR> [pesan]` (+ `--repo` & `--body-file`), dan `gb bot config` (wizard interaktif konfigurasi).
@@ -32,7 +47,9 @@
 - **`check_syntax.js` & `doctor.js` JS Engine Migration**: Migrasi total script validator repositori dari Bash kuno (`check_syntax.sh` & `doctor.sh`) ke Node.js / Bun Engine yang jauh lebih cepat, paralel, dan kaya fitur.
 - **Multi-Language & Executable Permission Check**: Penambahan audit ijin eksekusi (`+x`) pada semua binary & scripts, rincian per-file `.go`, `.js`, `.ts`, dan `.sh`, serta parser error presisi (`file:line:col`) dengan format Arrow Identifier (`↳`) dan Goblin Roast Summary (`🤨 NIH BOSS FILE YANG ERROR:`).
 - **Flexible CLI Flags**: Dukungan flag `--staged` (`-s`), `--working` (`-w`, mengecek modified & untracked files), dan `--full` (`-f`).
+
 ### Removed
+
 - **Legacy Bash Wrappers**: Penghapusan total file wrapper `scripts/check_syntax.sh` dan `scripts/doctor.sh`.
 
 ---
@@ -40,44 +57,54 @@
 ## [v0.3.32] - 2026-08-06
 
 ### Added
+
 - **`gb` v2.1.3 (FinOps Cost Logger, Hybrid Prompt Engine, PAGER Hardening, & Ultra-Clean TUI Streamer)**: Integrasi FinOps Token & Cost Analytics Logger (`~/.config/gb/logs/` & `price.json`), Modular Hybrid Prompt System (`src/prompts/*.md` + `~/.config/gb/prompts/`), Clean Model/Variant Manager (`models.json`), Deep Issue Technical Analysis (`gb issue analyze <num>`), PAGER RCE hardening via `spawnSync` & allowlist, temporary file system prompt isolation, READ-ONLY PR review tools (`read,glob,grep`), serta TUI streamer layout & Dual-Level Help update. → [detail](docs/CHANGELOG/gb.md)
 
 ## [v0.3.31] - 2026-08-06
 
 ### Changed
+
 - **`gb` v2.1.2 (Pure OMP Single-Engine Architecture)**: Simplifikasi LLM engine 100% berbasis OMP CLI (`omp --mode=json --no-session`), menghapus fallback `opencode` & `curl`, dan menjamin zero-session-trash di disk. → [detail](docs/CHANGELOG/gb.md)
 
 ## [v0.3.30] - 2026-08-06
 
 ### Changed
+
 - **`gb` v2.1.1 (NDJSON LLM Streaming Engine & OMP Auto-Selection)**: Mengubah `streamLLM` di `gb` agar otomatis menggunakan backend `omp` dengan flag `--mode=json` & `--print-thoughts`, menghadirkan streaming token-by-token dan visualisasi thinking real-time serealistis `sub`. → [detail](docs/CHANGELOG/gb.md)
 
 ## [v0.3.29] - 2026-08-06
+
 ### Changed
+
 - **`gb` v2.1.0 (Full TypeScript Migration, Sub Engine Adoption, & Issue Suite)**: Porting 100% codebase `gb` ke TypeScript modular, adopsi Live Streaming LLM Engine dari `sub`, penambahan `gb issue summarize` & `gb issue analyze`, serta pembersihan total (purge) file JS legacy. → [detail](docs/CHANGELOG/gb.md)
 
 ## [v0.3.28] - 2026-08-06
 
 ### Added
+
 - **`gb` v2.0.0 (Refactoring Rename `gh-blin` → `gb`)**: Rename menyeluruh tool `gh-blin` menjadi `gb` — binary, source code, changelog, dokumentasi, scripts, CI/CD, dan issue templates. → [detail](docs/CHANGELOG/gb.md)
 - **`gb` v0.1.0 (GitHub Profile Management Subcommand `gb profile`)**: Menambahkan subcommand `profile` untuk melihat profil GitHub dalam format ANSI Box Card serta mengedit Bio, Name, Company, Location, & Blog secara interaktif maupun via CLI Flags (`--bio`, `--name`, dll). Terintegrasi dengan Dual-Level Help system. (Issue #12) → [detail](docs/CHANGELOG/gb.md)
 
 ## [v0.3.27] - 2026-08-06
 
 ### Fixed
+
 - **`ocm` v0.3.16 (Immutability Refactor & Splice Elimination)**: Menghapus semua mutasi in-place `Array.prototype.splice` di `tools-cli/src/ocm/src/utils/utils.ts` dan `commands/reference.ts`. Logika insert dan delete model kini 100% immutable (Issue #3). → [detail](docs/CHANGELOG/ocm.md)
 
 ## [v0.3.26] - 2026-08-05
 
 ### Added
+
 - **`gn` Standalone v1.0.0 TypeScript Engine Port**: Port total core `gn` dari Shell Script ke TypeScript modular (`tools-cli/src/gn/src/`) dengan pure terminal formatter (`utils/formatter.ts`) dan tabel TUI ANSI-aware alignment fix (`visibleWidth`). → [detail](docs/CHANGELOG/gn.md)
 
 ### Removed
+
 - **`gn` Legacy Script & Dead-code Purge**: Pembersihan sisa script legacy (`quarantine.sh`, `bench.ts`, `doctor.sh`, `price.ts`, dll) dan penyelarasan router `gn.sh` & `help-formatter.sh`. → [detail](docs/CHANGELOG/gn.md)
 
 ## [v0.3.25] - 2026-08-03
 
 ### Removed
+
 - **`gn` Pembersihan Bom Waktu & Redundansi**: Penghapusan 6 file bermasalah dari `tools-cli/src/gn/`:
   - `quarantine.sh` (575 LoC) & inline `gn export` SQL block di `gn.sh` — manipulasi langsung `auth_credentials` SQLite + dump API key plaintext.
   - `config.ts` (~270 LoC) — JSONC parser manual berbasis regex yang rapuh.
@@ -88,11 +115,13 @@
 ## [v0.3.24] - 2026-08-02
 
 ### Added
+
 - **`gb` v1.1.1 (Magic `omp` Runner, `@file` Stdin Pipe, & 5 Reasoning Effort Variants)**: Integrasi backend `omp` (`--no-session`) via 3 huruf sakti `omp` di CLI, dukungan 5 reasoning effort variants (`high`, `medium`, `low`, `auto`, `none`), handling prompt `@file` untuk menghapus `E2BIG` limit, serta nested backend model mapping (`utils/models.json`). → [detail](docs/CHANGELOG/gb.md)
 - **`gn` Custom Provider Sync & Network Fallback**: `gn export` mendukung ekspor provider custom dari `models.yml` (seperti `peezy`), dan `gn ping`/`gn bench` mendukung auto-discovery provider custom + IPv4 connection fallback. → [detail](docs/CHANGELOG/gn.md)
 - **Changelog Guardrail Per-Tool (`scripts/check_syntax.sh`)**: Sistem pre-commit checker otomatis yang memperingatkan jika ada perubahan source code tool di `tools-cli/src/` tetapi belum ng-stage changelog per-tool (`docs/CHANGELOG/<tool>.md`) atau master `CHANGELOG.md`. → [detail](docs/CHANGELOG/gb.md)
 
 ### Fixed
+
 - **`gb` Flag Collision & Quality Patches**: Pemisahan flag `--auto` (batch) dari variant `auto` (`--eff-auto`), preservasi error context `callOmp`, caching `hasCmd` subprocess, warning precedence `--model` vs `--variant`, penanganan prompt besar via stdin pipe, dan visual box truncation footer terminal. → [detail](docs/CHANGELOG/gb.md)
 - **Automated Release Engine (`scripts/release.sh`)**: Perbaikan skrip rilis otomatis agar men-substitusi header `## [v0.3.25] - 2026-08-05` paling atas di `CHANGELOG.md`, memicu `--full` syntax check saat rilis vault, dan menggunakan guarded syntax `[[ "${TARGET:-}" == ... ]]`. → [detail](docs/CHANGELOG/gb.md)
 
@@ -118,18 +147,22 @@
 ## [v0.3.19] - 2026-07-30
 
 ### Added
+
 - **`sup` v1.1.0 Feature Release**: granular package picker UI (default ALL selected), verbose streaming mode (`-v`), dynamic version auto-detect, precision scanner filters. → [detail](docs/CHANGELOG/sup.md)
 - **`sup` TypeScript Migration**: `sup` diporting dari bash (`scripts/shell/sup.sh`) ke TypeScript modern (`tools-cli/src/sup/`) dengan Clack TUI + Dual-Level Help. → [detail](docs/CHANGELOG/sup.md)
 - **`gn usage` engine**: modul unified quota live + token burn real (menggantikan `status-formatter.ts` & `burn.ts`). → [detail](docs/CHANGELOG/gn.md)
 - **Goblin Shield telemetry logger** + **systemd user service** (`gn-shield.service`) + subcommand `gn shield service`. → [detail](docs/CHANGELOG/gn.md)
 
 ### Fixed
+
 - **`sup` v1.0.1**: sudo loop fix pada `sup all`, `omp` update flag fix, UI/UX polish. → [detail](docs/CHANGELOG/sup.md)
 
 ### Changed
+
 - `gn usage / u` routing delegasi ke `usage.ts`; `gn bench` tanpa role specialization. → [detail](docs/CHANGELOG/gn.md)
 
 ### Removed
+
 - `burn.ts` & `status-formatter.ts` (digantikan `usage.ts`); matematika `assumedTotal 100k`; `scripts/shell/sup.sh` (diarsipkan ke `docs/history/sup-migration/`). → [detail](docs/CHANGELOG/gn.md) · [detail](docs/CHANGELOG/sup.md)
 
 ## [v0.3.15] - 2026-07-28
@@ -188,6 +221,7 @@
 ## Format
 
 This changelog follows [Keep a Changelog](https://keepachangelog.com/) conventions:
+
 - **Added** for new features
 - **Changed** for changes in existing functionality
 - **Deprecated** for soon-to-be removed features

@@ -5,10 +5,41 @@
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
+## [v2.0.2] - 2026-08-18
+
+### Added
+
+- **`gn bench` Leaderboard & Visual Speed Matrix Refactor (`commands/bench.ts`)**:
+  - Rombak total tampilan `gn bench` menjadi Speed Leaderboard terurut (`#1`, `#2`, dst.) berdasarkan throughput (`tok/s`) dan latensi model.
+  - Visual Throughput Gauge Bar dinamis (`████████░░░░`) dengan color-coding adaptif terhadap model tercepat dalam batch.
+  - **Smart Ping Cache Synergy**: Otomatis mendeteksi hasil cache `gn ping` dan hanya menguji model yang berstatus `200 OK` guna menghemat waktu dan konsumsi token, dengan opsi flag `--all` (`-a`) untuk menguji seluruh model dari gateway.
+  - Dukungan filter `--top <N>` untuk membatasi peringkat leaderboard model tercepat.
+  - **Champion Summary Card**: Menampilkan rangkuman model jawara tercepat di bagian bawah output.
+  - Clack live spinner per-model saat eksekusi live (`--force`) agar interaksi terminal tidak freeze.
+  - **Dual-Level Help Standard**: Dukungan Level-2 Help lengkap (`gn b --help` / `gn b -h`).
+- **Native `omp usage` Forwarding Engine (`commands/usage.ts`)**: Default mode `gn u` kini langsung meneruskan eksekusi ke binary resmi `omp usage` di sistem, menghasilkan visual progress bar block (`████░░░░`), rincian akun multi-email, kalkulasi kapasitas total (`1.45x quota left`), dan filter provider instan dengan graceful fallback ke SQLite lokal jika `omp` tidak terpasang.
+- **Tree-Structured Diagnostic & Auth Matrix Refactor for `gn doctor` (`commands/doctor.ts`)**:
+  - Tampilan visual baru berbasis Tree Structure (`├──`, `└──`) yang bersih dan tahan terhadap line wrap di semua ukuran terminal, terbagi dalam 4 kategori: `󰘚 DAEMONS & RUNTIMES`, `󰆼 DATABASES & TELEMETRY`, `󰌆 AUTH & PROVIDER MATRIX`, dan `󰉋 STORAGE & CONFIGURATION`.
+  - **Zero-Secret Auth Matrix**: Mendeteksi akun aktif dari `agent.db` (`WHERE disabled_cause IS NULL`) dan menguji konektivitas (`200 OK` / `ACTIVE`) tanpa mengekspos token, API key, atau kredensial rahasia.
+  - Menghapus pemeriksaan usang `~/.shell/secret` dan standalone syntax check guard.
+
+### Fixed
+
+- **`gn u -t` & `gn u -f` Multi-Day Window & `--all` Historical Support (`commands/usage.ts`, `utils/opencode-cli.ts`)**:
+  - Menambahkan dukungan parsing fleksibel untuk flag window hari: `--day <N>`, `--days <N>`, `-d <N>`, `--day=<N>`, `--days=<N>`, dan direct positional number (e.g. `gn u -t 7`).
+  - Menambahkan dukungan `--all`, `-a`, `--all-time` untuk menarik seluruh rekaman sesi dan token historis sejak hari pertama di OpenCode DB.
+  - Menyelaraskan query `fetchAllSessionData` agar kombinasi filter kata kunci judul/sesi (`-s <query>`) tetap menghormati batas waktu (`--day N` / `--all`).
+  - Menampilkan riwayat file modified (`+lines -lines`) untuk Sesi Utama (Main Agent) di Tree Mode (`-t`) dan Compact Table (`-m`).
+- **`gn ping local` TCP Socket Timeout Fix (`commands/ping.ts`)**: Mengganti `Bun.connect` tanpa timeout dengan `net.Socket` bertimeout 1000ms untuk mencegah blocking/hang saat memeriksa port lokal yang tidak aktif (e.g. Ollama 11434).
+- **`gn doctor` Cache Path Alignment (`commands/doctor.ts`)**: Menyelaraskan pemeriksaan direktori cache ke `~/.config/gn/cache` (menggantikan path legacy `~/.cache/goblin-nexus`) untuk menghilangkan false warning.
+- **Smart Reasoning Auto-Fallback for Probe & Benchmark (`commands/ping.ts`, `commands/bench.ts`)**: Menambahkan auto-retry otomatis dengan `reasoning_effort: "low"` dan `max_tokens: 150` saat probe mendeteksi error `Thinking level MINIMAL is not supported`, membuka akses 200 OK untuk model reasoning `gemini-3.7-flash-tiered`, `gemini-3.7-flash`, dan `gemini-3.1-pro`.
+
+---
 
 ## [v2.0.0] - 2026-08-09
 
 ### Added
+
 - **`gn ping` & `gn bench` Dual-Mode & Centralized Storage Engine (`~/.config/gn/cache/`)**:
   - Migrasi storage cache ping & bench dari `~/.shell/cache/` ke `~/.config/gn/cache/` (sejajar dengan `~/.config/gb`).
   - Auto-migration otomatis membaca & memindahkan cache lama dari `~/.shell/cache/` ke `~/.config/gn/cache/` tanpa membuang riwayat lama.
@@ -37,9 +68,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
   - Modul error handling dedicated dengan fuzzy suggestion untuk subcommand typo (`gn usag` -> `usage`) dan migration hints untuk command legacy (`gn stats`, `gn ollama`, `gn ocm`).
 
 ### Fixed
+
 - **`gn ping` Model Limitation**: Menghapus batasan slice 15 model pada `gn ping <provider>` sehingga secara default menge-ping seluruh model yang dimiliki oleh provider tersebut (e.g. 503 model untuk `kilo`). Ini memperbaiki kelakuan di mana `gn p kilo` nampak kosong di cache mode karena 15 model pertama yang di-slice semuanya mengembalikan status non-200.
 
 ### Refactored
+
 - **Dual-Level Help Standard**:
   - Level-1 (`gn --help`): Tampilan makro ringkas daftar subcommand utama.
   - Level-2 (`gn u -h` / `gn u --help`): Panduan mendalam terpisah per-command.
@@ -55,6 +88,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **Legacy Cleanup**: Pembersihan total tool legacy (`ocm`, `goblin-control`, `notes`).
 
 ### Added
+
 - **TypeScript Native CLI Engine Architecture (Standalone v1.0.0 Release)**: Port total core `gn` dari Shell Script raksasa menjadi aplikasi TypeScript modular berbasis Bun/Node runtime di `tools-cli/src/gn/src/`.
 - **Pure Terminal Formatter Utilities** (`utils/formatter.ts`):
   - Rendering fungsi murni tanpa side-effects untuk banner ASCII ANSI, visual quota bar, status badge (`🟢 OK`/`🟡 WARN`/`🔴 ERROR`), date formatter, dan dynamic align table.
@@ -63,11 +97,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **Multi-Runtime Launcher** (`tools-cli/bin/gn`): Peningkatan launcher wrapper dengan auto-fallback runtime (Bun → Node.js/tsx → Deno) dan fail-fast hint.
 
 ### Changed
+
 - **CLI Subcommand Router Refactor** (`src/index.ts`):
   - Penataan ulang entry point CLI dengan dual-level help system (`<tool> --help` & `<tool> <command> --help`).
   - Penyelarasan versi global `GN_VERSION` menjadi `v0.3.26`.
 
 ### Removed
+
 - **Legacy Shell & Bench Scripts Cleanup**:
   - Dihapus: `quarantine.sh`, `config.ts`, `bench.ts`, `bench-roles.ts`, `bench-storage.ts`, `pool-manager.ts`, `agent.sh`, `picker.sh`, `price.ts`, dan `doctor.sh`.
   - Pembersihan total sisa rujukan dead code `price` dan `doctor.sh` dari `help-formatter.sh` & `gn.sh`.
@@ -75,17 +111,20 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [v2.0.1] - 2026-08-12
 
 ### Added
+
 - **`gn ping / p` Custom Provider Live Probe (`ping-config.ts`)**:
   - Modul baru `utils/ping-config.ts` menggantikan `config-alias.ts` — berisi parser `models.yml` (`~/.omp/agent/models.yml`) untuk auto-discovery custom model beserta `baseUrl`, `apiKey`, dan protokol `api` masing-masing.
   - Ping live custom model otomatis me-route ke `baseUrl` provider dengan suffix protokol yang tepat (`openai-responses` → `/responses`, selainnya → `/chat/completions`), plus `Authorization: Bearer` dari `apiKey` custom.
   - Payload model ID custom memakai `localId` asli dari `models.yml` alih-alih ID prefixed.
 
 ### Changed
+
 - **`gn ping` Live Model Unification**: Model dari API response (gateway) kini digabung dengan model custom dari `models.yml` (`[...data.data, ...parseModelsYml()]`) sehingga semua model custom ikut ter-probe — tanpa lagi pembatasan slice 15 model pertama.
 
 ## [Unreleased]
 
 ### Added
+
 - **`gn export / e` Multi-Source Credential Sync**: Ekspor credential `gn e` ditingkatkan — selain membaca SQLite database `agent.db`, ia kini otomatis menscan dan meng-export custom providers dari `~/.omp/agent/models.yml` (misal provider `peezy`) langsung ke `~/.shell/secret/<provider>/models_yml.json`.
 - **`gn ping / p` & `gn bench / b` Custom Provider Support & Network Fallback**:
   - **Auto-Discovery Custom Models**: Mengenali model dari `~/.config/opencode/opencode.jsonc` dan `~/.omp/agent/models.yml` (misal `peezy/deepseek-v4-flash-0731`).
@@ -110,6 +149,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **Quick Token Summary**: Di mode quota, `usage.ts` otomatis menampilkan ringkasan token 7d jika `client_usage` punya data.
 
 ### Changed
+
 - **`gn usage / u` routing** (`gn.sh`): Delegate langsung ke `usage.ts` — hapus pipe `omp usage --json | status-formatter.ts` dan panggilan `burn.ts`.
 - **`help-formatter.sh`**: Level 2 help `usage` di-update — ganti `--history`/sparkline dengan `--token` mode, deskripsi dual-mode, visual indicators baru.
 - **`gn bench`** (`bench.ts`): Hapus dependensi `bench-roles.ts` untuk role specialization. Benchmark sekarang menggunakan generic prompt tanpa system prompt complex, tanpa hybrid scoring.
@@ -126,6 +166,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
   - **Help text** `gn om --help` di-update: SUMBER DATA section & TROUBLESHOOTING merujuk ke `auth_credentials` (bukan lagi file vault). Empty-state message juga disesuaikan.
 
 ### Removed
+
 - **`burn.ts`** & **`status-formatter.ts`**: File dihapus dari direktori. Keduanya sudah digantikan sepenuhnya oleh `usage.ts` — tidak ada routing yang memanggilnya lagi.
 - **`assumedTotal 100k` matematika rekaan**: `burn.ts` sebelumnya menggunakan estimasi 100k token untuk menghitung cost — sekarang `usage.ts` hanya menampilkan data real dari SQLite atau jujur mengatakan "0 tokens burned".
 - **Pembersihan Bom Waktu & Redundansi**:
@@ -144,6 +185,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [v0.3.15] - 2026-07-28
 
 ### Added
+
 - **Global Ultra-Clean ASCII Art Banners (bagian dari suite CLI GN, ZF, FEX, OCM)**:
   - Penyesuaian banner visual seragam dengan font ASCII Art tebal presisi tinggi.
   - Penempatan nama tool dan versi persis di bawah banner dengan skema warna pure white & margin atas yang lega agar tidak menempel di prompt terminal (`shobixlinuxdev>`).
@@ -151,6 +193,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [v0.3.13] - 2026-07-27
 
 ### Added
+
 - **Ollama Cloud Real-time Scraper & Metadata Fetcher (`ollama-me.ts`)**:
   - Penarikan metadata akun Ollama Cloud resmi via `POST https://ollama.com/api/me` (Email, Plan, ID, Suspended Status) dengan auto-discovery dari SQLite DB `~/.omp/agent/agent.db` dan Secret Vault.
   - HTML Web Scraper untuk dashboard `https://ollama.com/settings` (ekstraksi persentase pemakaian persis 1:1 dari `session_usage_pct` & `weekly_usage_pct`).
@@ -159,6 +202,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
   - Integration di `gn burn`: Menampilkan baris `Weekly Usage` & `Session Usage` lengkap dengan estimasi token (`17.00k tokens`) dan cost ($).
 
 ### Refactored
+
 - **Code Review & Maintenance Improvements (`gn`)**:
   - Direct object mutation pada cumulative logic `burn.ts` diganti dengan Strict Immutability Map Update (`merged.set(key, { ... })`).
   - Positional array index matching untuk Ollama Cloud diubah menjadi Identity-based lookup (`metaByEmail` / `metaById`).
@@ -168,6 +212,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [v0.3.11] - 2026-07-27
 
 ### Added
+
 - **`gn` Dual-Level Help System**:
   - Subcommand Deep Help Manual (`help-formatter.sh`) untuk `ping`, `bench`, `status`, `burn`, `pool`, `shield`, `agent`.
   - Konsistensi akses help via `gn <command> --help`, `gn <command> -h`, atau `gn help <command>`.
@@ -176,6 +221,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [v0.3.9] - 2026-07-27
 
 ### Added
+
 - **`gn bench` Dynamic Multi-Role Benchmark Engine**:
   - Modular System Prompt Roles (`coder`, `bugfix`, `planning`, `codereview`) tersimpan di `tools-cli/src/gn/prompts/roles/*.txt`.
   - Modular Dataset Test Cases tersimpan di `tools-cli/src/gn/prompts/datasets/*.json`.
@@ -185,11 +231,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **`gn ping` Visual UX Upgrade**: Clean status badges (`200 OK`, `429 LIMIT`), dynamic spinner, visual ANSI latency bar (`miniBar`), dan summary lineup.
 
 ### Changed
+
 - `gn status` & `gn burn` layout formatting cleanups (penataan visual progress bar 28-char & pembersihan secret/opaque IDs).
 
 ## [v0.3.8] - 2026-07-27
 
 ### Added
+
 - `gn burn` (`burn.ts` + `bu` alias) — Token & Cost Burn Tracker. Mengakses REST endpoint OMP Broker v17.1.4 (`GET /v1/usage/clients` & `GET /v1/usage/history`) untuk menampilkan token burn per client dengan breakdown input/output/cache tokens, estimated cost (USD), dan sparkline history (▁▂▃▄▅▆▇█). Mendukung flag `--history`, `--json`, `--days <int>`, `--provider <id>`. Degradasi elegan ke `omp usage --json` saat broker belum menyediakan field token burn, dengan pesan Goblin Roast yang ramah.
 - `gn status` upgrade (`status-formatter.ts`) — Konsumsi JSON output `omp usage --json` lalu render dengan visual status dot (`●`/`○`/`✗`) berwarna ANSI, normalisasi `usedFraction`/`windowLabel` dari shape OMP v17.1.4, ringkasan `disabledCredentials` (mis. `✗ email — disabled 3d ago: re-login to restore`), dan `capacity` summary per-provider (mis. `capacity: 7d → 2.00/2 accounts used (0.00× quota left)`). Integrasi `gum style` opsional, fallback ANSI untuk TTY/non-TTY.
 - `show_help` gn — Tambah subcommand `burn`/`bu` dengan deskripsi flag & contoh penggunaan di section `EXAMPLES`.
@@ -197,16 +245,19 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ## [v0.3.5] - 2026-07-26
 
 ### Added
+
 - `shield-interceptor.ts` Smart Fallback Array Chain — Dukungan `fallback_models` berbasis array candidates (`Primary -> Array[Fallback1, Fallback2]`) dengan multi-level sequential retry saat upstream mengembalikan status HTTP `410`, `429`, atau `5xx`.
 - Header Debug `X-Goblin-Shield-Fallback` — Menampilkan metadata jejak fallback model pada response headers yang dikirimkan ke client/OpenCode.
 
 ## [v0.3.0] - 2026-07-26
 
 ### Added
+
 - `gn pool` — Dynamic Account Pool Switching (`pool-manager.ts` & `gn.sh`) untuk isolation proxy & bypass SQLite DB via `OMP_AUTH_BROKER_ACCOUNT_POOL_FILE`.
 - `gn` Visual Engine Update — Header ASCII Art `GN PROXY` Unicode Shade Block, `gum style` double border, spinner loading `_gn_spin`, dan Goblin Roast Error handling.
 - `tools-cli/src/gn/` & `tools-cli/bin/gn` — Goblin Nexus CLI port dari `~/.shell/` untuk benchmark, model routing, dan agent model switcher.
 - `tools-cli/src/shield/` — Goblin Privacy Shield Interceptor (`Bun.serve` proxy) untuk masking regex API keys/secrets.
 
 ### Changed
+
 - `gn ping` & `gn bench` table output simplified — Menghapus kolom terduplikasi, hanya menampilkan Full Model ID & Latency/Speed secara ringkas.
