@@ -10,6 +10,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 
 - **Native `omp usage` Forwarding Engine (`commands/usage.ts`)**: Default mode `gn u` kini langsung meneruskan eksekusi ke binary resmi `omp usage` di sistem, menghasilkan visual progress bar block (`████░░░░`), rincian akun multi-email, kalkulasi kapasitas total (`1.45x quota left`), dan filter provider instan dengan graceful fallback ke SQLite lokal jika `omp` tidak terpasang.
+- **Tree-Structured Diagnostic & Auth Matrix Refactor for `gn doctor` (`commands/doctor.ts`)**:
+  - Tampilan visual baru berbasis Tree Structure (`├──`, `└──`) yang bersih dan tahan terhadap line wrap di semua ukuran terminal, terbagi dalam 4 kategori: `󰘚 DAEMONS & RUNTIMES`, `󰆼 DATABASES & TELEMETRY`, `󰌆 AUTH & PROVIDER MATRIX`, dan `󰉋 STORAGE & CONFIGURATION`.
+  - **Zero-Secret Auth Matrix**: Mendeteksi akun aktif dari `agent.db` (`WHERE disabled_cause IS NULL`) dan menguji konektivitas (`200 OK` / `ACTIVE`) tanpa mengekspos token, API key, atau kredensial rahasia.
+  - Menghapus pemeriksaan usang `~/.shell/secret` dan standalone syntax check guard.
 
 ### Fixed
 
