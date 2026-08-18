@@ -9,6 +9,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **`gn bench` Leaderboard & Visual Speed Matrix Refactor (`commands/bench.ts`)**:
+  - Rombak total tampilan `gn bench` menjadi Speed Leaderboard terurut (`#1`, `#2`, dst.) berdasarkan throughput (`tok/s`) dan latensi model.
+  - Visual Throughput Gauge Bar dinamis (`████████░░░░`) dengan color-coding adaptif terhadap model tercepat dalam batch.
+  - **Smart Ping Cache Synergy**: Otomatis mendeteksi hasil cache `gn ping` dan hanya menguji model yang berstatus `200 OK` guna menghemat waktu dan konsumsi token, dengan opsi flag `--all` (`-a`) untuk menguji seluruh model dari gateway.
+  - Dukungan filter `--top <N>` untuk membatasi peringkat leaderboard model tercepat.
+  - **Champion Summary Card**: Menampilkan rangkuman model jawara tercepat di bagian bawah output.
+  - Clack live spinner per-model saat eksekusi live (`--force`) agar interaksi terminal tidak freeze.
+  - **Dual-Level Help Standard**: Dukungan Level-2 Help lengkap (`gn b --help` / `gn b -h`).
 - **Native `omp usage` Forwarding Engine (`commands/usage.ts`)**: Default mode `gn u` kini langsung meneruskan eksekusi ke binary resmi `omp usage` di sistem, menghasilkan visual progress bar block (`████░░░░`), rincian akun multi-email, kalkulasi kapasitas total (`1.45x quota left`), dan filter provider instan dengan graceful fallback ke SQLite lokal jika `omp` tidak terpasang.
 - **Tree-Structured Diagnostic & Auth Matrix Refactor for `gn doctor` (`commands/doctor.ts`)**:
   - Tampilan visual baru berbasis Tree Structure (`├──`, `└──`) yang bersih dan tahan terhadap line wrap di semua ukuran terminal, terbagi dalam 4 kategori: `󰘚 DAEMONS & RUNTIMES`, `󰆼 DATABASES & TELEMETRY`, `󰌆 AUTH & PROVIDER MATRIX`, dan `󰉋 STORAGE & CONFIGURATION`.
