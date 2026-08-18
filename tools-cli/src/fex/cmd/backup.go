@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -195,27 +196,112 @@ func runRestoreFex(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// ── backupAll — backup micro + fex ───────────────────────────
-func runBackupAll(cmd *cobra.Command, args []string) error {
-	fmt.Fprintf(os.Stderr, "📦 [1/2] Backing up micro config...\n")
-	_ = runBackupMicro(cmd, args)
-	fmt.Fprintf(os.Stderr, "\n📦 [2/2] Backing up fex config...\n")
-	_ = runBackupFex(cmd, args)
+// ── resolveNvimDirs ──────────────────────────────────────────
+func resolveNvimDirs() (configDir string, vaultDir string, err error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", "", fmt.Errorf("home dir: %w", err)
+	}
+	configDir = filepath.Join(home, ".config", "nvim")
+	vaultDir = filepath.Join(goblinVaultRoot(), "configs", "nvim")
+	return configDir, vaultDir, nil
+}
+
+// ── backupNvim — copy ~/.config/nvim/ → configs/nvim/ ────────
+func runBackupNvim(cmd *cobra.Command, args []string) error {
+	configDir, vaultDir, err := resolveNvimDirs()
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(configDir); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "  ⏭  skip (not found): ~/.config/nvim/\n")
+		return nil
+	}
+
+	var copied int
+	err = filepath.Walk(configDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(configDir, path)
+		if err != nil || strings.HasPrefix(rel, ".git") {
+			return nil
+		}
+		dst := filepath.Join(vaultDir, rel)
+		if err := copyFile(path, dst); err == nil {
+			copied++
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "  ✅  Synced %d files from ~/.config/nvim/ → %s\n", copied, vaultDir)
 	return nil
 }
 
-// ── restoreAll — restore micro + fex ─────────────────────────
+// ── restoreNvim — copy configs/nvim/ → ~/.config/nvim/ ───────
+func runRestoreNvim(cmd *cobra.Command, args []string) error {
+	configDir, vaultDir, err := resolveNvimDirs()
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(vaultDir); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "  ⏭  skip (not found in vault): configs/nvim/\n")
+		return nil
+	}
+
+	var copied int
+	err = filepath.Walk(vaultDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(vaultDir, path)
+		if err != nil || rel == "README.md" || strings.HasPrefix(rel, ".git") {
+			return nil
+		}
+		dst := filepath.Join(configDir, rel)
+		if err := copyFile(path, dst); err == nil {
+			copied++
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "  ✅  Restored %d files to %s\n", copied, configDir)
+	return nil
+}
+
+// ── backupAll — backup micro + fex + nvim ────────────────────
+func runBackupAll(cmd *cobra.Command, args []string) error {
+	fmt.Fprintf(os.Stderr, "📦 [1/3] Backing up micro config...\n")
+	_ = runBackupMicro(cmd, args)
+	fmt.Fprintf(os.Stderr, "\n📦 [2/3] Backing up fex config...\n")
+	_ = runBackupFex(cmd, args)
+	fmt.Fprintf(os.Stderr, "\n📦 [3/3] Backing up nvim config...\n")
+	_ = runBackupNvim(cmd, args)
+	return nil
+}
+
+// ── restoreAll — restore micro + fex + nvim ──────────────────
 func runRestoreAll(cmd *cobra.Command, args []string) error {
-	fmt.Fprintf(os.Stderr, "📦 [1/2] Restoring micro config...\n")
+	fmt.Fprintf(os.Stderr, "📦 [1/3] Restoring micro config...\n")
 	_ = runRestoreMicro(cmd, args)
-	fmt.Fprintf(os.Stderr, "\n📦 [2/2] Restoring fex config...\n")
+	fmt.Fprintf(os.Stderr, "\n📦 [2/3] Restoring fex config...\n")
 	_ = runRestoreFex(cmd, args)
+	fmt.Fprintf(os.Stderr, "\n📦 [3/3] Restoring nvim config...\n")
+	_ = runRestoreNvim(cmd, args)
 	return nil
 }
 
 // ── Cobra commands ───────────────────────────────────────────
 var backupCmd = &cobra.Command{
-	Use:   "backup [micro|fex|all]",
+	Use:   "backup [micro|fex|nvim|all]",
 	Short: "Backup configs to goblin-vault",
 	Long:  `Backup editor/tool configs from ~/.config/ into goblin-vault/configs/.`,
 }
@@ -234,15 +320,22 @@ var backupFexCmd = &cobra.Command{
 	RunE:  runBackupFex,
 }
 
+var backupNvimCmd = &cobra.Command{
+	Use:   "nvim",
+	Short: "Backup Neovim (LazyVim) config",
+	Long:  `Copy Neovim configuration files from ~/.config/nvim/ to goblin-vault/configs/nvim/.`,
+	RunE:  runBackupNvim,
+}
+
 var backupAllCmd = &cobra.Command{
 	Use:   "all",
-	Short: "Backup all tool configs (micro + fex)",
+	Short: "Backup all tool configs (micro + fex + nvim)",
 	Long:  `Copy all tracked configs from ~/.config/ to goblin-vault/configs/.`,
 	RunE:  runBackupAll,
 }
 
 var restoreCmd = &cobra.Command{
-	Use:   "restore [micro|fex|all]",
+	Use:   "restore [micro|fex|nvim|all]",
 	Short: "Restore configs from goblin-vault",
 	Long:  `Restore editor/tool configs from goblin-vault/configs/ into ~/.config/.`,
 }
@@ -261,9 +354,16 @@ var restoreFexCmd = &cobra.Command{
 	RunE:  runRestoreFex,
 }
 
+var restoreNvimCmd = &cobra.Command{
+	Use:   "nvim",
+	Short: "Restore Neovim (LazyVim) config",
+	Long:  `Copy Neovim configuration files from goblin-vault/configs/nvim/ to ~/.config/nvim/.`,
+	RunE:  runRestoreNvim,
+}
+
 var restoreAllCmd = &cobra.Command{
 	Use:   "all",
-	Short: "Restore all tool configs (micro + fex)",
+	Short: "Restore all tool configs (micro + fex + nvim)",
 	Long:  `Copy all tracked configs from goblin-vault/configs/ to ~/.config/.`,
 	RunE:  runRestoreAll,
 }
@@ -272,10 +372,12 @@ func init() {
 	rootCmd.AddCommand(backupCmd)
 	backupCmd.AddCommand(backupMicroCmd)
 	backupCmd.AddCommand(backupFexCmd)
+	backupCmd.AddCommand(backupNvimCmd)
 	backupCmd.AddCommand(backupAllCmd)
 
 	rootCmd.AddCommand(restoreCmd)
 	restoreCmd.AddCommand(restoreMicroCmd)
 	restoreCmd.AddCommand(restoreFexCmd)
+	restoreCmd.AddCommand(restoreNvimCmd)
 	restoreCmd.AddCommand(restoreAllCmd)
 }

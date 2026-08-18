@@ -4,6 +4,13 @@
 return {
   "folke/snacks.nvim",
   opts = {
+    terminal = {
+      enabled = true,
+      win = {
+        style = "float",
+        border = "rounded",
+      },
+    },
     explorer = {
       trash = false,
       replace_netrw = false,

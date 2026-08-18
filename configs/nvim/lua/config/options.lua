@@ -78,3 +78,7 @@ opt.backup = false
 opt.writebackup = false
 opt.swapfile = false
 
+-- Allow arrow keys, backspace, and space to wrap across lines (VS Code / Micro style)
+opt.whichwrap:append("<,>,[,],h,l,b,s")
+
+

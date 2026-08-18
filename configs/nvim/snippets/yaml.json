@@ -1,0 +1,52 @@
+{
+  "Frontmatter Name": {
+    "prefix": "name",
+    "body": "name: ${1:title}",
+    "description": "Frontmatter name field"
+  },
+  "Frontmatter Description": {
+    "prefix": "description",
+    "body": "description: \"${1:desc}\"",
+    "description": "Frontmatter description field"
+  },
+  "Frontmatter Model": {
+    "prefix": "model",
+    "body": "model: ${1|google/gemini-2.5-flash,deepseek/deepseek-chat,anthropic/claude-3-5-sonnet|}",
+    "description": "Frontmatter model field"
+  },
+  "Frontmatter Temperature": {
+    "prefix": "temperature",
+    "body": "temperature: ${1:0.7}",
+    "description": "Frontmatter temperature field"
+  },
+  "Frontmatter Permission": {
+    "prefix": "permission",
+    "body": "permission: ${1:read}",
+    "description": "Frontmatter permission field"
+  },
+  "Frontmatter Mode": {
+    "prefix": "mode",
+    "body": "mode: ${1|all,primary,subagent|}",
+    "description": "Frontmatter mode field"
+  },
+  "Frontmatter Tools": {
+    "prefix": "tools",
+    "body": "tools: [${1:edit, read, write, bash, skill, task, grep, glob}]",
+    "description": "Frontmatter tools field"
+  },
+  "Subagent": {
+    "prefix": "subagent",
+    "body": "subagent",
+    "description": "Keyword subagent"
+  },
+  "External Directory": {
+    "prefix": "external_directory",
+    "body": "external_directory",
+    "description": "Keyword external_directory"
+  },
+  "Doom Loop": {
+    "prefix": "doom_loop",
+    "body": "doom_loop",
+    "description": "Keyword doom_loop"
+  }
+}

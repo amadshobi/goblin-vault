@@ -14,10 +14,10 @@ map("i", "<C-s>", "<Esc>:w<CR>", opts)
 map("n", "<C-s>", ":w<CR>", opts)
 map("v", "<C-s>", "<Esc>:w<CR>", opts)
 
--- Ctrl-Q: Quit
--- Micro: Ctrl-Q to quit
-map("n", "<C-q>", ":q<CR>", opts)
-map("i", "<C-q>", "<Esc>:q<CR>", opts)
+-- Ctrl-X: Quit
+-- Micro: Ctrl-X to quit
+map("n", "<C-x>", ":q<CR>", opts)
+map("i", "<C-x>", "<Esc>:q<CR>", opts)
 
 -- Ctrl-Z: Undo
 -- Micro: Ctrl-Z to undo (khusus insert mode)
@@ -34,10 +34,6 @@ map("n", "<C-y>", "<C-r>", opts)
 map("n", "<C-a>", "ggVG", opts)
 map("i", "<C-a>", "<Esc>ggVG", opts)
 
--- Ctrl-D: Duplicate line
--- Micro: Ctrl-D duplicate line
-map("n", "<C-d>", "yyp", opts)
-map("i", "<C-d>", "<Esc>yypi", opts)
 
 -- Ctrl-K: Delete line
 -- Micro: Ctrl-K delete line
@@ -48,9 +44,9 @@ map("i", "<C-k>", "<Esc>ddi", opts)
 -- Micro: Ctrl-N new tab
 map("n", "<C-n>", ":enew<CR>", opts)
 
--- Ctrl-W: Close buffer
--- Micro: Ctrl-W close tab
-map("n", "<C-w>", ":bd<CR>", opts)
+-- Ctrl-B: Close buffer
+-- Micro: Ctrl-B close buffer
+map("n", "<C-b>", ":bd<CR>", opts)
 
 -- Ctrl-F: Search / find
 -- Micro: Ctrl-F for find
@@ -166,6 +162,16 @@ end, opts)
 -- Alt-, dan Alt-. untuk navigasi buffer (mirip Micro tab switching)
 map("n", "<A-,>", ":bprevious<CR>", opts)
 map("n", "<A-.>", ":bnext<CR>", opts)
+
+-- ============ FLOATING TERMINAL (Snacks) ============
+-- F4 atau Alt+T atau Ctrl+~ untuk buka floating terminal di mana aja
+map({ "n", "i", "t" }, "<F4>", function()
+  require("snacks").terminal.toggle()
+end, { desc = "Toggle Terminal" })
+
+map({ "n", "i", "t" }, "<A-t>", function()
+  require("snacks").terminal.toggle()
+end, { desc = "Toggle Terminal" })
 
 -- ============ FILE EXPLORER (Simple) ============
 -- Micro punya FileManager, di LazyVim pakai Snacks picker explorer

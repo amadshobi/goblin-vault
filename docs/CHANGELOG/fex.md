@@ -32,7 +32,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
   - **`Ctrl-F` Live Ripgrep Search Switcher**: Menekan `Ctrl-F` di mode browse langsung beralih ke pencarian konten file interaktif via Ripgrep, dengan tombol **`Esc`** untuk kembali instan ke mode browsing sebelumnya.
   - **Full Customizable Keybindings & Master Vault Config (`internal/config/config.go`, `cmd/backup.go`, `cmd/bindings.go`, `cmd/tree_mode.go`, `cmd/find_mode.go`, `cmd/search_mode.go`, `cmd/dialogs.go`)**:
   - **Master Vault Configuration**: Menyimpan master template di `configs/fex/config.yaml` dan migrasi standardisasi runtime ke `~/.config/fex/config.yaml` dengan auto-migrasi dari legacy `~/.config/fe/`.
-  - **Subcommand `fex backup` & `fex restore`**: Dukungan command sinkronisasi `fex backup fex`, `fex restore fex`, `fex backup all`, dan `fex restore all`.
+  - **Subcommand `fex backup` & `fex restore`**: Dukungan command sinkronisasi `fex backup fex|micro|nvim|all` dan `fex restore fex|micro|nvim|all`.
   - **Dynamic Runtime Keybindings**: Seluruh keybinding (mode switch, search, git, help, copy path, clipboard CRUD, preview layout, bookmark) kini dapat di-override bebas via `config.yaml` tanpa hardcode string.
   - **Large Directory Warning Guard**: Menampilkan dialog peringatan fzf saat memindai direktori besar (`$HOME` / `/`) pada mode Flat Find (baik via CLI `fex -f` maupun via tombol `Tab`) untuk mencegah terminal freeze, dengan opsi pembatalan instan (`Esc`).
   - **Dynamic In-TUI Header & Help Popup**: Baris petunjuk header dan dialog bantuan `Ctrl-H` otomatis menyesuaikan dengan keybinding kustom yang sedang aktif.
