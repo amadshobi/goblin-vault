@@ -18,7 +18,25 @@ CYAN='\033[36m'
 WHITE='\033[37m'
 GRAY='\033[90m'
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# ── Remote Bootstrap Check (curl -fsSL ... | bash) ──────────────────────────
+DEFAULT_REPO_DIR="${CIVIL_HOME:-$HOME/civil/goblin-vault}"
+SCRIPT_PARENT="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." 2>/dev/null && pwd || true)"
+
+if [[ ! -f "${BASH_SOURCE[0]:-}" ]] || [[ ! -d "$SCRIPT_PARENT/tools-cli" ]]; then
+    echo -e "\n${BOLD}${CYAN}🌐 Mengunduh & Menyiapkan Goblin Vault dari GitHub...${RESET}"
+    if [[ ! -d "$DEFAULT_REPO_DIR/.git" ]]; then
+        mkdir -p "$(dirname "$DEFAULT_REPO_DIR")"
+        echo -e "  ${YELLOW}📦 Meng-clone repositori ke ${DEFAULT_REPO_DIR}...${RESET}"
+        git clone https://github.com/amadshobi/goblin-vault.git "$DEFAULT_REPO_DIR"
+    else
+        echo -e "  ${GREEN}✔${RESET} Repositori ditemukan di ${DEFAULT_REPO_DIR}, menyinkronkan data..."
+        (cd "$DEFAULT_REPO_DIR" && git pull --ff-only origin dev 2>/dev/null || git pull --ff-only origin main 2>/dev/null || true)
+    fi
+    echo -e "  ${GREEN}✔${RESET} Memulai instalasi suite...\n"
+    exec bash "$DEFAULT_REPO_DIR/scripts/install.sh" "$@"
+fi
+
+ROOT_DIR="$SCRIPT_PARENT"
 TOOLS_BIN="$ROOT_DIR/tools-cli/bin"
 LOCAL_BIN="$HOME/.local/bin"
 ZSHRC="$HOME/.zshrc"

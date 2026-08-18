@@ -8,7 +8,7 @@ Repositori ini adalah pusat komando dan arsenal terminal utility yang dirancang 
 
 ## 📜 Principles & Engineering Standards
 
-Setiap kontribusi di repositori ini WAJIB mematuhi panduan teknis utama yang ada di [`AGENTS.md`](./AGENTS.md) dan [`docs/rules/coding-style.md`](./docs/rules/coding-style.md):
+Setiap kontribusi di repositori ini WAJIB mematuhi panduan teknis utama yang ada di [`AGENTS.md`](./AGENTS.md):
 
 1. **Immutability (KRITIS)**:
    - Buat objek/array baru saat melakukan transformasi data. JANGAN memutasi objek/array in-place.
@@ -19,7 +19,7 @@ Setiap kontribusi di repositori ini WAJIB mematuhi panduan teknis utama yang ada
    - Level 2 Help (`<tool> <command> --help` atau `<tool> help <command>`): Manual kontekstual rinci per-subcommand.
    - Gunakan ANSI block header style & visual status badges (`✅`, `⚠️`, `❌`).
 4. **Fail-Fast & Friendly Error Handling**:
-   - Tangani error secara eksplisit, sertakan *Goblin Roast Hint* perbaikan yang ramah terminal.
+   - Tangani error secara eksplisit, sertakan _Goblin Roast Hint_ perbaikan yang ramah terminal.
 5. **No Secrets**:
    - DILARANG MENYERTAKAN API keys, credentials, atau file sensitif di dalam repositori.
 
@@ -28,21 +28,27 @@ Setiap kontribusi di repositori ini WAJIB mematuhi panduan teknis utama yang ada
 ## 🛠️ Local Development Setup
 
 ### Prasyarat Environment
+
 - **OS**: Linux (Zsh/Bash) atau macOS
 - **Runtime**: Node.js ≥ 20.x, Bun ≥ 1.0, Go ≥ 1.22
 - **Tools Integrasi Terminal**: `fzf`, `tmux`, `zoxide` (opsional tapi disarankan)
 
 ### Langkah Setup
+
 1. Fork & clone repositori:
    ```bash
    git clone https://github.com/amadshobi/goblin-vault.git
    cd goblin-vault
    ```
-2. Pasang Git hooks lokal (Wajib untuk syntax check otomatis):
+2. Jalankan Modern All-in-One Installer:
+   ```bash
+   ./scripts/install.sh
+   ```
+3. Pasang Git hooks lokal (Wajib untuk syntax check & linter otomatis):
    ```bash
    ./scripts/install-hooks.sh
    ```
-3. Uji kesehatan environment terminal:
+4. Uji kesehatan environment terminal & Lego matrix:
    ```bash
    ./scripts/doctor.js
    ```
@@ -53,6 +59,7 @@ Setiap kontribusi di repositori ini WAJIB mematuhi panduan teknis utama yang ada
 
 1. **Buat Feature Branch**:
    Gunakan script worktree bawaan atau buat branch dari `dev`:
+
    ```bash
    git checkout dev
    git pull origin dev
@@ -66,6 +73,7 @@ Setiap kontribusi di repositori ini WAJIB mematuhi panduan teknis utama yang ada
 
 3. **Verifikasi & Format Standard**:
    Jalankan check syntax sebelum meng-commit:
+
    ```bash
    ./scripts/check_syntax.js --full
    ```
@@ -77,6 +85,7 @@ Setiap kontribusi di repositori ini WAJIB mematuhi panduan teknis utama yang ada
    Gunakan pesan commit yang deskriptif (format Conventional Commits):
    - `feat(sup): tambah verbose mode streaming`
    - `fix(fex): perbaiki binding key navigation`
+
    ```bash
    git add .
    git commit -m "feat(tool): deskripsi singkat perubahan"

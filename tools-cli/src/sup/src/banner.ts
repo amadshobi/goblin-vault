@@ -3,7 +3,7 @@
  * Modul banner ASCII art "SUP" sesuai Standard Banner ASCII Header.
  *
  * Menggunakan Unicode Solid Block Font dengan Pure White (`\033[1;37m`)
- * sesuai policy di docs/rules/coding-style.md (Section 9).
+ * Sesuai policy di AGENTS.md (Section Master Coding Style).
  */
 
 import pkg from "../package.json";
@@ -20,17 +20,19 @@ export const VERSION = pkg.version;
  * @param subtitle - Subtitle opsional, default ke tag "Smart Universal Package Updater".
  * @returns String multi-line siap cetak (sudah termasuk trailing newline).
  */
-export function renderBanner(subtitle: string = "Smart Universal Package Updater"): string {
-  const lines = [
-    "",
-    `${WHITE} ██████╗██╗   ██╗██████╗ ${RESET}`,
-    `${WHITE}██╔════╝██║   ██║██╔══██╗${RESET}`,
-    `${WHITE}╚█████╗ ██║   ██║██████╔╝${RESET}`,
-    `${WHITE} ╚═══██╗██║   ██║██╔═══╝ ${RESET}`,
-    `${WHITE}██████╔╝╚██████╔╝██║     ${RESET}`,
-    `${WHITE}╚═════╝  ╚═════╝ ╚═╝     ${RESET}`,
-    `   ${WHITE}sup${RESET} ${DIM}v${VERSION} — ${subtitle}${RESET}`,
-    "",
-  ];
-  return lines.join("\n");
+export function renderBanner(
+	subtitle: string = "Smart Universal Package Updater",
+): string {
+	const lines = [
+		"",
+		`${WHITE} ██████╗██╗   ██╗██████╗ ${RESET}`,
+		`${WHITE}██╔════╝██║   ██║██╔══██╗${RESET}`,
+		`${WHITE}╚█████╗ ██║   ██║██████╔╝${RESET}`,
+		`${WHITE} ╚═══██╗██║   ██║██╔═══╝ ${RESET}`,
+		`${WHITE}██████╔╝╚██████╔╝██║     ${RESET}`,
+		`${WHITE}╚═════╝  ╚═════╝ ╚═╝     ${RESET}`,
+		`   ${WHITE}sup${RESET} ${DIM}v${VERSION} — ${subtitle}${RESET}`,
+		"",
+	];
+	return lines.join("\n");
 }

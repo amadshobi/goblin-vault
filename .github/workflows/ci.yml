@@ -23,46 +23,34 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"   # LTS
+          node-version: "20" # LTS
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Install System Dependencies (fzf & tmux)
+      - name: Install System Dependencies (fzf, tmux, zoxide, ripgrep)
         run: |
           sudo apt-get update
-          sudo apt-get install -y fzf tmux
+          sudo apt-get install -y fzf tmux zoxide ripgrep bat
 
-      - name: Add tools-cli/bin to PATH
-        run: echo "$GITHUB_WORKSPACE/tools-cli/bin" >> $GITHUB_PATH
+      - name: Run FEX Unit Tests (Go)
+        working-directory: tools-cli/src/fex
+        run: go test -v -count=1 ./...
 
-      - name: Install tool dependencies (gn, gb & sup)
-        run: |
-          cd tools-cli/src/gn && bun install
-          cd ../gb && bun install
-          cd ../sup && bun install
+      - name: Run Automated All-in-One Installer
+        run: ./scripts/install.sh --yes
 
-      - name: Shell & JS syntax check
+      - name: Full Syntax & Security Check
         run: ./scripts/check_syntax.js --full
 
-      - name: Build fex (Go) & Install to PATH
-        working-directory: tools-cli/src/fex
-        run: |
-          go build -o $GITHUB_WORKSPACE/tools-cli/bin/fex ./cmd/fex
-          mkdir -p ~/.local/bin
-          cp $GITHUB_WORKSPACE/tools-cli/bin/fex ~/.local/bin/fex
-
-      - name: Health & dependency check
+      - name: Diagnostic Health & Dependency Check
         run: ./scripts/doctor.js
 
       - name: Go vet
         working-directory: tools-cli/src/fex
         run: go vet ./...
-
-      - name: Smoke test fex
-        run: fex --help
 
       - name: Build & Typecheck sup (TypeScript/Bun)
         working-directory: tools-cli/src/sup
@@ -70,3 +58,11 @@ jobs:
           bun install
           bun run typecheck
           bun run build
+
+      - name: Smoke Test Suite (5 CLI Tools)
+        run: |
+          ~/.local/bin/fex --help
+          ~/.local/bin/gn --help
+          ~/.local/bin/gb --help
+          ~/.local/bin/sup --help
+          ~/.local/bin/zf --help

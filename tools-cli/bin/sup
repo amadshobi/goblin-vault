@@ -3,8 +3,15 @@
 #
 # Menjalankan entrypoint TypeScript via Bun. Mirip gaya wrapper `ocm`.
 
-BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export GOBLIN_VAULT_ROOT="$(cd "$BIN_DIR/../.." && pwd)"
+# Resolve physical path in case of symlinks in ~/.local/bin/
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+BIN_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+export GOBLIN_VAULT_ROOT="$(cd -P "$BIN_DIR/../.." >/dev/null 2>&1 && pwd)"
 
 # Pastikan dep tersedia di node_modules lokal tools-cli/src/sup.
 # Kalau belum di-install (misal repo fresh clone), install dulu.
