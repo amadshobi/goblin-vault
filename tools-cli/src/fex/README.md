@@ -49,10 +49,13 @@
 ## 🛠️ Level 1 & Level 2 Help System
 
 ### Level 1 Help (`fex --help`)
+
 Menyajikan daftar global options, mode eksekusi utama, serta shortcut keyboard bawaan.
 
 ### Level 2 Help
+
 Setiap subcommand pendukung (seperti `kill`, `editor`, `backup`) memiliki dokumentasi parameter internal tersendiri:
+
 ```bash
 fex <subcommand> --help
 ```
@@ -61,21 +64,25 @@ fex <subcommand> --help
 
 ## ⌨️ Pintasan Keyboard (Di Dalam UI Fzf)
 
-| Key | Aksi |
-|-----|------|
-| `Enter` | Buka file di Editor default |
-| `Ctrl-d` | Hapus file (dengan konfirmasi aman) |
-| `Ctrl-r` | Ganti nama file / direktori |
-| `Ctrl-n` | Buat file baru (Tree mode) |
-| `Ctrl-k` | Buat folder baru (Tree mode) |
-| `Ctrl-g` | Tampilkan status/log git |
-| `Ctrl-y` | Salin path file ke clipboard |
-| `Ctrl-b` | Tambahkan direktori ke Bookmark |
-| `Ctrl-x` | Hapus direktori dari Bookmark |
-| `Ctrl-f` | Lakukan search ripgrep di dalam hasil |
-| `Ctrl-o` | Buka direktori di pane tmux baru |
-| `Ctrl-s` | Toggle tampilan preview ukuran penuh |
-| `Tab` | Pilih banyak file sekaligus (*multi-select*) |
+| Key          | Aksi                                                                    |
+| :----------- | :---------------------------------------------------------------------- |
+| `Enter`      | Buka file di Editor default / Masuk direktori                           |
+| `Tab`        | 🔄 Beralih mode secara instan (**Tree Mode ⇄ Flat Find Mode**)          |
+| `Alt-c`      | 📋 Tandai file/folder untuk **Salin (Copy)**                            |
+| `Alt-m`      | 📦 Tandai file/folder untuk **Pindah (Move / Cut)**                     |
+| `Ctrl-v`     | 📥 **Tempel (Paste)** file/folder di direktori aktif                    |
+| `Ctrl-d`     | 🗑️ Hapus file/folder (dengan konfirmasi aman)                           |
+| `Ctrl-r`     | ✏️ Ganti nama file / direktori                                          |
+| `Ctrl-n`     | 📄 Buat file baru (Tree mode)                                           |
+| `Ctrl-k`     | 📁 Buat folder baru (Tree mode)                                         |
+| `Ctrl-g`     | 🐙 Buka Git Status & Commit Log (**In-TUI Popup**)                      |
+| `Ctrl-y`     | 📋 Salin path file ke clipboard OS (**Universal OSC 52 + Wayland/X11**) |
+| `Ctrl-f`     | 🔍 Buka pencarian konten file interaktif (**ripgrep search mode**)      |
+| `Ctrl-b`     | ⭐ Tambahkan direktori ke Bookmark                                      |
+| `Ctrl-x`     | ❌ Hapus direktori dari Bookmark                                        |
+| `Ctrl-o`     | 🖥️ Buka direktori di pane tmux sebelah                                  |
+| `Ctrl-s`     | 🖥️ Toggle tampilan preview ukuran penuh / half                          |
+| `Ctrl-h / ?` | ❓ Buka dialog popup bantuan seluruh keybindings                        |
 
 ---
 

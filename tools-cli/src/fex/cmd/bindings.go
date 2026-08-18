@@ -8,21 +8,13 @@ import (
 )
 
 // buildFindModeBindings — return fzf --bind entries untuk find mode.
-// Mirip bindings di ui.sh lines 37-54.
 func buildFindModeBindings(dir string, bookmarksFile string, rightPaneID string) []string {
 	bookmarksQuoted := util.ShEscape(bookmarksFile)
-	dirQuoted := util.ShEscape(dir)
 
 	bindings := []string{
 		// Preview
 		"ctrl-p:toggle-preview",
 		"ctrl-s:change-preview-window(right:99%|right:60%:wrap,border-left,<80(up:50%:wrap))",
-
-		// Git status/log
-		fmt.Sprintf("ctrl-g:execute(git -C %s status -s 2>/dev/null; echo '---'; git -C %s log --oneline -10 2>/dev/null || true)", dirQuoted, dirQuoted),
-
-		// Copy to clipboard (try multiple tools)
-		"ctrl-y:execute-silent(echo -n {1} | termux-clipboard-set 2>/dev/null || echo -n {1} | xclip -sel clip 2>/dev/null || pbcopy 2>/dev/null || true)",
 
 		// Bookmark / Unbookmark
 		fmt.Sprintf("ctrl-b:execute(echo '{1}' >> %s && echo '✅ Bookmarked: {1}')", bookmarksQuoted),
@@ -30,9 +22,6 @@ func buildFindModeBindings(dir string, bookmarksFile string, rightPaneID string)
 
 		// Open location in tmux right pane (cd + ls)
 		"ctrl-o:execute-silent(tmux send-keys -t '" + rightPaneID + "' 'cd \"$(dirname {1})\" && clear && ls -la' C-m 2>/dev/null || true)",
-
-		// Refine search with rg (reload file list)
-		fmt.Sprintf("ctrl-f:reload(rg --files-with-matches -i '{q}' %s 2>/dev/null)", dirQuoted),
 	}
 
 	// Filter out empty/invalid bindings (e.g., ctrl-o kalo rightPaneID kosong)
@@ -55,9 +44,6 @@ func buildTreeModeBindings(currentDir string, rightPaneID string) []string {
 		// Preview
 		"ctrl-p:toggle-preview",
 		"ctrl-s:change-preview-window(right:99%|right:60%:wrap,border-left,<80(up:50%:wrap))",
-
-		// Git status (from current dir)
-		"ctrl-g:execute(git -C '" + currentDir + "' status -s 2>/dev/null; echo '---'; git -C '" + currentDir + "' log --oneline -10 2>/dev/null || true)",
 	}
 
 	return bindings

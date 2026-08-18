@@ -36,6 +36,7 @@ func runBookmarksMode(sess *session.Session) error {
 		opts.BorderLabel = " Bookmarks "
 		opts.Prompt = " 🔍 ❯ "
 		opts.PreviewCmd = ui.DetectPreviewCmd()
+		opts.Cycle = true
 
 		// ── In-fzf bindings ──
 		dir := sess.GetCwd()

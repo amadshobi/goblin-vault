@@ -8,6 +8,7 @@
 // Filosofi:
 //   - Go: setup input, parse flags, handle output
 //   - Bash: actual fzf invocation (spawned via os/exec)
+//
 // ==============================================================
 package fzf
 
@@ -32,24 +33,26 @@ type FzfOpts struct {
 	BorderLabel string // --border-label
 
 	// Selection
-	Multi      bool   // --multi
-	Expected   string // --expect=<key> (single key name for --expect support)
-	SelectOne  bool   // --select-1 (auto-select if only 1 match)
-	ExitZero   bool   // --exit-0 (exit if no match)
+	Multi     bool   // --multi
+	Expected  string // --expect=<key> (single key name for --expect support)
+	SelectOne bool   // --select-1 (auto-select if only 1 match)
+	ExitZero  bool   // --exit-0 (exit if no match)
 
 	// Layout
-	Layout     string // "reverse", "reverse-list", default
-	Style      string // "full", "minimal"
+	Layout string // "reverse", "reverse-list", default
+	Style  string // "full", "minimal"
 
 	// Preview
 	PreviewCmd    string // --preview
 	PreviewWindow string // --preview-window
 
 	// Behavior
-	Bindings    []string // --bind entries
-	NoSort      bool
-	PrintQuery  bool // --print-query
-	Cycle       bool // --cycle (wrap cursor from top→bottom and vice versa)
+	Bindings   []string // --bind entries
+	NoSort     bool
+	Disabled   bool // --disabled (do not perform fzf filtering, delegate to external cmd)
+	Sync       bool // --sync (synchronous input stream)
+	PrintQuery bool // --print-query
+	Cycle      bool // --cycle (wrap cursor from top→bottom and vice versa)
 
 	// Delimiter
 	Delimiter string // --delimiter (for field parsing in preview, e.g. ":")
@@ -65,6 +68,7 @@ func DefaultFzfOpts() FzfOpts {
 		Layout:        "reverse",
 		Style:         "full",
 		PreviewWindow: "right:60%:wrap,border-left,<80(up:50%:wrap)",
+		Cycle:         true,
 	}
 }
 
@@ -88,9 +92,10 @@ type Result struct {
 //   - error cuma kalo ada system error (bukan user cancel)
 //
 // Exit codes fzf:
-//   0   = item selected
-//   1   = no match / no selection
-//   130 = user cancelled (Ctrl-C / Esc)
+//
+//	0   = item selected
+//	1   = no match / no selection
+//	130 = user cancelled (Ctrl-C / Esc)
 func Run(input string, opts FzfOpts) (*Result, error) {
 	args := buildFzfArgs(opts)
 
@@ -222,6 +227,12 @@ func buildFzfArgs(opts FzfOpts) []string {
 	if opts.NoSort {
 		args = append(args, "--no-sort")
 	}
+	if opts.Disabled {
+		args = append(args, "--disabled")
+	}
+	if opts.Sync {
+		args = append(args, "--sync")
+	}
 	if opts.PrintQuery {
 		args = append(args, "--print-query")
 	}
@@ -257,13 +268,15 @@ func buildFzfArgs(opts FzfOpts) []string {
 // RunFzf — generic wrapper. Items → string via formatter → fzf → parser.
 //
 // Type parameters:
-//   T — tipe item
+//
+//	T — tipe item
 //
 // Args:
-//   items — slice of items to display
-//   opts — FzfOpts
-//   formatter — func(T) string for display in fzf
-//   parser — func(string) T to convert selected line back to T
+//
+//	items — slice of items to display
+//	opts — FzfOpts
+//	formatter — func(T) string for display in fzf
+//	parser — func(string) T to convert selected line back to T
 //
 // Returns selected T, or zero value if cancelled.
 func RunFzf[T any](items []T, opts FzfOpts, formatter func(T) string, parser func(string) T) (T, error) {

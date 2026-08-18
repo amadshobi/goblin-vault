@@ -21,21 +21,26 @@ import (
 //   2. Pipe ke fzf via PickFile
 //   3. User selects → open file
 
-func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Config, findMode bool) error {
-	// Determine header based on mode
-	header := "Enter:open | Ctrl-r:rename | Ctrl-d:delete | Ctrl-g:git | Ctrl-f:search | Ctrl-b:bookmark | Ctrl-x:unbookmark | Ctrl-y:copy | Ctrl-o:cd-here | Ctrl-p:preview | Ctrl-s:fullscreen"
+func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Config, findMode bool) (string, error) {
+	toast := ""
+	lastFocusItem := ""
 
 	for {
 		// ── Get file list ──
 		fileList := getFileList(dir, ext, cfg)
 		if fileList == "" {
-			return nil
+			return "", nil
 		}
 
 		// ── Fzf opts ──
 		opts := fzf.DefaultFzfOpts()
-		opts.Header = header
-		opts.Expected = "ctrl-r,ctrl-d"
+		headerPrefix := toast
+		if headerPrefix != "" {
+			headerPrefix += " | "
+		}
+		opts.Header = headerPrefix + GetClipboardBadge() + "Enter:open | Tab:tree | Alt-c:copy | Alt-m:move | Ctrl-v:paste | Ctrl-h:help | Ctrl-r:ren | Ctrl-d:del | Ctrl-g:git | Ctrl-f:search | Ctrl-b:bm | Ctrl-x:unbm | Ctrl-y:clip"
+		toast = "" // reset toast setelah dipasang ke header
+		opts.Expected = "ctrl-r,ctrl-d,alt-c,alt-m,ctrl-v,alt-v,ctrl-h,?,tab,ctrl-g,ctrl-y,ctrl-f"
 		if findMode {
 			opts.BorderLabel = fmt.Sprintf(" 🔍 %s%s ", filepath.Base(dir), extStr(ext))
 		} else {
@@ -44,20 +49,116 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 		opts.Prompt = " 🔍 ❯ "
 		opts.PreviewCmd = ui.DetectPreviewCmd()
 		opts.WorkDir = dir
+		opts.Cycle = true
 
 		// ── In-fzf bindings ──
 		opts.Bindings = buildFindModeBindings(dir, sess.GetBookmarksFile(), tmux.RightPaneID())
 
-		// ── Also add Tab multi-select info ──
-		// (no binding needed, fzf has built-in Tab multi with --multi not set here)
+		// ── Maintain cursor focus on the active / pasted item ──
+		if lastFocusItem != "" {
+			opts.Sync = true
+			lines := strings.Split(fileList, "\n")
+			for i, line := range lines {
+				lineClean := strings.TrimSpace(line)
+				if lineClean == lastFocusItem ||
+					strings.HasSuffix(lineClean, "/"+lastFocusItem) ||
+					lineClean == filepath.Base(lastFocusItem) ||
+					strings.TrimPrefix(lineClean, "./") == strings.TrimPrefix(lastFocusItem, "./") {
+					pos := i + 1
+					opts.Bindings = append(opts.Bindings, fmt.Sprintf("load:pos(%d),start:pos(%d)", pos, pos))
+					break
+				}
+			}
+			lastFocusItem = ""
+		}
 
 		result, err := fzf.Run(fileList, opts)
 		if err != nil {
-			return fmt.Errorf("fzf: %w", err)
+			return "", fmt.Errorf("fzf: %w", err)
 		}
 
 		// ── Route by pressed key ──
 		switch result.ExpectedKey {
+		case "tab":
+			// Switch mode: Flat Find ➔ Tree Mode
+			return "tree", nil
+
+		case "ctrl-f":
+			// Switch mode: Flat Find ➔ Interactive Search Mode
+			return "search", nil
+
+		case "ctrl-g":
+			// Open in-TUI Git Status & Commit Viewer Popup
+			if len(result.Selected) > 0 {
+				lastFocusItem = result.Selected[0]
+			}
+			gitStatusDialog(dir)
+			continue
+
+		case "ctrl-y":
+			// Copy relative/abs path to system clipboard (OSC 52 + tools)
+			if len(result.Selected) == 0 {
+				continue
+			}
+			lastFocusItem = result.Selected[0]
+			target := makeAbs(dir, result.Selected[0])
+			if err := CopyToSystemClipboard(target); err != nil {
+				toast = "⚠ [Copy path failed]"
+			} else {
+				toast = fmt.Sprintf("📋 [Path copied: %s]", filepath.Base(target))
+			}
+			continue
+
+		case "ctrl-h", "?":
+			// Open interactive keybindings help popup
+			if len(result.Selected) > 0 {
+				lastFocusItem = result.Selected[0]
+			}
+			helpDialog()
+			continue
+
+		case "alt-c":
+			// Mark selected file/dir for copy
+			if len(result.Selected) == 0 {
+				continue
+			}
+			lastFocusItem = result.Selected[0]
+			target := makeAbs(dir, result.Selected[0])
+			if err := MarkClipboard(target, ClipActionCopy); err != nil {
+				toast = "⚠ [Copy failed]"
+			} else {
+				toast = fmt.Sprintf("📋 [Marked Copy: %s]", filepath.Base(target))
+			}
+			continue
+
+		case "alt-m":
+			// Mark selected file/dir for move
+			if len(result.Selected) == 0 {
+				continue
+			}
+			lastFocusItem = result.Selected[0]
+			target := makeAbs(dir, result.Selected[0])
+			if err := MarkClipboard(target, ClipActionMove); err != nil {
+				toast = "⚠ [Move failed]"
+			} else {
+				toast = fmt.Sprintf("📦 [Marked Move: %s]", filepath.Base(target))
+			}
+			continue
+
+		case "ctrl-v", "alt-v":
+			// Execute paste to current directory
+			clipItem, _ := ReadClipboard()
+			if clipItem != nil {
+				lastFocusItem = clipItem.Filename
+			}
+			msg, err := ExecutePaste(dir)
+			if err != nil {
+				toast = fmt.Sprintf("⚠ [%s]", err.Error())
+			} else {
+				toast = fmt.Sprintf("✅ [%s]", msg)
+			}
+			continue
+
 		case "ctrl-r":
 			// Rename — exit fzf → Go dialog → loop
 			if len(result.Selected) == 0 {
@@ -70,11 +171,10 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 			}
 			newPath := filepath.Join(filepath.Dir(target), newName)
 			if err := os.Rename(target, newPath); err != nil {
-				fmt.Fprintf(os.Stderr, "\n⚠ rename error: %v\n", err)
-				fmt.Fprintf(os.Stderr, "  source: %s\n", target)
-				fmt.Fprintf(os.Stderr, "  target: %s\n", newPath)
+				toast = fmt.Sprintf("⚠ [Rename: %v]", err)
 				continue
 			}
+			lastFocusItem = newName
 
 		case "ctrl-d":
 			// Delete — exit fzf → Go dialog → loop
@@ -84,14 +184,16 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 			target := makeAbs(dir, result.Selected[0])
 			if confirmDeleteDialog(target) {
 				if err := executeDelete(target); err != nil {
-					fmt.Fprintf(os.Stderr, "delete: %v\n", err)
+					toast = fmt.Sprintf("⚠ [Delete: %v]", err)
+				} else {
+					toast = fmt.Sprintf("🗑️ [Deleted: %s]", filepath.Base(target))
 				}
 			}
 
 		default:
 			// Normal Enter — open file
 			if len(result.Selected) == 0 {
-				return nil // cancelled (ESC/Ctrl-C)
+				return "", nil // cancelled (ESC/Ctrl-C)
 			}
 			selected := makeAbs(dir, result.Selected[0])
 

@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -118,4 +119,84 @@ func executeDelete(path string) error {
 		return os.RemoveAll(path)
 	}
 	return os.Remove(path)
+}
+
+// helpDialog — fzf popup: menampilkan panduan keybindings interaktif fex.
+func helpDialog() {
+	opts := fzf.DefaultFzfOpts()
+	opts.Header = "⌨️ FEX Keybindings — Press Enter or ESC to return"
+	opts.BorderLabel = " ⌨️ Keybindings Help "
+	opts.Prompt = " ❯ "
+	opts.NoSort = true
+	opts.PreviewCmd = ""
+	opts.PreviewWindow = ""
+
+	helpText := []string{
+		"NAVIGATION:",
+		"  Enter         Buka file di Editor / Masuk folder",
+		"  Esc           Batal / Naik 1 direktori (Tree mode)",
+		"  Tab           Pilih banyak file (Multi-select)",
+		"",
+		"CLIPBOARD & FILE OPS:",
+		"  Alt-c         📋 Tandai untuk Salin (Copy)",
+		"  Alt-m         📦 Tandai untuk Pindah (Move / Cut)",
+		"  Ctrl-v        📥 Tempel (Paste) di direktori aktif",
+		"  Ctrl-r        ✏️ Ganti nama (Rename) file/folder",
+		"  Ctrl-d        🗑️ Hapus (Delete) file/folder",
+		"  Ctrl-n        📄 Buat file baru (Tree mode)",
+		"  Ctrl-k        📁 Buat folder baru (Tree mode)",
+		"",
+		"SEARCH & UTILITIES:",
+		"  Ctrl-f        🔍 Live search konten file (ripgrep)",
+		"  Ctrl-g        🐙 Tampilkan status & git log",
+		"  Ctrl-y        📋 Salin path ke OS clipboard",
+		"  Ctrl-b        ⭐ Tambahkan ke Bookmarks",
+		"  Ctrl-x        ❌ Hapus dari Bookmarks",
+		"  Ctrl-o        🖥️ Buka direktori di Tmux pane sebelah",
+		"",
+		"PREVIEW & HELP:",
+		"  Ctrl-p        👁️ Toggle preview pane",
+		"  Ctrl-s        🖥️ Toggle fullscreen layout preview",
+		"  Tab           🔄 Ganti mode (Tree ⇄ Flat)",
+		"  Ctrl-h / ?    ❓ Buka dialog panduan bantuan ini",
+	}
+
+	_, _ = fzf.Run(strings.Join(helpText, "\n"), opts)
+}
+
+// gitStatusDialog — fzf popup: menampilkan git status dan 15 commit terakhir tanpa bocor ke terminal luar.
+func gitStatusDialog(dir string) {
+	opts := fzf.DefaultFzfOpts()
+	opts.Header = "🐙 Git Status & Commits — Press Enter or ESC to return"
+	opts.BorderLabel = " 🐙 Git Overview "
+	opts.Prompt = " ❯ "
+	opts.NoSort = true
+	opts.PreviewCmd = ""
+	opts.PreviewWindow = ""
+
+	var lines []string
+	lines = append(lines, "─── GIT STATUS ──────────────────────────────────────────")
+	statusCmd := exec.Command("git", "-C", dir, "status", "-s")
+	if out, err := statusCmd.Output(); err == nil {
+		statusStr := strings.TrimSpace(string(out))
+		if statusStr != "" {
+			lines = append(lines, strings.Split(statusStr, "\n")...)
+		} else {
+			lines = append(lines, "  (Working tree clean, no modified files)")
+		}
+	} else {
+		lines = append(lines, "  (Not a git repository)")
+	}
+
+	lines = append(lines, "")
+	lines = append(lines, "─── RECENT COMMITS ──────────────────────────────────────")
+	logCmd := exec.Command("git", "-C", dir, "log", "--oneline", "-15")
+	if out, err := logCmd.Output(); err == nil {
+		logStr := strings.TrimSpace(string(out))
+		if logStr != "" {
+			lines = append(lines, strings.Split(logStr, "\n")...)
+		}
+	}
+
+	_, _ = fzf.Run(strings.Join(lines, "\n"), opts)
 }
