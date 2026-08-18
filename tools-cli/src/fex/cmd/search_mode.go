@@ -42,9 +42,9 @@ func runSearchMode(sess *session.Session, initialQuery string, prevMode string) 
 		if headerPrefix != "" {
 			headerPrefix += " | "
 		}
-		opts.Header = headerPrefix + GetClipboardBadge() + fmt.Sprintf("Enter:open@line | Esc:back (%s) | Tab:find | Alt-c:copy | Alt-m:move | Ctrl-v:paste | Ctrl-h:help | Ctrl-y:clip | Ctrl-g:git", prevMode)
+		opts.Header = headerPrefix + GetClipboardBadge() + fmt.Sprintf("Enter:open@line | Esc:back (%s) | Tab:find | Alt-c:copy | Alt-m:move | Ctrl-v:paste | Ctrl-h:help | Ctrl-y:clip", prevMode)
 		toast = "" // reset toast setelah dipakai
-		opts.Expected = "alt-c,alt-m,ctrl-v,alt-v,ctrl-h,?,tab,ctrl-g,ctrl-y,esc"
+		opts.Expected = "alt-c,alt-m,ctrl-v,alt-v,ctrl-h,?,tab,ctrl-y,esc"
 		opts.BorderLabel = fmt.Sprintf(" 🔍 Live Ripgrep: %s ", filepath.Base(dir))
 		opts.Prompt = " 🔍 ❯ "
 		opts.Delimiter = ":"
@@ -54,8 +54,8 @@ func runSearchMode(sess *session.Session, initialQuery string, prevMode string) 
 		opts.Cycle = true
 		opts.PreviewCmd = `bat --style=numbers --color=always -H {2} {1} 2>/dev/null || cat -n {1} 2>/dev/null || echo '{1}:{2}'`
 
-		// Bindings for live ripgrep streaming as user types
-		rgReloadCmd := fmt.Sprintf("rg --line-number --no-heading --color=never --smart-case --max-count=1000 -- {q} %s 2>/dev/null || true", dirQuoted)
+		// Bindings for live ripgrep streaming as user types (with heavy cache exclusions)
+		rgReloadCmd := fmt.Sprintf("rg --line-number --no-heading --color=never --smart-case --max-count=1000 --glob '!.git/*' --glob '!node_modules/*' --glob '!.cache/*' --glob '!.local/share/*' --glob '!.cargo/*' --glob '!.rustup/*' --glob '!.npm/*' --glob '!.bun/*' --glob '!.venv/*' --glob '!target/*' --glob '!build/*' --glob '!dist/*' -- {q} %s 2>/dev/null || true", dirQuoted)
 		opts.Bindings = []string{
 			fmt.Sprintf("change:reload:%s", rgReloadCmd),
 			fmt.Sprintf("start:reload:%s", rgReloadCmd),
@@ -74,10 +74,6 @@ func runSearchMode(sess *session.Session, initialQuery string, prevMode string) 
 
 		case "tab":
 			return "find", nil
-
-		case "ctrl-g":
-			gitStatusDialog(dir)
-			continue
 
 		case "ctrl-y":
 			if len(result.Selected) == 0 {

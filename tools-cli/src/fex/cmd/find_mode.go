@@ -38,7 +38,7 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 		if headerPrefix != "" {
 			headerPrefix += " | "
 		}
-		opts.Header = headerPrefix + GetClipboardBadge() + "Enter:open | Tab:tree | Alt-c:copy | Alt-m:move | Ctrl-v:paste | Ctrl-h:help | Ctrl-r:ren | Ctrl-d:del | Ctrl-g:git | Ctrl-f:search | Ctrl-b:bm | Ctrl-x:unbm | Ctrl-y:clip"
+		opts.Header = headerPrefix + GetClipboardBadge() + "Enter:open | Tab:tree | Ctrl-g:git-diff | Alt-c:copy | Alt-m:move | Ctrl-v:paste | Ctrl-h:help | Ctrl-r:ren | Ctrl-d:del | Ctrl-f:search | Ctrl-b:bm | Ctrl-x:unbm | Ctrl-y:clip"
 		toast = "" // reset toast setelah dipasang ke header
 		opts.Expected = "ctrl-r,ctrl-d,alt-c,alt-m,ctrl-v,alt-v,ctrl-h,?,tab,ctrl-g,ctrl-y,ctrl-f"
 		if findMode {
@@ -88,11 +88,15 @@ func runFindMode(sess *session.Session, dir string, ext string, cfg *config.Conf
 			return "search", nil
 
 		case "ctrl-g":
-			// Open in-TUI Git Status & Commit Viewer Popup
-			if len(result.Selected) > 0 {
-				lastFocusItem = result.Selected[0]
+			// Open interactive per-file Git History & Diff Viewer Split
+			if len(result.Selected) == 0 {
+				continue
 			}
-			gitStatusDialog(dir)
+			lastFocusItem = result.Selected[0]
+			target := makeAbs(dir, result.Selected[0])
+			if errToast := fileGitHistoryDialog(dir, target); errToast != "" {
+				toast = errToast
+			}
 			continue
 
 		case "ctrl-y":

@@ -22,10 +22,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
   - **Dynamic In-TUI Toast & Clipboard Badge**: Status salin/pindah/tempel ditampilkan langsung di header FZF tanpa mengotori stdout/stderr terminal luar.
   - **Smart Cursor Retention**: Kursor tetap diam di posisi file yang sedang di-mark (`Alt-c`/`Alt-m`) dan langsung fokus ke file yang baru ditempel (`Ctrl-v`) menggunakan sinkronisasi `--sync` + `load:pos(N)`.
   - Unit test komprehensif `cmd/clipboard_test.go` (100% passing). (Closes #4)
-- **Universal Clipboard & In-TUI Git Viewer (`cmd/dialogs.go`, `cmd/clipboard.go`)**:
-  - **`Ctrl-G` In-TUI Git Viewer**: Menampilkan git status dan 15 commit terakhir di dalam popup FZF interaktif yang bersih tanpa ada teks yang bocor ke luar terminal.
+- **Context-Aware Git Architecture (`cmd/dialogs.go`, `cmd/tree_mode.go`, `cmd/find_mode.go`)**:
+  - **`Ctrl-G` Pintar Sesuai Target Kursor**:
+    - Jika kursor berada di **FILE** (di Tree Mode maupun Flat Find Mode) ➔ Membuka **In-TUI File Git History & Diff Viewer Split** (kiri: riwayat commit file tersebut, kanan: visual colored diff per-commit).
+    - Jika kursor berada di **FOLDER / `..`** ➔ Meluncurkan **`lazygit` TUI penuh** untuk manajemen repositori tingkat proyek (staging, branch, push, stash) dengan git repository guard & graceful fallback.
+  - **Clean Search Mode**: Menghapus `Ctrl-G` dari mode search agar pencarian ripgrep tetap fokus dan ringan.
+- **Universal Clipboard & Search Switcher (`cmd/dialogs.go`, `cmd/clipboard.go`)**:
   - **`Ctrl-Y` Universal Clipboard**: Menggunakan ANSI sequence universal **OSC 52** (kompatibel penuh dengan Tmux, WezTerm, Alacritty, Kitty, Windows Terminal) + fallback `wl-copy`, `xclip`, `pbcopy` dan menampilkan In-TUI toast status.
-  - **`Ctrl-F` Search Switcher**: Menekan `Ctrl-F` di mode browse langsung beralih ke pencarian konten file interaktif via Ripgrep.
+  - **`Ctrl-F` Live Ripgrep Search Switcher**: Menekan `Ctrl-F` di mode browse langsung beralih ke pencarian konten file interaktif via Ripgrep, dengan tombol **`Esc`** untuk kembali instan ke mode browsing sebelumnya.
   - **`Ctrl-H` / `?` Keybindings Help Popup**: Menampilkan cheatsheet panduan shortcut keyboard interaktif langsung dari dalam TUI dengan retensi posisi kursor saat ditutup.
 
 ---

@@ -64,25 +64,25 @@ fex <subcommand> --help
 
 ## ⌨️ Pintasan Keyboard (Di Dalam UI Fzf)
 
-| Key          | Aksi                                                                    |
-| :----------- | :---------------------------------------------------------------------- |
-| `Enter`      | Buka file di Editor default / Masuk direktori                           |
-| `Tab`        | 🔄 Beralih mode secara instan (**Tree Mode ⇄ Flat Find Mode**)          |
-| `Alt-c`      | 📋 Tandai file/folder untuk **Salin (Copy)**                            |
-| `Alt-m`      | 📦 Tandai file/folder untuk **Pindah (Move / Cut)**                     |
-| `Ctrl-v`     | 📥 **Tempel (Paste)** file/folder di direktori aktif                    |
-| `Ctrl-d`     | 🗑️ Hapus file/folder (dengan konfirmasi aman)                           |
-| `Ctrl-r`     | ✏️ Ganti nama file / direktori                                          |
-| `Ctrl-n`     | 📄 Buat file baru (Tree mode)                                           |
-| `Ctrl-k`     | 📁 Buat folder baru (Tree mode)                                         |
-| `Ctrl-g`     | 🐙 Buka Git Status & Commit Log (**In-TUI Popup**)                      |
-| `Ctrl-y`     | 📋 Salin path file ke clipboard OS (**Universal OSC 52 + Wayland/X11**) |
-| `Ctrl-f`     | 🔍 Buka pencarian konten file interaktif (**ripgrep search mode**)      |
-| `Ctrl-b`     | ⭐ Tambahkan direktori ke Bookmark                                      |
-| `Ctrl-x`     | ❌ Hapus direktori dari Bookmark                                        |
-| `Ctrl-o`     | 🖥️ Buka direktori di pane tmux sebelah                                  |
-| `Ctrl-s`     | 🖥️ Toggle tampilan preview ukuran penuh / half                          |
-| `Ctrl-h / ?` | ❓ Buka dialog popup bantuan seluruh keybindings                        |
+| Key          | Aksi                                                                                  |
+| :----------- | :------------------------------------------------------------------------------------ |
+| `Enter`      | Buka file di Editor default / Masuk direktori                                         |
+| `Tab`        | 🔄 Beralih mode secara instan (**Tree Mode ⇄ Flat Find Mode**)                        |
+| `Alt-c`      | 📋 Tandai file/folder untuk **Salin (Copy)**                                          |
+| `Alt-m`      | 📦 Tandai file/folder untuk **Pindah (Move / Cut)**                                   |
+| `Ctrl-v`     | 📥 **Tempel (Paste)** file/folder di direktori aktif                                  |
+| `Ctrl-d`     | 🗑️ Hapus file/folder (dengan konfirmasi aman)                                         |
+| `Ctrl-r`     | ✏️ Ganti nama file / direktori                                                        |
+| `Ctrl-n`     | 📄 Buat file baru (Tree mode)                                                         |
+| `Ctrl-k`     | 📁 Buat folder baru (Tree mode)                                                       |
+| `Ctrl-g` | 🐙 **Context-Aware Git**: **File Diff & Commit History** (jika kursor di file) / **lazygit TUI** (jika kursor di folder) |
+| `Ctrl-y`     | 📋 Salin path file ke clipboard OS (**Universal OSC 52 + Wayland/X11**)               |
+| `Ctrl-f`     | 🔍 Buka pencarian konten file interaktif (**ripgrep search mode**)                    |
+| `Ctrl-b`     | ⭐ Tambahkan direktori ke Bookmark                                                    |
+| `Ctrl-x`     | ❌ Hapus direktori dari Bookmark                                                      |
+| `Ctrl-o`     | 🖥️ Buka direktori di pane tmux sebelah                                                |
+| `Ctrl-s`     | 🖥️ Toggle tampilan preview ukuran penuh / half                                        |
+| `Ctrl-h / ?` | ❓ Buka dialog popup bantuan seluruh keybindings                                      |
 
 ---
 

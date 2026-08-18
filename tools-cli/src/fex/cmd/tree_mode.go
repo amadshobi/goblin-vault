@@ -94,7 +94,7 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 		if headerPrefix != "" {
 			headerPrefix += " | "
 		}
-		opts.Header = headerPrefix + GetClipboardBadge() + "Enter:open/in | Tab:find | Alt-c:copy | Alt-m:move | Ctrl-v:paste | Ctrl-h:help | Ctrl-n:file | Ctrl-k:folder | Ctrl-r:ren | Ctrl-d:del | Ctrl-g:git | Ctrl-f:search | Ctrl-y:clip"
+		opts.Header = headerPrefix + GetClipboardBadge() + "Enter:open/in | Tab:find | Ctrl-g:lazygit | Alt-c:copy | Alt-m:move | Ctrl-v:paste | Ctrl-h:help | Ctrl-n:file | Ctrl-k:folder | Ctrl-r:ren | Ctrl-d:del | Ctrl-f:search | Ctrl-y:clip"
 		toast = "" // reset toast setelah dipakai
 		opts.Expected = "ctrl-r,ctrl-d,ctrl-n,ctrl-k,esc,alt-c,alt-m,ctrl-v,alt-v,ctrl-h,?,tab,ctrl-g,ctrl-y,ctrl-f"
 		opts.BorderLabel = fmt.Sprintf(" 🌳 %s ", filepath.Base(currentDir))
@@ -180,13 +180,26 @@ func runTreeMode(sess *session.Session, currentDir string) (string, error) {
 			return "search", nil
 
 		case "ctrl-g":
-			// Open in-TUI Git Status & Commit Viewer Popup
+			// Context-Aware Git Action:
+			// - Jika kursor di FILE ➔ Buka Git History & Diff Viewer Split untuk file tersebut
+			// - Jika kursor di FOLDER (atau "..") ➔ Buka full lazygit TUI
 			if len(result.Selected) > 0 {
-				if entry := findEntry(result.Selected[0]); entry != nil {
+				entry := findEntry(result.Selected[0])
+				if entry != nil {
 					lastFocusName = entry.name
+					if !entry.isDir && entry.path != "" {
+						if errToast := fileGitHistoryDialog(currentDir, entry.path); errToast != "" {
+							toast = errToast
+						}
+						continue
+					}
 				}
 			}
-			gitStatusDialog(currentDir)
+
+			// Kursor di folder ➔ Buka full lazygit
+			if errToast := openLazygit(currentDir); errToast != "" {
+				toast = errToast
+			}
 			continue
 
 		case "ctrl-y":

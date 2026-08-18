@@ -76,7 +76,7 @@ Keybindings (in TUI):
 
   Search & Utilities:
     Ctrl-f               Live interactive search konten file (ripgrep)
-    Ctrl-g               Buka Git Status & Commit Viewer Popup
+    Ctrl-g               Buka lazygit (Tree mode) / File Git Diff Viewer (Find mode)
     Ctrl-y               Salin path ke clipboard OS (Universal OSC 52)
     Ctrl-b               Tambahkan ke Bookmarks
     Ctrl-x               Hapus dari Bookmarks

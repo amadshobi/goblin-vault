@@ -36,9 +36,23 @@ func getFdFileList(dir string, ext string) (string, error) {
 		"--max-depth", "8",
 		"--exclude", "node_modules",
 		"--exclude", ".git",
+		"--exclude", ".cache",
+		"--exclude", ".local/share",
+		"--exclude", ".cargo",
+		"--exclude", ".rustup",
+		"--exclude", ".npm",
+		"--exclude", ".bun",
+		"--exclude", ".pnpm-store",
+		"--exclude", ".venv",
+		"--exclude", "venv",
 		"--exclude", "__pycache__",
 		"--exclude", "vendor",
 		"--exclude", "dist",
+		"--exclude", "target",
+		"--exclude", "build",
+		"--exclude", ".next",
+		"--exclude", ".turbo",
+		"--exclude", ".vscode-server",
 	}
 
 	if ext != "" {

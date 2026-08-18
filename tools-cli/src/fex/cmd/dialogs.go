@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"civil/goblin-vault/tools-cli/src/fex/internal/fzf"
+	"civil/goblin-vault/tools-cli/src/fex/internal/util"
 )
 
 // confirmDeleteDialog — fzf confirm: user tekan Ctrl-d lagi buat confirm.
@@ -30,8 +31,6 @@ func confirmDeleteDialog(path string) bool {
 }
 
 // renameDialog — fzf popup: pre-filled dengan nama lama, user edit & Enter.
-// Konsisten dengan newFileDialog / newFolderDialog — gak ada stdin prompt
-// yang bikin terminal kotor, popup di-render di atas fzf.
 func renameDialog(path string) string {
 	oldName := filepath.Base(path)
 	opts := fzf.DefaultFzfOpts()
@@ -46,7 +45,6 @@ func renameDialog(path string) string {
 	opts.PreviewWindow = ""
 	opts.Bindings = []string{"enter:print-query"}
 
-	// Empty input (no candidates) — user ketik/edit di query box
 	result, err := fzf.Run("", opts)
 	if err != nil {
 		return ""
@@ -72,7 +70,6 @@ func newFileDialog(dir string) string {
 	opts.PreviewWindow = ""
 	opts.Bindings = []string{"enter:print-query"}
 
-	// No dummy item — kosongkan list, user ketik di query
 	result, err := fzf.Run("", opts)
 	if err != nil {
 		return ""
@@ -134,8 +131,8 @@ func helpDialog() {
 	helpText := []string{
 		"NAVIGATION:",
 		"  Enter         Buka file di Editor / Masuk folder",
-		"  Esc           Batal / Naik 1 direktori (Tree mode)",
-		"  Tab           Pilih banyak file (Multi-select)",
+		"  Esc           Batal / Naik 1 direktori (Tree mode) / Back (Search)",
+		"  Tab           🔄 Ganti mode instan (Tree ⇄ Flat Find)",
 		"",
 		"CLIPBOARD & FILE OPS:",
 		"  Alt-c         📋 Tandai untuk Salin (Copy)",
@@ -146,10 +143,12 @@ func helpDialog() {
 		"  Ctrl-n        📄 Buat file baru (Tree mode)",
 		"  Ctrl-k        📁 Buat folder baru (Tree mode)",
 		"",
+		"GIT INTEGRATION (CONTEXT-AWARE):",
+		"  Ctrl-g        🐙 lazygit TUI (di Folder) / Git History & Diff (di File)",
+		"",
 		"SEARCH & UTILITIES:",
 		"  Ctrl-f        🔍 Live search konten file (ripgrep)",
-		"  Ctrl-g        🐙 Tampilkan status & git log",
-		"  Ctrl-y        📋 Salin path ke OS clipboard",
+		"  Ctrl-y        📋 Salin path ke OS clipboard (Universal OSC 52)",
 		"  Ctrl-b        ⭐ Tambahkan ke Bookmarks",
 		"  Ctrl-x        ❌ Hapus dari Bookmarks",
 		"  Ctrl-o        🖥️ Buka direktori di Tmux pane sebelah",
@@ -157,11 +156,72 @@ func helpDialog() {
 		"PREVIEW & HELP:",
 		"  Ctrl-p        👁️ Toggle preview pane",
 		"  Ctrl-s        🖥️ Toggle fullscreen layout preview",
-		"  Tab           🔄 Ganti mode (Tree ⇄ Flat)",
 		"  Ctrl-h / ?    ❓ Buka dialog panduan bantuan ini",
 	}
 
 	_, _ = fzf.Run(strings.Join(helpText, "\n"), opts)
+}
+
+// openLazygit — meluncurkan lazygit TUI penuh jika di dalam Git work tree.
+func openLazygit(dir string) string {
+	checkCmd := exec.Command("git", "-C", dir, "rev-parse", "--is-inside-work-tree")
+	if err := checkCmd.Run(); err != nil {
+		return "⚠ [Bukan repositori Git]"
+	}
+
+	if lgPath, err := exec.LookPath("lazygit"); err == nil && lgPath != "" {
+		cmd := exec.Command(lgPath)
+		cmd.Dir = dir
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		_ = cmd.Run()
+		return ""
+	}
+
+	// Fallback ke gitStatusDialog jika lazygit tidak terpasang
+	gitStatusDialog(dir)
+	return ""
+}
+
+// fileGitHistoryDialog — fzf popup viewer: riwayat commit file di kiri & live diff di kanan.
+func fileGitHistoryDialog(dir string, filePath string) string {
+	checkCmd := exec.Command("git", "-C", dir, "rev-parse", "--is-inside-work-tree")
+	if err := checkCmd.Run(); err != nil {
+		return "⚠ [Bukan repositori Git]"
+	}
+
+	info, err := os.Stat(filePath)
+	if err != nil || info.IsDir() {
+		gitStatusDialog(dir)
+		return ""
+	}
+
+	logCmd := exec.Command("git", "-C", dir, "log", "--oneline", "-n", "100", "--", filePath)
+	out, err := logCmd.Output()
+	if err != nil || len(out) == 0 {
+		return fmt.Sprintf("ℹ [Belum ada riwayat commit Git: %s]", filepath.Base(filePath))
+	}
+
+	lines := strings.TrimSpace(string(out))
+	if lines == "" {
+		return fmt.Sprintf("ℹ [Belum ada riwayat commit Git: %s]", filepath.Base(filePath))
+	}
+
+	dirQuoted := util.ShEscape(dir)
+	fileQuoted := util.ShEscape(filePath)
+
+	opts := fzf.DefaultFzfOpts()
+	opts.Header = fmt.Sprintf("📜 Git History: %s — Press Enter or ESC to return", filepath.Base(filePath))
+	opts.BorderLabel = fmt.Sprintf(" 📜 History & Diff: %s ", filepath.Base(filePath))
+	opts.Prompt = " 📜 ❯ "
+	opts.NoSort = true
+	opts.Cycle = true
+	opts.PreviewWindow = "right:65%:wrap,border-left"
+	opts.PreviewCmd = fmt.Sprintf("git -C %s show --color=always {1} -- %s 2>/dev/null || echo 'No diff available'", dirQuoted, fileQuoted)
+
+	_, _ = fzf.Run(lines, opts)
+	return ""
 }
 
 // gitStatusDialog — fzf popup: menampilkan git status dan 15 commit terakhir tanpa bocor ke terminal luar.

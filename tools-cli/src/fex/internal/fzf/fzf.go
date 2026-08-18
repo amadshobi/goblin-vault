@@ -142,25 +142,20 @@ func Run(input string, opts FzfOpts) (*Result, error) {
 		return result, fmt.Errorf("fzf exec: %w", err)
 	}
 
-	// ── Parse line protocol ──
-	// fzf output ordering (ketika flags diset):
-	//   1. --expect key (baris pertama, kalo diset)
-	//   2. --print-query (baris kedua, kalo diset)
-	//   3. Selected items (baris sisanya)
-	raw := stdout.String()
+	return parseOutputLines(stdout.String(), opts, result.ExitCode), nil
+}
+
+func parseOutputLines(raw string, opts FzfOpts, exitCode int) *Result {
+	result := &Result{ExitCode: exitCode}
 	lines := strings.Split(strings.TrimRight(raw, "\n"), "\n")
 
 	for i, line := range lines {
 		lines[i] = strings.TrimRight(line, "\r")
 	}
 
-	// Track position in output array
 	idx := 0
 
 	// ── Parse --expect key ──
-	// Hanya consume kalo line beneran match salah satu expected key.
-	// Waktu user tekan Enter (normal select), --expect gak nulis key,
-	// jadi line pertama adalah selected item, BUKAN key.
 	if opts.Expected != "" && len(lines) > idx {
 		expectedKeys := strings.Split(opts.Expected, ",")
 		isKey := false
@@ -189,7 +184,7 @@ func Run(input string, opts FzfOpts) (*Result, error) {
 		}
 	}
 
-	return result, nil
+	return result
 }
 
 // buildFzfArgs — compile FzfOpts ke []string CLI args.
