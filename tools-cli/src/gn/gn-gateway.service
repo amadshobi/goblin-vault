@@ -28,7 +28,7 @@ Environment=GN_GATEWAY_TARGET_HOST=127.0.0.1
 Environment=NODE_ENV=production
 
 # ── Runtime ──
-ExecStart=/home/shobixlinuxdev/.npm-global/bin/bun run %h/civil/goblin-vault/tools-cli/src/gn/src/index.ts gateway start --port 4000 --target-port 4002
+ExecStart=/usr/bin/env bun run %h/civil/goblin-vault/tools-cli/src/gn/src/index.ts gateway start --port 4000 --target-port 4002
 WorkingDirectory=%h/civil/goblin-vault
 
 # ── Resilience ──

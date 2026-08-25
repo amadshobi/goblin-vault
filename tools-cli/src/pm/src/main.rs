@@ -252,10 +252,9 @@ async fn main() -> anyhow::Result<()> {
         }
 
         Some(Commands::Tui) | None => {
-            // Check if stdin / stdout is TTY
-            if !unsafe {
-                libc::isatty(libc::STDIN_FILENO) == 1 && libc::isatty(libc::STDOUT_FILENO) == 1
-            } {
+            // Check if stdin / stdout is TTY via safe Rust standard library
+            use std::io::IsTerminal;
+            if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
                 println!(
                     "{}",
                     "ℹ️ Non-TTY environment detected — fallback to headless auto-update.".dimmed()

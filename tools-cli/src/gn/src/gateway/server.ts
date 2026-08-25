@@ -322,6 +322,7 @@ export function createGatewayServer(
 						let timeoutId: any = null;
 						const timeoutPromise = new Promise<never>((_, reject) => {
 							timeoutId = setTimeout(() => {
+								abortController.abort();
 								reject(new Error("TTFB_TIMEOUT"));
 							}, TTFB_TIMEOUT_MS);
 						});

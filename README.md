@@ -8,7 +8,7 @@
     <img src="https://img.shields.io/github/actions/workflow/status/amadshobi/goblin-vault/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI&color=10B981&labelColor=1F2937&logoColor=white" alt="CI Status" />
   </a>
   <img src="https://img.shields.io/badge/License-MIT-00E5FF?style=for-the-badge&logo=open-source-initiative&logoColor=black&labelColor=1F2937" alt="License MIT" />
-  <img src="https://img.shields.io/badge/Version-0.4.0-A855F7?style=for-the-badge&labelColor=1F2937" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-0.5.0-A855F7?style=for-the-badge&labelColor=1F2937" alt="Version" />
   <img src="https://img.shields.io/badge/Author-amadshobi-F59E0B?style=for-the-badge&logo=github&logoColor=white&labelColor=1F2937" alt="Author amadshobi" />
   <br/><br/>
   <img src="https://img.shields.io/badge/Bun-%E2%89%A5%201.0-FFFDF5?style=for-the-badge&logo=bun&logoColor=black&labelColor=1F2937" alt="Bun" />

@@ -219,6 +219,9 @@ build_pm() {
     if command -v cargo &>/dev/null; then
         mkdir -p "$TOOLS_BIN" "$LOCAL_BIN"
         (cd "$pm_src" && cargo build --release)
+        if [[ -f "$pm_src/target/release/pm" ]]; then
+            chmod +x "$pm_src/target/release/pm" 2>/dev/null || true
+        fi
         chmod +x "$TOOLS_BIN/pm" 2>/dev/null || true
     else
         return 1
