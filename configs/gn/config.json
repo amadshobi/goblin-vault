@@ -1,0 +1,51 @@
+{
+	"description": "Goblin Nexus (gn) Master Unified Configuration",
+	"providerAlias": {
+		"agy": "google-antigravity",
+		"oai": "openai",
+		"codex": "openai-codex",
+		"copilot": "github-copilot",
+		"ollama": "ollama-cloud",
+		"moon": "moonshot",
+		"nv": "nvidia",
+		"kilo": "kilo",
+		"zai": "zai",
+		"cur": "cursor"
+	},
+	"gateway": {
+		"enabled": true,
+		"fallback": {
+			"enabled": true,
+			"trigger_statuses": [404, 410, 429],
+			"trigger_status_5xx": true,
+			"fallback_models": {
+				"// PRIMARY: Claude Sonnet 4.6": "--------------------------------------------------",
+				"google-antigravity/claude-sonnet-4-6": [
+					"google-antigravity/gemini-3.1-pro"
+				],
+				"// PRIMARY: Claude Opus 4.6": "--------------------------------------------------",
+				"google-antigravity/claude-opus-4-6": [
+					"google-antigravity/gemini-3.1-pro"
+				],
+				"// PRIMARY: Gemini 3.5 Flash": "--------------------------------------------------",
+				"google-antigravity/gemini-3.5-flash": [
+					"opencode/deepseek-v4-flash-free",
+					"ollama-cloud/minimax-m3"
+				],
+				"// PRIMARY: GPT 5.5": "--------------------------------------------------",
+				"openai-codex/gpt-5.5": [
+					"google-antigravity/gemini-3.7-flash",
+					"google-antigravity/gemini-2.5-flash"
+				],
+				"// PRIMARY: Minimax M3": "--------------------------------------------------",
+				"ollama-cloud/minimax-m3": ["opencode/deepseek-v4-flash-free"]
+			},
+			"default_fallback": [
+				"opencode/deepseek-v4-flash-free",
+				"google-antigravity/gemini-3.5-flash",
+				"ollama-cloud/minimax-m3"
+			],
+			"endpoints": ["/v1/chat/completions", "/v1/messages"]
+		}
+	}
+}

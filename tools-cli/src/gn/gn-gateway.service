@@ -1,50 +1,51 @@
 # ─────────────────────────────────────────────────────────────
-# Goblin Shield — Auto Telemetry & Privacy Interceptor Daemon
+# Goblin Nexus Gateway — Interceptor, Caching & Fallback Daemon
 # Systemd User Service
 # ─────────────────────────────────────────────────────────────
 # Install:
 #   systemctl --user daemon-reload
-#   systemctl --user enable --now gn-shield.service
+#   systemctl --user enable --now gn-gateway.service
 #
 # Verify:
-#   systemctl --user status gn-shield.service
-#   journalctl --user -u gn-shield.service -f
+#   systemctl --user status gn-gateway.service
+#   journalctl --user -u gn-gateway.service -f
 # ─────────────────────────────────────────────────────────────
 
 [Unit]
-Description=🛡️ Goblin Shield — Privacy Interceptor & Auto Telemetry Logger
+Description=👹 Goblin Nexus Gateway — LLM Interceptor, Deterministic Cache & Fallback Daemon
 Documentation=https://github.com/shobix/goblin-vault
-After=network.target network-online.target
+After=network.target network-online.target omp.service
 Wants=network-online.target
 
 [Service]
 Type=simple
 
-# ── Paths ──
+# ── Environment ──
 Environment=GOBLIN_VAULT_ROOT=%h/civil/goblin-vault
-Environment=SHIELD_LISTEN_PORT=4002
-Environment=SHIELD_TARGET_PORT=4000
-Environment=SHIELD_TARGET_HOST=127.0.0.1
+Environment=GN_GATEWAY_PORT=4000
+Environment=GN_GATEWAY_TARGET_PORT=4002
+Environment=GN_GATEWAY_TARGET_HOST=127.0.0.1
+Environment=NODE_ENV=production
 
 # ── Runtime ──
-ExecStart=/home/shobixlinuxdev/.npm-global/bin/bun run /home/shobixlinuxdev/civil/goblin-vault/tools-cli/src/shield/shield-interceptor.ts
+ExecStart=/home/shobixlinuxdev/.npm-global/bin/bun run %h/civil/goblin-vault/tools-cli/src/gn/src/index.ts gateway start --port 4000 --target-port 4002
 WorkingDirectory=%h/civil/goblin-vault
 
 # ── Resilience ──
 Restart=always
-RestartSec=2
+RestartSec=3
 
 # ── Security & Sandboxing ──
 ProtectSystem=strict
 PrivateTmp=true
 NoNewPrivileges=true
 
-# Allow write access to telemetry DB, shield log, and pricing config
+# Allow write access to telemetry DB, cache, and fixtures
 ReadWritePaths=%h/.cache/goblin-nexus
+ReadWritePaths=%h/.config/gn
 ReadWritePaths=%h/.config/goblin-nexus
-ReadWritePaths=%h/civil/goblin-vault/tools-cli/src/shield
 
-# Allow network access (needed for proxy)
+# Allow network loopback access (needed for proxy)
 PrivateNetwork=no
 
 # ── Logging ──

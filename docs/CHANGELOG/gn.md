@@ -5,6 +5,41 @@
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
+## [v2.1.0] - 2026-08-24
+
+### Added
+
+- **`gn gateway` Interceptor Core Engine (Issue #29)**:
+  - **High-Performance Bun HTTP/SSE Proxy (`gateway/server.ts`)**: Bertindak sebagai master interceptor di Port 4000 yang meneruskan request LLM ke Upstream OMP Native Gateway (Port 4002) dengan passthrough streaming SSE tanpa de-framing di hot path.
+  - **Cancellation Propagation**: Mengintegrasikan `req.signal` ke `AbortController` upstream agar saat user/agent membatalkan prompt, upstream request langsung di-abort (mencegah pemborosan kuota/token).
+  - **Deterministic SHA-256 Prompt Caching (`gateway/cache.ts`)**:
+    - Hash tuple: `sha256(v1 + model + messages + temperature + top_p + system_prompt + seed + tools)`.
+    - Chunk disimpan post-framing (`data: {...}\n\n`) dengan atomic write (`.tmp -> .json`) dan permission `0600`.
+    - Replay stream instan (<5ms) dengan regenerasi ID (`chatcmpl-<uuid>`) dan timestamp `created` agar parser OpenCode tidak mendrop response.
+    - Single-flight inflight map untuk mencegah duplicated concurrent upstream requests pada prompt yang identik.
+    - TTL default 2 jam dengan auto-pruning dan opsi bypass `X-GN-No-Cache: true` atau flag `--no-cache`.
+  - **Absorpsi Privacy Shield & Rules Engine (`gateway/sanitizer.ts`, `gateway/rules.ts`)**:
+    - Sanitasi regex token rahasia (API keys, IP internal, Bearer tokens) dengan ReDoS protection.
+    - Menghapus header internal `X-GN-*` sebelum request dikirim ke upstream.
+  - **Cascading Fallback & Circuit Breaker (`gateway/circuit-breaker.ts`)**:
+    - Deteksi pre-stream error (429 Rate Limit, 5xx Server Error, 410, TTFB timeout 15s) dengan fallback otomatis ke candidate model alternatif dari `rules.json`.
+    - State machine Circuit Breaker: 3 kegagalan beruntun -> 60s cooldown per model.
+    - Context limit window error diteruskan transparan ke client agar OpenCode memicu mekanisme auto-compaction.
+  - **Fixture Recording & Offline Replay Engine (`gateway/replay.ts`)**:
+    - Dukungan recording interaksi prompt-response ke format JSONL (`gn gateway record <name>`).
+    - Offline replay stream dari fixture tanpa koneksi upstream (`gn gateway mock <name>`).
+  - **Unified Subcommands & Dual-Level Help (`commands/gateway.ts`)**:
+    - Subcommands: `gn gateway start`, `gn gateway status`, `gn gateway stats`, `gn gateway record <name>`, `gn gateway mock <name>`, `gn gateway cache <prune|clear>`.
+    - Aliases: `gn gw`, `gn g`, `gn shield`.
+  - **Automated Gateway Test Suite (`gateway/gateway.test.ts`)**: 14 unit & integration test komprehensif mencakup rules loading, sanitization, circuit breaker, caching deterministik, fixture replay, dan proxying.
+
+### Fixed
+
+- **Shield Configuration Syntax Bug (`configs/gn/rules.json`)**: Memperbaiki syntax error malformed JSON (trailing comma dan missing commas pada model definition) agar rules engine dapat di-parse dengan sempurna.
+- **Peleburan Arsitektur Shield ke Master Configs & GN**: Menghapus direktori terpisah `tools-cli/src/shield/` dan memigrasikan `rules.json` & `privacy-headers.json` ke `configs/gn/` sebagai Single Source of Truth, serta menyediakan `tools-cli/src/gn/gn-gateway.service` untuk systemd user daemon.
+
+---
+
 ## [v2.0.2] - 2026-08-18
 
 ### Added

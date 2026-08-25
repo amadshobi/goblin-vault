@@ -20,7 +20,6 @@ tools-cli/src/gn/storage/
 # Logs & Telemetry
 *.log
 **/logs/
-tools-cli/src/shield/shield.log
 
 # Temporary Scratchpads & Docs Updates
 docs/update/

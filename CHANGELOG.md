@@ -14,10 +14,18 @@
 
 ---
 
-## [v0.4.0] - 2026-08-18
+## [v0.4.0] - 2026-08-24
 
 ### 🚀 Major Evolution & Ecosystem Refactor
 
+- **`gn gateway` Interceptor Core Engine (`tools-cli/src/gn/src/gateway/`)**:
+  - **Transparent Port Takeover**: Proxy cerdas berbasis Bun di Port 4000 yang meneruskan request ke OMP Native Gateway (Port 4002) tanpa rekonfigurasi client.
+  - **Zero-Copy SSE Pass-Through**: Penyaluran event-stream tanpa de-framing dengan cancellation propagation ke upstream via `req.signal`.
+  - **Deterministic SHA-256 Prompt Caching**: Deduplikasi prompt identik ke cache disk (`0600`) dengan regenerasi timestamp & ID token unik, single-flight inflight guard, dan TTL 2 jam.
+  - **Cascading Fallback & Circuit Breaker**: Auto-fallback saat terjadi 429 rate limit atau 5xx server error sebelum headers terkirim, serta cooldown 60s setelah 3 kegagalan beruntun.
+  - **Fixture Recording & Offline Mock Replay**: Perekaman interaksi chat ke JSONL dan offline streaming replay tanpa upstream.
+  - **Master Configs & Privacy Shield Integration**: Peleburan engine shield ke `gn gateway` dengan master template konfigurasi di `configs/gn/rules.json` & `configs/gn/privacy-headers.json` dan systemd service `tools-cli/src/gn/gn-gateway.service`.
+  - **Unified Subcommands**: `gn gateway start|status|stats|record|mock|cache` dan alias `gn gw`, `gn g`, `gn shield`.
 - **Automated All-in-One Installer & 1-Line Remote cURL Bootstrap (`scripts/install.sh`)**:
   - **Single-Entry Remote Bootstrap**: Dukungan eksekusi instan via `curl -fsSL https://raw.githubusercontent.com/amadshobi/goblin-vault/main/scripts/install.sh | bash` dengan auto-clone ke `~/civil/goblin-vault` dan delegasi instalasi otomatis.
   - **Dynamic Braille Spinner UX**: Tampilan langkah instalasi 1-baris halus (`⠋ ⠙ ⠹...`) dengan pelacakan durasi per-task dan box error log merah saat terjadi kegagalan.

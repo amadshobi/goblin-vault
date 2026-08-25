@@ -9,10 +9,10 @@
   ╚═════╝ ╚═╝  ╚═══╝
   </pre>
   <br/><br/>
-  <strong>Goblin Nexus CLI v2.0.2 (Control Center Core)</strong>
+  <strong>Goblin Nexus CLI v2.1.0 (Control Center Core)</strong>
   <br/><br/>
   <img src="https://img.shields.io/badge/Role-Control%20Plane-FF007F?style=for-the-badge&labelColor=1F2937" alt="Control Plane" />
-  <img src="https://img.shields.io/badge/Version-v2.0.2-blue.svg?style=for-the-badge&labelColor=1F2937" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.1.0-blue.svg?style=for-the-badge&labelColor=1F2937" alt="Version" />
   <img src="https://img.shields.io/badge/Stack-TypeScript%20%7C%20Bun-3B82F6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=1F2937" alt="Stack" />
   <img src="https://img.shields.io/badge/Runtime-Bun-FFFDF5?style=for-the-badge&logo=bun&logoColor=black&labelColor=1F2937" alt="Bun" />
   <img src="https://img.shields.io/badge/Telemetry-OMP%20%26%20OpenCode-A855F7?style=for-the-badge&labelColor=1F2937" alt="Telemetry" />
@@ -21,9 +21,9 @@
   <br/>
 </p>
 
-# gn — Goblin Nexus CLI `v2.0.2`
+# gn — Goblin Nexus CLI `v2.1.0`
 
-> **Control Center Core & Telemetry Plane** — Pusat komando terintegrasi untuk kuota token, diagnostik kesehatan sistem, speed benchmark leaderboard, konektivitas model AI, dan manajemen konfigurasi OpenCode.
+> **Control Center Core & Telemetry Plane** — Pusat komando terintegrasi untuk kuota token, diagnostik kesehatan sistem, speed benchmark leaderboard, konektivitas model AI, smart gateway proxy interceptor, dan manajemen konfigurasi OpenCode.
 
 ---
 
@@ -36,6 +36,7 @@
 ## 🚀 Fitur Utama & Subsystems
 
 ### 1. 󰓅 Telemetry & Quota Engine (`usage`, `u`)
+
 <p align="center">
   <img src="../../../docs/assets/gif/gn-usage.gif" alt="gn usage demo" width="800" />
 </p>
@@ -49,6 +50,7 @@
 ---
 
 ### 2. 󱎫 Speed Benchmark & Connectivity Probe (`bench`, `ping`)
+
 <p align="center">
   <img src="../../../docs/assets/gif/gn-bench.gif" alt="gn bench demo" width="800" />
 </p>
@@ -63,6 +65,7 @@
 ---
 
 ### 3. 󰋼 Health Diagnostic Tree & Config Manager (`doctor`, `config`)
+
 <p align="center">
   <img src="../../../docs/assets/gif/gn-doctor.gif" alt="gn doctor demo" width="800" />
 </p>
@@ -71,6 +74,17 @@
 - **4 Kategori Pemeriksaan**: `󰘚 DAEMONS & RUNTIMES`, `󰆼 DATABASES & TELEMETRY`, `󰌆 AUTH & PROVIDER MATRIX`, dan `󰉋 STORAGE & CONFIGURATION`.
 - **Zero-Secret Auth Matrix**: Audit akun aktif dari SQLite `agent.db` tanpa mengekspos API key atau secret token.
 - **Configuration Manager (`config`, `c`)**: Pembacaan dan modifikasi cepat konfigurasi OpenCode (`opencode.jsonc`) dan alias provider.
+
+---
+
+### 4. 󰒓 Smart Gateway Interceptor (`gateway`, `gw`)
+
+- **Takeover Transparent Port 4000**: Meneruskan request OpenCode/client ke Upstream Native OMP Gateway (Port 4002) tanpa mengubah konfigurasi client.
+- **SSE Zero-Copy Pass-Through**: Menyalurkan event-stream tanpa de-framing dengan latensi sangat rendah (<2ms).
+- **Deterministic SHA-256 Prompt Caching**: Menghitung hash payload prompt & stream response secara deterministik ke disk (`0600`) dengan regenerasi ID token unik dan TTL auto-pruning.
+- **Cascading Fallback & Circuit Breaker**: Intersepsi otomatis 429 rate limit & 5xx server error sebelum headers terkirim, beralih ke model alternatif cadangan dengan jeda cooldown 60s setelah 3 kegagalan beruntun.
+- **Fixture Record & Mock Replay Engine**: Perekaman sesi chat ke format JSONL (`gn gw record <name>`) dan replay streaming offline tanpa internet/upstream (`gn gw mock <name>`).
+- **Privacy Shield Header Sanitize**: Redaksi token/rahasia internal dan pembersihan header `X-GN-*` sebelum request diteruskan ke upstream.
 
 ---
 
@@ -109,6 +123,13 @@ gn b agy --top 5
 
 # 8. Full system health diagnostic & auth matrix
 gn doctor
+
+# 9. Jalankan Gateway Interceptor (Port 4000 -> 4002)
+gn gw start
+
+# 10. Periksa status & metrik performa gateway aktif
+gn gw status
+gn gw stats --json
 ```
 
 ---
@@ -124,8 +145,17 @@ tools-cli/src/gn/
 │   │   ├── ping.ts         # Gateway & model probe engine
 │   │   ├── bench.ts        # Speed leaderboard & benchmark engine
 │   │   ├── doctor.ts       # Tree-layout health diagnostic & auth matrix
+│   │   ├── gateway.ts      # Smart Gateway Interceptor CLI
 │   │   ├── sessions.ts     # OpenCode session search & explorer
 │   │   └── config.ts       # OpenCode config manager
+│   ├── gateway/            # Smart Gateway Interceptor Core Engine
+│   │   ├── server.ts       # Bun HTTP/SSE proxy server & upstream forwarder
+│   │   ├── cache.ts        # SHA-256 prompt cache manager & replay
+│   │   ├── circuit-breaker.ts # Cascading fallback & circuit breaker
+│   │   ├── sanitizer.ts    # Privacy shield sanitization
+│   │   ├── rules.ts        # Rules & fallback config loader (configs/gn/)
+│   │   ├── replay.ts       # Fixture recording & mock replay
+│   │   └── types.ts        # TypeScript interfaces & types
 │   ├── adapters/           # Data & Provider Adapters
 │   │   ├── omp-native.ts   # Forwarder resmi omp usage binary
 │   │   ├── omp-quota.ts    # SQLite quota adapter fallback
@@ -138,6 +168,7 @@ tools-cli/src/gn/
 │       ├── db.ts           # SQLite database connection helper
 │       ├── opencode-cli.ts # OpenCode session history reader
 │       └── error.ts        # Fuzzy command matcher & roast error
+├── gn-gateway.service      # Systemd user daemon unit
 ├── gn.sh                   # Shell launcher & fallback
 ├── package.json
 └── tsconfig.json
