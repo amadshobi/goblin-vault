@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Wrapper executable for sup (Smart Universal Package Updater) inside Goblin Vault.
-#
-# Menjalankan entrypoint TypeScript via Bun. Mirip gaya wrapper `ocm`.
+# ─────────────────────────────────────────────────────────────
+# Wrapper & Compatibility Shim for sup (now powered by pm)
+# Thin launcher forwarding to Rust binary 'pm update'
+# ─────────────────────────────────────────────────────────────
+set -euo pipefail
 
-# Resolve physical path in case of symlinks in ~/.local/bin/
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
   DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
@@ -12,13 +13,18 @@ while [ -h "$SOURCE" ]; do
 done
 BIN_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
 export GOBLIN_VAULT_ROOT="$(cd -P "$BIN_DIR/../.." >/dev/null 2>&1 && pwd)"
+PM_BIN="$GOBLIN_VAULT_ROOT/tools-cli/bin/pm"
 
-# Pastikan dep tersedia di node_modules lokal tools-cli/src/sup.
-# Kalau belum di-install (misal repo fresh clone), install dulu.
-if [ ! -d "$GOBLIN_VAULT_ROOT/tools-cli/src/sup/node_modules/@clack" ]; then
-  if command -v bun >/dev/null 2>&1; then
-    (cd "$GOBLIN_VAULT_ROOT/tools-cli/src/sup" && bun install --silent) || true
-  fi
+# Jika argumen kosong, langsung buka TUI Tab 1 (Updates)
+if [ $# -eq 0 ]; then
+  exec "$PM_BIN" tui
 fi
 
-exec bun run "$GOBLIN_VAULT_ROOT/tools-cli/src/sup/src/index.ts" "$@"
+# Jika argumen berisi -h/--help, teruskan help
+if [[ "$1" == "-h" || "$1" == "--help" || "$1" == "help" ]]; then
+  exec "$PM_BIN" update --help
+fi
+
+# Jika argumen berisi sub-target atau flag (mis. `sup all`, `sup apt`, `sup -y`, `sup -v`)
+exec "$PM_BIN" update "$@"
+

@@ -30,6 +30,11 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
       - name: Install System Dependencies (fzf, tmux, zoxide, ripgrep)
         run: |
           sudo apt-get update
@@ -38,6 +43,13 @@ jobs:
       - name: Run FEX Unit Tests (Go)
         working-directory: tools-cli/src/fex
         run: go test -v -count=1 ./...
+
+      - name: Run PM Cargo Tests & Clippy (Rust)
+        working-directory: tools-cli/src/pm
+        run: |
+          cargo fmt --check
+          cargo clippy -- -D warnings
+          cargo test
 
       - name: Run Automated All-in-One Installer
         run: ./scripts/install.sh --yes
@@ -59,10 +71,11 @@ jobs:
           bun run typecheck
           bun run build
 
-      - name: Smoke Test Suite (5 CLI Tools)
+      - name: Smoke Test Suite (6 CLI Tools)
         run: |
           ~/.local/bin/fex --help
           ~/.local/bin/gn --help
           ~/.local/bin/gb --help
+          ~/.local/bin/pm --help
           ~/.local/bin/sup --help
           ~/.local/bin/zf --help

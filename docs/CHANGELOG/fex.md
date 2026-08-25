@@ -17,10 +17,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
   - State direktori aktif (`cwd`) tetap terjaga penuh saat beralih mode.
 - **Interactive File Copy, Move (Cut), and Paste Engine (`cmd/clipboard.go`, `cmd/find_mode.go`, `cmd/tree_mode.go`, `cmd/search_mode.go`)**:
   - Shortcut interaktif `Alt-c` (Mark Copy) dan `Alt-m` (Mark Move / Cut) untuk menandai target file/folder langsung dari UI FZF.
-  - Shortcut `Ctrl-v` (dan fallback `Alt-v`) untuk mengeksekusi penempelan file/folder di direktori yang sedang aktif.
+  - Shortcut `Alt-v` (dan fallback `Alt-p` / `Ctrl-v`) untuk mengeksekusi penempelan file/folder di direktori yang sedang aktif.
   - **Cross-Directory Persistence**: Menggunakan file status persisten `/tmp/fex-clip-$USER.json`.
   - **Dynamic In-TUI Toast & Clipboard Badge**: Status salin/pindah/tempel ditampilkan langsung di header FZF tanpa mengotori stdout/stderr terminal luar.
-  - **Smart Cursor Retention**: Kursor tetap diam di posisi file yang sedang di-mark (`Alt-c`/`Alt-m`) dan langsung fokus ke file yang baru ditempel (`Ctrl-v`) menggunakan sinkronisasi `--sync` + `load:pos(N)`.
+  - **Smart Cursor Retention**: Kursor tetap diam di posisi file yang sedang di-mark (`Alt-c`/`Alt-m`) dan langsung fokus ke file yang baru ditempel (`Alt-v`) menggunakan sinkronisasi `--sync` + `load:pos(N)`.
   - Unit test komprehensif `cmd/clipboard_test.go` (100% passing). (Closes #4)
 - **Context-Aware Git Architecture (`cmd/dialogs.go`, `cmd/tree_mode.go`, `cmd/find_mode.go`)**:
   - **`Ctrl-G` Pintar Sesuai Target Kursor**:

@@ -23,14 +23,21 @@ import { handleConfigCommand } from "./commands/config";
 import { handlePingCommand } from "./commands/ping";
 import { handleBenchCommand } from "./commands/bench";
 import { handleDoctorCommand, handleRestartCommand } from "./commands/doctor";
+import { handleGatewayCommand } from "./commands/gateway";
 
-/** Versi gn standalone v2.0.0 (Control Plane & Telemetry Core). */
-export const GN_VERSION = "2.0.2";
+/** Versi gn standalone (Control Plane & Telemetry Core). */
+export const GN_VERSION = "2.1.0";
 
 /**
  * Peta subcommand → handler.
  */
 const COMMANDS: Record<string, (argv: string[]) => Promise<number>> = {
+	// Gateway Interceptor Core (Plan Issue #29)
+	gateway: handleGatewayCommand,
+	gw: handleGatewayCommand,
+	g: handleGatewayCommand,
+	shield: handleGatewayCommand,
+
 	// Quota & telemetry cost
 	usage: handleUsageCommand,
 	u: handleUsageCommand,
@@ -80,6 +87,9 @@ function showHelp(): void {
 	);
 	console.log("");
 	console.log("COMMANDS");
+	console.log(
+		"  gateway, gw   \x1b[1;36m󰐌\x1b[0m Gateway Interceptor Core (prompt cache, stream replay, fallback)",
+	);
 	console.log(
 		"  usage, u      \x1b[1;36m󰓅\x1b[0m Telemetry & Quota Engine (quota live, token activity, file audit)",
 	);

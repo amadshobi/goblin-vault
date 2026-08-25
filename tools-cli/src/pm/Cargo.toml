@@ -1,0 +1,36 @@
+[package]
+name = "pm"
+version = "0.1.0"
+edition = "2024"
+authors = ["amadshobi"]
+description = "Universal Package & Registry Manager for Goblin Vault (TUI & CLI)"
+
+[dependencies]
+# TUI & Terminal UI
+ratatui = { version = "0.29.0", features = ["all-widgets"] }
+crossterm = { version = "0.28.1", features = ["event-stream"] }
+
+# CLI & Argument Parsing
+clap = { version = "4.5.20", features = ["derive", "cargo"] }
+
+# Async & Runtime
+tokio = { version = "1.41.0", features = ["full"] }
+tokio-stream = "0.1.16"
+futures = "0.3.31"
+
+# Network & Registry APIs
+reqwest = { version = "0.12.9", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1.0.214", features = ["derive"] }
+serde_json = "1.0.132"
+
+# Security & Sudo Handling
+zeroize = { version = "1.8.1", features = ["derive", "zeroize_derive"] }
+rpassword = "7.3"
+libc = "0.2"
+
+# Error Handling & Utilities
+anyhow = "1.0.93"
+thiserror = "2.0.3"
+colored = "2.1.0"
+async-trait = "0.1.83"
+

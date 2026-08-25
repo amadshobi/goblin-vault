@@ -25,12 +25,13 @@ berjalan, bukan sekadar menambah fitur demi keren-kerenan.
 ```
 goblin-vault/
 ├── tools-cli/              # Pusat persenjataan CLI
-│   ├── bin/                # Executable binaries/wrappers (fex, gb, gn, sup, zf)
+│   ├── bin/                # Executable binaries/wrappers (fex, gb, gn, pm, sup, zf)
 │   └── src/                # Source code mentah aplikasi CLI
 │       ├── fex/            # File Explorer (Go + Cobra + FZF)
 │       ├── gb/             # GitHub Assistant TUI (Node.js + Clack)
 │       ├── gn/             # Goblin Nexus Core CLI (TypeScript + Bun)
-│       ├── sup/            # Smart Package Updater (TypeScript + Bun)
+│       ├── pm/             # Universal Package & Registry Manager (Rust + Ratatui + Tokio)
+│       ├── sup/            # Smart Package Updater (TypeScript / Shim -> pm)
 │       └── zf/             # Zoxide & Tmux Navigation (Shell)
 ├── configs/                # Master configuration templates
 │   ├── fex/                # Master fex runtime YAML config
@@ -157,7 +158,7 @@ Setiap alat CLI/TUI di repositori ini harus menjaga standar UX terminal:
     ```
     Tujuannya agar branch `dev` tidak tertinggal (_divergent_) dan menghindari terjadinya merge conflict yang menyebalkan di rilis berikutnya.
   - **Global Release**: `./scripts/release.sh vault <patch|minor|major>` untuk merilis versi global repo vault (memperbarui `VERSION`, commit changelog, membuat git tag `vX.Y.Z`, dan otomatis mempublikasikan **GitHub Release resmi** via `gh release create` dengan menyertakan release notes dari `CHANGELOG.md`).
-  - **Modular Tool Release**: `./scripts/release.sh <tool_name> <patch|minor|major>` (e.g. `fex`, `gn`, `zf`, `sup`, `gb`) untuk memperbarui versi internal tool dan menulis changelog modular di `docs/CHANGELOG/<tool>.md`.
+  - **Modular Tool Release**: `./scripts/release.sh <tool_name> <patch|minor|major>` (e.g. `fex`, `gn`, `zf`, `sup`, `gb`, `pm`) untuk memperbarui versi internal tool dan menulis changelog modular di `docs/CHANGELOG/<tool>.md`.
 
 ---
 

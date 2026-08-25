@@ -188,8 +188,43 @@ _ins_brew_interactive() {
     brew install "$selected"
 }
 
-# ── 5. Main Installer Function ──
+# ── 5. Main Installer Function (pm wrapper) ──
 ins() {
+    # If goblin-vault pm binary exists, route directly to high-performance Rust pm
+    if command -v pm &>/dev/null; then
+        local target="${1:-}"
+        case "$target" in
+            -h|--help|help)
+                pm install --help
+                return $?
+                ;;
+            search|s)
+                shift
+                pm search "$@"
+                return $?
+                ;;
+            apt|npm|bun|pip|pip3|cargo|brew)
+                local pm_target="$1"
+                shift
+                if [ $# -eq 0 ]; then
+                    pm tui
+                else
+                    pm install "$@" --target "$pm_target"
+                fi
+                return $?
+                ;;
+            *)
+                if [ $# -eq 0 ]; then
+                    pm tui
+                else
+                    pm install "$@"
+                fi
+                return $?
+                ;;
+        esac
+    fi
+
+    # Fallback to legacy bash implementation if pm is not compiled yet
     local target="${1:-apt}"
 
     case "$target" in

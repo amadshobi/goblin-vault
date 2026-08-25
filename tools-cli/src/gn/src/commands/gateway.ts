@@ -1,0 +1,365 @@
+/**
+ * ─────────────────────────────────────────────────────────────
+ * Goblin Nexus — Gateway CLI Command Handler
+ * ─────────────────────────────────────────────────────────────
+ */
+
+import {
+	ANSI_BOLD,
+	ANSI_CYAN,
+	ANSI_GRAY,
+	ANSI_GREEN,
+	ANSI_RED,
+	ANSI_RESET,
+	ANSI_YELLOW,
+	formatBoxTable,
+	printGnHeader,
+} from "../utils/formatter";
+import { createGatewayServer, PromptCacheManager } from "../gateway";
+
+function showGatewayHelp(): void {
+	printGnHeader("GATEWAY INTERCEPTOR MANUAL");
+	console.log("USAGE");
+	console.log("  $ gn gateway <subcommand> [flags]");
+	console.log("  $ gn gw <subcommand> [flags]");
+	console.log("");
+	console.log("SUBCOMMANDS");
+	console.log(
+		"  start         \x1b[1;36m󰐌\x1b[0m Jalankan gateway interceptor (Port 4000 -> Upstream 4002)",
+	);
+	console.log(
+		"  status        \x1b[1;36m󰋼\x1b[0m Cek status gateway instance aktif & latency",
+	);
+	console.log(
+		"  stats         \x1b[1;36m󰓅\x1b[0m Statistik performa, hit-rate cache, dan error count",
+	);
+	console.log(
+		"  record <name> \x1b[1;36m󰑈\x1b[0m Jalankan gateway dalam mode record JSONL fixture",
+	);
+	console.log(
+		"  mock <name>   \x1b[1;36m󰘦\x1b[0m Jalankan gateway dalam mode mock replay tanpa upstream",
+	);
+	console.log(
+		"  cache <action>\x1b[1;36m󰃨\x1b[0m Manajemen cache (prune: hapus expired, clear: kosongkan)",
+	);
+	console.log("");
+	console.log("FLAGS");
+	console.log("  -p, --port <port>          Port interceptor (default: 4000)");
+	console.log(
+		"  -t, --target-port <port>   Port upstream provider (default: 4002)",
+	);
+	console.log(
+		"  --no-cache                 Nonaktifkan deterministic prompt caching",
+	);
+	console.log(
+		"  --no-shield                Nonaktifkan privacy sanitization & mask",
+	);
+	console.log("  --json                     Output mentah format JSON");
+	console.log("");
+	console.log("EXAMPLES");
+	console.log(
+		"  $ gn gw start              # Start interceptor default (4000 -> 4002)",
+	);
+	console.log("  $ gn gw status             # Cek status kesehatan gateway");
+	console.log("  $ gn gw stats --json       # Export telemetry & cache stats");
+	console.log(
+		"  $ gn gw record test-fix    # Record interaksi ke ~/.config/gn/fixtures/test-fix.jsonl",
+	);
+	console.log(
+		"  $ gn gw mock test-fix      # Replay fixture test-fix.jsonl secara deterministik",
+	);
+	console.log(
+		"  $ gn gw cache prune        # Bersihkan cache prompt yang kadaluarsa",
+	);
+	console.log("");
+}
+
+export async function handleGatewayCommand(argv: string[]): Promise<number> {
+	const sub = argv[0];
+	const hasJsonFlag = argv.includes("--json");
+
+	if (!sub || sub === "help" || sub === "--help" || sub === "-h") {
+		showGatewayHelp();
+		return 0;
+	}
+
+	// Helper flags parsing
+	const getFlagVal = (flag: string, def: string): string => {
+		const idx = argv.indexOf(flag);
+		if (idx !== -1 && idx + 1 < argv.length) return argv[idx + 1];
+		return def;
+	};
+
+	const port = parseInt(getFlagVal("-p", getFlagVal("--port", "4000")), 10);
+	const targetPort = parseInt(
+		getFlagVal("-t", getFlagVal("--target-port", "4002")),
+		10,
+	);
+	const cacheEnabled = !argv.includes("--no-cache");
+	const shieldEnabled = !argv.includes("--no-shield");
+
+	switch (sub) {
+		case "start": {
+			printGnHeader(`GN GATEWAY INTERCEPTOR v2.0.2`);
+			console.log(`  ${ANSI_BOLD}Configuration:${ANSI_RESET}`);
+			console.log(
+				`  • Listen Port    : ${ANSI_CYAN}http://127.0.0.1:${port}${ANSI_RESET}`,
+			);
+			console.log(
+				`  • Upstream Target: ${ANSI_CYAN}http://127.0.0.1:${targetPort}${ANSI_RESET}`,
+			);
+			console.log(
+				`  • Prompt Caching : ${cacheEnabled ? ANSI_GREEN + "ENABLED (SHA-256 / 2h TTL)" : ANSI_GRAY + "DISABLED"}${ANSI_RESET}`,
+			);
+			console.log(
+				`  • Privacy Shield : ${shieldEnabled ? ANSI_GREEN + "ENABLED" : ANSI_GRAY + "DISABLED"}${ANSI_RESET}`,
+			);
+			console.log(
+				`  • Mode           : ${ANSI_YELLOW}LIVE INTERCEPTOR${ANSI_RESET}`,
+			);
+			console.log("");
+			console.log(
+				`  ${ANSI_GRAY}Press Ctrl+C to terminate gateway instance.${ANSI_RESET}\n`,
+			);
+
+			const server = createGatewayServer({
+				port,
+				targetPort,
+				cacheEnabled,
+				shieldEnabled,
+				mode: "live",
+			});
+
+			server.start();
+
+			// Graceful shutdown
+			process.on("SIGINT", () => {
+				console.log(`\n  ${ANSI_YELLOW}Stopping GN Gateway...${ANSI_RESET}`);
+				server.stop();
+				process.exit(0);
+			});
+
+			// Keep running
+			await new Promise(() => {});
+			return 0;
+		}
+
+		case "record": {
+			const fixtureName = argv[1] || "default-session";
+			printGnHeader(`GN GATEWAY RECORDER`);
+			console.log(
+				`  • Recording To   : ${ANSI_CYAN}~/.config/gn/fixtures/${fixtureName}.jsonl${ANSI_RESET}`,
+			);
+			console.log(
+				`  • Listen Port    : ${ANSI_CYAN}http://127.0.0.1:${port}${ANSI_RESET}`,
+			);
+			console.log(
+				`  • Upstream Target: ${ANSI_CYAN}http://127.0.0.1:${targetPort}${ANSI_RESET}`,
+			);
+			console.log(`  • Mode           : ${ANSI_YELLOW}RECORD${ANSI_RESET}\n`);
+
+			const server = createGatewayServer({
+				port,
+				targetPort,
+				cacheEnabled: false,
+				shieldEnabled,
+				mode: "record",
+				mockFixtureFile: fixtureName,
+			});
+
+			server.start();
+
+			process.on("SIGINT", () => {
+				console.log(`\n  ${ANSI_GREEN}Recording saved!${ANSI_RESET}`);
+				server.stop();
+				process.exit(0);
+			});
+
+			await new Promise(() => {});
+			return 0;
+		}
+
+		case "mock": {
+			const fixtureName = argv[1] || "default-session";
+			printGnHeader(`GN GATEWAY MOCK SERVER`);
+			console.log(
+				`  • Replaying From : ${ANSI_CYAN}~/.config/gn/fixtures/${fixtureName}.jsonl${ANSI_RESET}`,
+			);
+			console.log(
+				`  • Listen Port    : ${ANSI_CYAN}http://127.0.0.1:${port}${ANSI_RESET}`,
+			);
+			console.log(
+				`  • Mode           : ${ANSI_YELLOW}MOCK REPLAY (Offline / No Upstream)${ANSI_RESET}\n`,
+			);
+
+			const server = createGatewayServer({
+				port,
+				cacheEnabled: false,
+				shieldEnabled: false,
+				mode: "mock",
+				mockFixtureFile: fixtureName,
+			});
+
+			server.start();
+
+			process.on("SIGINT", () => {
+				console.log(`\n  ${ANSI_YELLOW}Stopping Mock Server...${ANSI_RESET}`);
+				server.stop();
+				process.exit(0);
+			});
+
+			await new Promise(() => {});
+			return 0;
+		}
+
+		case "status": {
+			try {
+				const res = await fetch(`http://127.0.0.1:${port}/gn/health`, {
+					signal: AbortSignal.timeout(2000),
+				});
+
+				if (!res.ok) {
+					throw new Error(`HTTP ${res.status}`);
+				}
+
+				const data = await res.json();
+				if (hasJsonFlag) {
+					console.log(JSON.stringify(data, null, 2));
+					return 0;
+				}
+
+				printGnHeader("GATEWAY INSTANCE STATUS");
+				const rows = [
+					["Service Status", `${ANSI_GREEN}󰄬 ONLINE (200 OK)${ANSI_RESET}`],
+					["Version", data.version || "2.0.2"],
+					["Port", String(data.port || port)],
+					["Target Upstream", data.target || `http://127.0.0.1:${targetPort}`],
+					["Uptime", `${data.uptime}s`],
+					["Mode", data.mode || "live"],
+					[
+						"Prompt Cache",
+						data.cacheEnabled
+							? `${ANSI_GREEN}Active${ANSI_RESET}`
+							: `${ANSI_GRAY}Disabled${ANSI_RESET}`,
+					],
+					[
+						"Privacy Shield",
+						data.shieldEnabled
+							? `${ANSI_GREEN}Active${ANSI_RESET}`
+							: `${ANSI_GRAY}Disabled${ANSI_RESET}`,
+					],
+				];
+
+				console.log(
+					formatBoxTable("GATEWAY HEALTH METRICS", ["Property", "Value"], rows),
+				);
+				console.log("");
+				return 0;
+			} catch (err: any) {
+				if (hasJsonFlag) {
+					console.log(
+						JSON.stringify({ status: "offline", error: err.message }, null, 2),
+					);
+					return 1;
+				}
+				printGnHeader("GATEWAY INSTANCE STATUS");
+				console.log(
+					`  ${ANSI_RED}❌ Gateway Interceptor is not running on port ${port}.${ANSI_RESET}`,
+				);
+				console.log(`  ${ANSI_GRAY}Reason: ${err.message}${ANSI_RESET}`);
+				console.log(
+					`\n  ${ANSI_YELLOW}Hint:${ANSI_RESET} Jalankan ${ANSI_CYAN}gn gateway start${ANSI_RESET} untuk mengaktifkan interceptor.\n`,
+				);
+				return 1;
+			}
+		}
+
+		case "stats": {
+			try {
+				const res = await fetch(`http://127.0.0.1:${port}/gn/stats`, {
+					signal: AbortSignal.timeout(2000),
+				});
+
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				const data = await res.json();
+
+				if (hasJsonFlag) {
+					console.log(JSON.stringify(data, null, 2));
+					return 0;
+				}
+
+				printGnHeader("GATEWAY TELEMETRY STATS");
+				const rows = [
+					["Total Requests", String(data.totalRequests || 0)],
+					["Cache Hits", `${ANSI_GREEN}${data.cacheHits || 0}${ANSI_RESET}`],
+					["Cache Misses", String(data.cacheMisses || 0)],
+					[
+						"Fallbacks Triggered",
+						data.fallbacksTriggered > 0
+							? `${ANSI_YELLOW}${data.fallbacksTriggered}${ANSI_RESET}`
+							: "0",
+					],
+					["Active Streams", String(data.activeStreams || 0)],
+					[
+						"Errors Encountered",
+						data.errorsCount > 0
+							? `${ANSI_RED}${data.errorsCount}${ANSI_RESET}`
+							: "0",
+					],
+					["Uptime", `${data.uptimeSeconds || 0}s`],
+				];
+
+				console.log(
+					formatBoxTable(
+						"INTERCEPTOR REALTIME METRICS",
+						["Metric", "Value"],
+						rows,
+					),
+				);
+				console.log("");
+				return 0;
+			} catch (err: any) {
+				if (hasJsonFlag) {
+					console.log(
+						JSON.stringify({ status: "offline", error: err.message }, null, 2),
+					);
+					return 1;
+				}
+				console.error(
+					`  ${ANSI_RED}❌ Failed to fetch stats from port ${port}: ${err.message}${ANSI_RESET}`,
+				);
+				return 1;
+			}
+		}
+
+		case "cache": {
+			const action = argv[1] || "prune";
+			const cache = new PromptCacheManager();
+
+			if (action === "prune") {
+				printGnHeader("GATEWAY PROMPT CACHE");
+				const pruned = cache.prune();
+				console.log(`  ${ANSI_GREEN}󰄬 Cache pruned successfully.${ANSI_RESET}`);
+				console.log(
+					`  • Removed Expired Entries: ${ANSI_CYAN}${pruned}${ANSI_RESET}\n`,
+				);
+				return 0;
+			}
+
+			console.log(
+				`  ${ANSI_YELLOW}Unknown cache action '${action}'. Available: prune${ANSI_RESET}\n`,
+			);
+			return 1;
+		}
+
+		default: {
+			console.log(
+				`  ${ANSI_RED}Unknown gateway subcommand: '${sub}'${ANSI_RESET}`,
+			);
+			console.log(
+				`  ${ANSI_GRAY}Type 'gn gateway --help' for available subcommands.${ANSI_RESET}\n`,
+			);
+			return 1;
+		}
+	}
+}

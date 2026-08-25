@@ -8,7 +8,7 @@
     <img src="https://img.shields.io/github/actions/workflow/status/amadshobi/goblin-vault/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI&color=10B981&labelColor=1F2937&logoColor=white" alt="CI Status" />
   </a>
   <img src="https://img.shields.io/badge/License-MIT-00E5FF?style=for-the-badge&logo=open-source-initiative&logoColor=black&labelColor=1F2937" alt="License MIT" />
-  <img src="https://img.shields.io/badge/Version-0.4.0-A855F7?style=for-the-badge&labelColor=1F2937" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-0.5.0-A855F7?style=for-the-badge&labelColor=1F2937" alt="Version" />
   <img src="https://img.shields.io/badge/Author-amadshobi-F59E0B?style=for-the-badge&logo=github&logoColor=white&labelColor=1F2937" alt="Author amadshobi" />
   <br/><br/>
   <img src="https://img.shields.io/badge/Bun-%E2%89%A5%201.0-FFFDF5?style=for-the-badge&logo=bun&logoColor=black&labelColor=1F2937" alt="Bun" />
@@ -90,13 +90,14 @@ Filosofi inti:
 
 ## ⚔️ The Arsenal
 
-| Tool                            |   Versi   | Deskripsi                                                                                                                                                                                                                                              | Stack                      | Command |
-| :------------------------------ | :-------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------- | :------ |
-| **[`fex`](tools-cli/src/fex/)** | `v0.3.16` | **File Explorer TUI** — Tree Mode (`🌳`), Flat Find (`🔍`), Instant mode switcher (`Tab`), Interactive Clipboard (`Alt-c`/`Alt-m`/`Ctrl-v`), Context-Aware Git viewer/lazygit (`Ctrl-g`), OSC 52 System Clipboard (`Ctrl-y`), dan Dynamic Keybindings. | Go 1.22, Cobra, fzf, tmux  | `fex`   |
-| **[`gn`](tools-cli/src/gn/)**   | `v2.0.2`  | **Control Center & AI Telemetry Plane** — `omp usage` forwarding, multi-day token activity tree (`-t`), file diffs audit (`-f`), connectivity probe (`ping`), speed leaderboard (`bench`), Zero-Secret Auth Matrix doctor.                             | TypeScript, Bun            | `gn`    |
-| **[`gb`](tools-cli/src/gb/)**   | `v2.2.0`  | **GitHub Assistant TUI** — Manajemen Issue, PR Reviews, Profile Editor, Releases, dan GitHub App Bot automation (`status`, `token`, `comment`, `config`) via RS256 JWT & hybrid credentials.                                                           | Node.js, Clack TUI, gh     | `gb`    |
-| **[`sup`](tools-cli/src/sup/)** | `v1.1.0`  | **Universal Granular Package Updater** — Multi-select package updater untuk NPM, PIP3, System (APT/Pacman/DNF/Brew), Rustup, Bun, dan OMP dengan live streaming mode (`-v`) & proactive sudo handling.                                                 | TypeScript, Bun, Clack TUI | `sup`   |
-| **[`zf`](tools-cli/src/zf/)**   | `v0.2.0`  | **Zoxide & Tmux Rapid Engine** — Lompat ke direktori proyek dalam hitungan milidetik, auto-switch tmux session, dan integrasi launcher fex.                                                                                                            | Pure Shell (Zsh / Bash)    | `zf`    |
+| Tool                            |   Versi   | Deskripsi                                                                                                                                                                                                                                             | Stack                     | Command |
+| :------------------------------ | :-------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------ | :------ |
+| **[`pm`](tools-cli/src/pm/)**   | `v0.1.0`  | **Universal Package & Registry Manager** — Split-pane TUI (Updates, Live Multi-Registry Search & Install, Installed Packages) lintas 10 ekosistem (APT, Snap, Flatpak, Bun, OMP, Rustup, Brew, PIP, NPM, Cargo) dengan in-memory safe Sudo.           | Rust 2024, Ratatui, Tokio | `pm`    |
+| **[`fex`](tools-cli/src/fex/)** | `v0.3.16` | **File Explorer TUI** — Tree Mode (`🌳`), Flat Find (`🔍`), Instant mode switcher (`Tab`), Interactive Clipboard (`Alt-c`/`Alt-m`/`Alt-v`), Context-Aware Git viewer/lazygit (`Ctrl-g`), OSC 52 System Clipboard (`Ctrl-y`), dan Dynamic Keybindings. | Go 1.22, Cobra, fzf, tmux | `fex`   |
+| **[`gn`](tools-cli/src/gn/)**   | `v2.1.0`  | **Control Center & AI Telemetry Plane** — `omp usage` forwarding, multi-day token activity tree (`-t`), file diffs audit (`-f`), connectivity probe (`ping`), speed leaderboard (`bench`), Zero-Secret Auth Matrix doctor, dan Smart Gateway Interceptor (`gw`). | TypeScript, Bun           | `gn`    |
+| **[`gb`](tools-cli/src/gb/)**   | `v2.2.0`  | **GitHub Assistant TUI** — Manajemen Issue, PR Reviews, Profile Editor, Releases, dan GitHub App Bot automation (`status`, `token`, `comment`, `config`) via RS256 JWT & hybrid credentials.                                                          | Node.js, Clack TUI, gh    | `gb`    |
+| **[`sup`](tools-cli/src/sup/)** | `v1.1.0`  | **Universal Granular Package Updater** — Backward-compatible shim yang mendelegasikan perintah update ke engine native `pm update` secara transparan.                                                                                                 | Rust / Shell Shim         | `sup`   |
+| **[`zf`](tools-cli/src/zf/)**   | `v0.2.0`  | **Zoxide & Tmux Rapid Engine** — Lompat ke direktori proyek dalam hitungan milidetik, auto-switch tmux session, dan integrasi launcher fex.                                                                                                           | Pure Shell (Zsh / Bash)   | `zf`    |
 
 ---
 

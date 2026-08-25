@@ -5,6 +5,7 @@
 >
 > | Tool                                    | Changelog                                        |
 > | --------------------------------------- | ------------------------------------------------ |
+> | `pm` — Universal Package & Registry Mgr | [`docs/CHANGELOG/pm.md`](docs/CHANGELOG/pm.md)   |
 > | `sup` — Smart Universal Package Updater | [`docs/CHANGELOG/sup.md`](docs/CHANGELOG/sup.md) |
 > | `fex` — File Explorer (Go)              | [`docs/CHANGELOG/fex.md`](docs/CHANGELOG/fex.md) |
 > | `gn` — Goblin Nexus CLI                 | [`docs/CHANGELOG/gn.md`](docs/CHANGELOG/gn.md)   |
@@ -13,10 +14,33 @@
 
 ---
 
-## [v0.4.0] - 2026-08-18
+## [v0.5.0] - 2026-08-25
 
-### 🚀 Major Evolution & Ecosystem Refactor
+### 🚀 Major Ecosystem Evolution: `gn gateway` & `pm` Rust Manager
 
+- **`gn gateway` Interceptor Core Engine (`tools-cli/src/gn/src/gateway/`)**:
+  - **Transparent Port Takeover**: Proxy cerdas berbasis Bun di Port 4000 yang meneruskan request ke OMP Native Gateway (Port 4002) tanpa rekonfigurasi client.
+  - **Zero-Copy SSE Pass-Through**: Penyaluran event-stream tanpa de-framing dengan cancellation propagation ke upstream via `req.signal`.
+  - **Deterministic SHA-256 Prompt Caching**: Deduplikasi prompt identik ke cache disk (`0600`) dengan regenerasi timestamp & ID token unik, single-flight inflight guard, dan TTL 2 jam.
+  - **Cascading Fallback & Circuit Breaker**: Auto-fallback saat terjadi 404/410/429 rate limit atau 5xx server error serta TTFB 15s timeout sebelum headers terkirim, dengan jeda cooldown 60s setelah 3 kegagalan beruntun.
+  - **Fixture Recording & Offline Mock Replay**: Perekaman interaksi chat ke JSONL dan offline streaming replay tanpa upstream.
+  - **Master Unified Config & Hardcoded Privacy**: Konfigurasi terpadu di `configs/gn/config.json` (`providerAlias` & `gateway.fallback`), hardcoded zero-retention headers, dan systemd daemon `tools-cli/src/gn/gn-gateway.service`.
+  - **Unified Subcommands**: `gn gateway start|status|stats|record|mock|cache` dan alias `gn gw`, `gn g`, `gn shield`.
+
+- **`pm` Universal Package & Registry Manager (`tools-cli/src/pm/`)**:
+  - **Rust + Ratatui Refactor**: Menggantikan script TypeScript `sup` dan installer bash `ins.sh` menjadi binary native Rust berkinerja tinggi.
+  - **3-Tab Split-Pane TUI**: Tab 1 (Outdated Updates dengan background scanner), Tab 2 (Live Multi-Registry Search & Install: Crates.io, NPM, PyPI, APT, Brew), Tab 3 (Installed Packages Browser).
+  - **10 Ekosistem Terpadu**: Dukungan `apt`, `snap`, `flatpak`, `bun`, `omp`, `rustup`, `brew`, `pip`, `npm`, `cargo`.
+  - **Safe Sudo Engine**: In-memory `Zeroizing<String>` buffer protection dengan injeksi aman stdin `sudo -S -p ""` (anti bentrok TTY).
+  - **Non-Blocking Async Event Loop**: UI render instan (<1ms) dengan streaming update via Tokio unbounded channel.
+  - **Compatibility Shims**: `tools-cli/bin/sup` & `scripts/shell/ins.sh` otomatis mendelegasikan ke `pm`.
+
+- **`fex` v0.3.16 Keybinding Patch**:
+  - Mengubah default keybinding `paste` dari `Ctrl-v` menjadi `Alt-v` (dengan multi-fallback `Alt-p` dan `Ctrl-v`) untuk mencegah pembajakan input oleh terminal emulator modern.
+
+---
+
+## [v0.4.0] - 2026-08-24
 - **Automated All-in-One Installer & 1-Line Remote cURL Bootstrap (`scripts/install.sh`)**:
   - **Single-Entry Remote Bootstrap**: Dukungan eksekusi instan via `curl -fsSL https://raw.githubusercontent.com/amadshobi/goblin-vault/main/scripts/install.sh | bash` dengan auto-clone ke `~/civil/goblin-vault` dan delegasi instalasi otomatis.
   - **Dynamic Braille Spinner UX**: Tampilan langkah instalasi 1-baris halus (`⠋ ⠙ ⠹...`) dengan pelacakan durasi per-task dan box error log merah saat terjadi kegagalan.
@@ -31,7 +55,7 @@
   - **Master Vault Config & Auto-Migration**: Standardisasi config path ke `~/.config/fex/config.yaml` (bookmarks: `~/.cache/fex-bookmarks`) dengan fallback auto-migrasi dari legacy `~/.config/fe/` dan template master di `configs/fex/config.yaml`.
   - **Subcommand `fex backup` & `fex restore`**: Dukungan sinkronisasi config `fex backup fex|micro|nvim|all` dan `fex restore fex|micro|nvim|all`.
   - **Instant Mode Switcher (`Tab`)**: Beralih instan antara **Tree Mode (`🌳`)** dan **Flat Find (`🔍`)** tanpa keluar dari sesi.
-  - **Interactive File Clipboard Engine**: Tandai salin (`Alt-c`), pindah (`Alt-m`), dan tempel (`Ctrl-v`) dengan penanganan tabrakan nama otomatis, rekursif, dan retensi posisi kursor (`load:pos`).
+  - **Interactive File Clipboard Engine**: Tandai salin (`Alt-c`), pindah (`Alt-m`), dan tempel (`Alt-v` / `Ctrl-v`) dengan penanganan tabrakan nama otomatis, rekursif, dan retensi posisi kursor (`load:pos`).
   - **Context-Aware Git Action (`Ctrl-G`)**: Membuka Git History & Diff Viewer Split saat kursor di FILE, atau meluncurkan `lazygit` TUI saat kursor di FOLDER.
   - **Large Directory Warning Guard**: Popup peringatan fzf saat memindai direktori besar (`$HOME` / `/`) pada Flat Find untuk mencegah lag/freeze.
 - **Master Neovim Configuration by amadshobi (`configs/nvim/`)**:
@@ -46,6 +70,14 @@
 ---
 
 ### Added
+
+- **`pm` v0.1.0 (Universal Package & Registry Manager — Rust + Ratatui + Tokio)**:
+  - **Refactor Sup & Peleburan `ins.sh`**: Menggantikan script updater TypeScript (`sup`) dan pencarian bash glue (`ins.sh`) menjadi satu binary Rust native yang komprehensif.
+  - **Unified 3-Tab Split-Pane TUI**: Tab 1 (Outdated Updates dengan background scanner & batch updater), Tab 2 (Live Multi-Registry Search & Install: Crates.io, NPM, PyPI, APT, Brew), Tab 3 (Installed Packages Browser).
+  - **10 Ekosistem Terpadu**: Dukungan `apt`, `snap`, `flatpak`, `bun`, `omp`, `rustup`, `brew`, `pip`, `npm`, `cargo`.
+  - **Safe Sudo Engine**: In-memory `Zeroizing<String>` buffer protection dengan injeksi aman stdin `sudo -S -p ""` (anti bentrok TTY).
+  - **Non-Blocking Async Event Loop**: UI render instan (<1ms) dengan streaming update via Tokio unbounded channel.
+  - **Backward-Compatible Shims**: `tools-cli/bin/sup` & `scripts/shell/ins.sh` otomatis mendelegasikan perintah ke `pm`. → [detail](docs/CHANGELOG/pm.md)
 
 - **`gn` v2.0.2 (Leaderboard Benchmark, Native OMP Usage Forwarding, & Tree Auth Matrix)**:
   - **Speed Leaderboard & Visual Benchmark Matrix (`gn bench`)**: Rombak total benchmark menjadi leaderboard terurut berdasarkan throughput (`tok/s`), visual throughput gauge bar (`████████░░░░`), **Smart Ping Cache Synergy** (otomatis hanya menguji model `200 OK` dari ping cache), Champion summary card, dan opsi `--top <N>` serta `--all`.

@@ -30,7 +30,7 @@ type KeybindingsConfig struct {
 	// Clipboard & File CRUD
 	MarkCopy  string `mapstructure:"mark_copy"`  // default: alt-c
 	MarkMove  string `mapstructure:"mark_move"`  // default: alt-m
-	Paste     string `mapstructure:"paste"`      // default: ctrl-v
+	Paste     string `mapstructure:"paste"`      // default: alt-v
 	Rename    string `mapstructure:"rename"`     // default: ctrl-r
 	Delete    string `mapstructure:"delete"`     // default: ctrl-d
 	NewFile   string `mapstructure:"new_file"`   // default: ctrl-n
@@ -57,7 +57,7 @@ func DefaultKeybindings() KeybindingsConfig {
 		CopyPath:      "ctrl-y",
 		MarkCopy:      "alt-c",
 		MarkMove:      "alt-m",
-		Paste:         "ctrl-v",
+		Paste:         "alt-v",
 		Rename:        "ctrl-r",
 		Delete:        "ctrl-d",
 		NewFile:       "ctrl-n",
