@@ -5,6 +5,22 @@
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
+## [v2.1.1] - 2026-08-26
+
+### Fixed
+
+- **Typecheck Pipeline Rusak Total**: `tsconfig.json` yang hilang dibuat ulang (strict mode + `@types/bun`) sehingga `bun run typecheck` kembali berfungsi — sebelumnya hanya mencetak help tsc lalu exit 1 tanpa memvalidasi apa pun. Seluruh 46 error type yang tersembunyi kini terselesaikan (union type rusak pada fallback `new Map()` di `fetchAllSessionData`, parameter implicit any, `SQLQueryBindings` pada `safeQuery`, respons `/gn/health` & `/gn/stats` kini ter-type eksplisit).
+- **Latent Crash `reportDeprecated()`**: Fungsi dipanggil di `src/index.ts` tanpa pernah didefinisikan — kini diimplementasikan sebagai fungsi murni dengan pesan deprecation + saran pengganti.
+- **Cache Key Tidak Lengkap (`gateway/cache.ts`)**: `computePromptHash` dinaikkan ke **v2** dan kini menyertakan `max_tokens`, `stop`, `response_format`, presence/frequency penalty, dan `n`. Sebelumnya dua request yang hanya berbeda di parameter output tersebut salah dilayani respons cache yang sama. Cache lama otomatis invalid via version bump.
+- **Version Drift**: `GN_VERSION` diekstrak ke `src/version.ts` sebagai single source of truth; health endpoint server tidak lagi hardcode string versi.
+
+### Changed
+
+- **CI**: Step baru "Typecheck & Test gn" di `.github/workflows/ci.yml` agar regresi typecheck gn terdeteksi otomatis (sebelumnya hanya `sup` yang divalidasi).
+- **Dead Code Cleanup**: Menghapus field `compiled` yang tak terpakai di rules engine; sanitizer kini resilient terhadap regex user yang malformed (skip, bukan crash per-request).
+
+---
+
 ## [v2.1.0] - 2026-08-24
 
 ### Added
