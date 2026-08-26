@@ -537,12 +537,16 @@ export async function handlePingCommand(argv: string[]): Promise<number> {
 	printGnHeader(`PING ENGINE — ${provider.toUpperCase()}`);
 
 	let items: PingItem[] = payload.items || [];
+	// Cache format lama menyimpan log di payload.results.logLines (bukan items)
+	const legacyPayload = payload as PingCachePayload & {
+		results?: { logLines?: string[] };
+	};
 	if (
 		items.length === 0 &&
-		payload.results &&
-		Array.isArray(payload.results.logLines)
+		legacyPayload.results &&
+		Array.isArray(legacyPayload.results.logLines)
 	) {
-		items = parseLegacyLogLines(payload.results.logLines);
+		items = parseLegacyLogLines(legacyPayload.results.logLines);
 	}
 
 	// Filter ONLY HTTP 200 OK models

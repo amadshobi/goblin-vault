@@ -34,7 +34,13 @@ export function sanitizeText(
 
 	for (const rule of rules.patterns) {
 		// Instantiate fresh RegExp per invocation to prevent shared state race condition with /g flag
-		const reg = rule.regex ? new RegExp(rule.regex, "g") : undefined;
+		let reg: RegExp | undefined;
+		try {
+			reg = rule.regex ? new RegExp(rule.regex, "g") : undefined;
+		} catch {
+			// Skip malformed user-supplied regex instead of crashing the request pipeline
+			continue;
+		}
 		if (!reg) continue;
 		const matches = result.match(reg);
 		if (matches && matches.length > 0) {

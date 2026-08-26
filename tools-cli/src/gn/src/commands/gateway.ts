@@ -17,6 +17,28 @@ import {
 } from "../utils/formatter";
 import { createGatewayServer, PromptCacheManager } from "../gateway";
 
+/** Bentuk respons /gn/health dari gateway server. */
+interface GatewayHealthResponse {
+	version?: string;
+	port?: number;
+	target?: string;
+	uptime?: number;
+	mode?: string;
+	cacheEnabled?: boolean;
+	shieldEnabled?: boolean;
+}
+
+/** Bentuk respons /gn/stats dari gateway server. */
+interface GatewayStatsResponse {
+	totalRequests?: number;
+	cacheHits?: number;
+	cacheMisses?: number;
+	fallbacksTriggered?: number;
+	activeStreams?: number;
+	errorsCount?: number;
+	uptimeSeconds?: number;
+}
+
 function showGatewayHelp(): void {
 	printGnHeader("GATEWAY INTERCEPTOR MANUAL");
 	console.log("USAGE");
@@ -222,7 +244,7 @@ export async function handleGatewayCommand(argv: string[]): Promise<number> {
 					throw new Error(`HTTP ${res.status}`);
 				}
 
-				const data = await res.json();
+				const data = (await res.json()) as GatewayHealthResponse;
 				if (hasJsonFlag) {
 					console.log(JSON.stringify(data, null, 2));
 					return 0;
@@ -231,7 +253,7 @@ export async function handleGatewayCommand(argv: string[]): Promise<number> {
 				printGnHeader("GATEWAY INSTANCE STATUS");
 				const rows = [
 					["Service Status", `${ANSI_GREEN}󰄬 ONLINE (200 OK)${ANSI_RESET}`],
-					["Version", data.version || "2.0.2"],
+					["Version", data.version || "-"],
 					["Port", String(data.port || port)],
 					["Target Upstream", data.target || `http://127.0.0.1:${targetPort}`],
 					["Uptime", `${data.uptime}s`],
@@ -281,7 +303,7 @@ export async function handleGatewayCommand(argv: string[]): Promise<number> {
 				});
 
 				if (!res.ok) throw new Error(`HTTP ${res.status}`);
-				const data = await res.json();
+				const data = (await res.json()) as GatewayStatsResponse;
 
 				if (hasJsonFlag) {
 					console.log(JSON.stringify(data, null, 2));
@@ -295,15 +317,15 @@ export async function handleGatewayCommand(argv: string[]): Promise<number> {
 					["Cache Misses", String(data.cacheMisses || 0)],
 					[
 						"Fallbacks Triggered",
-						data.fallbacksTriggered > 0
-							? `${ANSI_YELLOW}${data.fallbacksTriggered}${ANSI_RESET}`
+						(data.fallbacksTriggered ?? 0) > 0
+							? `${ANSI_YELLOW}${data.fallbacksTriggered ?? 0}${ANSI_RESET}`
 							: "0",
 					],
 					["Active Streams", String(data.activeStreams || 0)],
 					[
 						"Errors Encountered",
-						data.errorsCount > 0
-							? `${ANSI_RED}${data.errorsCount}${ANSI_RESET}`
+						(data.errorsCount ?? 0) > 0
+							? `${ANSI_RED}${data.errorsCount ?? 0}${ANSI_RESET}`
 							: "0",
 					],
 					["Uptime", `${data.uptimeSeconds || 0}s`],

@@ -71,6 +71,13 @@ jobs:
           bun run typecheck
           bun run build
 
+      - name: Typecheck & Test gn (TypeScript/Bun)
+        working-directory: tools-cli/src/gn
+        run: |
+          bun install
+          bun run typecheck
+          bun test src/gateway
+
       - name: Smoke Test Suite (6 CLI Tools)
         run: |
           ~/.local/bin/fex --help

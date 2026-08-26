@@ -222,7 +222,7 @@ describe("5. Replay & Fixture Engine", () => {
 		const mockResp = fixtureManager.mock("test-session", reqBody);
 		expect(mockResp).not.toBeNull();
 		expect(mockResp?.status).toBe(200);
-		const mockData = await mockResp?.json();
+		const mockData: any = await mockResp?.json();
 		expect(mockData.choices[0].message.content).toBe("recorded response");
 	});
 });
@@ -251,7 +251,7 @@ describe("6. Master Gateway Server End-to-End Integration", () => {
 				}
 
 				if (url.pathname === "/v1/chat/completions") {
-					const body = await req.json();
+					const body: any = await req.json();
 
 					// Trigger simulated 429 for model "trigger-429"
 					if (body.model === "trigger-429") {
@@ -335,7 +335,7 @@ describe("6. Master Gateway Server End-to-End Integration", () => {
 	test("serves health and status check on /gn/health", async () => {
 		const res = await fetch(`http://127.0.0.1:${gwPort}/gn/health`);
 		expect(res.status).toBe(200);
-		const data = await res.json();
+		const data: any = await res.json();
 		expect(data.status).toBe("ok");
 		expect(data.port).toBe(gwPort);
 	});
@@ -355,7 +355,7 @@ describe("6. Master Gateway Server End-to-End Integration", () => {
 
 		expect(res1.status).toBe(200);
 		expect(res1.headers.get("X-GN-Cache")).toBe("MISS");
-		const data1 = await res1.json();
+		const data1: any = await res1.json();
 		expect(data1.choices[0].message.content).toContain("Hello world");
 
 		// Second request: Cache HIT
@@ -367,7 +367,7 @@ describe("6. Master Gateway Server End-to-End Integration", () => {
 
 		expect(res2.status).toBe(200);
 		expect(res2.headers.get("X-GN-Cache")).toBe("HIT");
-		const data2 = await res2.json();
+		const data2: any = await res2.json();
 		expect(data2.choices[0].message.content).toContain("Hello world");
 	});
 

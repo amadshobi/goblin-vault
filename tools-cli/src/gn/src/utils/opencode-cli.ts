@@ -162,9 +162,10 @@ export function fetchAllSessionData(
 			if (rootSessions.length === 0) {
 				return {
 					rootSessions: [],
-					subagentsByParent: new Map(),
-					toolsBySession: new Map(),
-					diffsBySession: new Map(),
+					// Type param eksplisit agar union return type tidak merusak inferensi caller
+					subagentsByParent: new Map<string, OpenCodeCliSessionRow[]>(),
+					toolsBySession: new Map<string, OpenCodeCliToolUsageRow[]>(),
+					diffsBySession: new Map<string, FileDiffStat[]>(),
 				};
 			}
 
@@ -276,9 +277,10 @@ export function fetchAllSessionData(
 			};
 		}) ?? {
 			rootSessions: [],
-			subagentsByParent: new Map(),
-			toolsBySession: new Map(),
-			diffsBySession: new Map(),
+			// Type param eksplisit agar union return type tidak merusak inferensi caller
+			subagentsByParent: new Map<string, OpenCodeCliSessionRow[]>(),
+			toolsBySession: new Map<string, OpenCodeCliToolUsageRow[]>(),
+			diffsBySession: new Map<string, FileDiffStat[]>(),
 		}
 	);
 }

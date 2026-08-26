@@ -123,7 +123,7 @@ export function getUnifiedConfigPath(): string | null {
 export function loadGatewayRules(): GatewayRules {
 	const path = getUnifiedConfigPath();
 	if (!path) {
-		return compilePatterns(DEFAULT_RULES);
+		return DEFAULT_RULES;
 	}
 
 	try {
@@ -164,12 +164,12 @@ export function loadGatewayRules(): GatewayRules {
 				: DEFAULT_FALLBACK,
 		};
 
-		return compilePatterns(merged);
+		return merged;
 	} catch (err) {
 		process.stderr.write(
 			`⚠️  [GN Gateway] Failed to parse config from ${path}: ${(err as Error).message}. Using defaults.\n`,
 		);
-		return compilePatterns(DEFAULT_RULES);
+		return DEFAULT_RULES;
 	}
 }
 
@@ -178,22 +178,4 @@ export function loadGatewayRules(): GatewayRules {
  */
 export function loadPrivacyHeaders(): Record<string, string> {
 	return { ...HARDCODED_PRIVACY_HEADERS };
-}
-
-function compilePatterns(rules: GatewayRules): GatewayRules {
-	const compiledPatterns = (rules.patterns || []).map((p) => {
-		try {
-			return {
-				...p,
-				compiled: new RegExp(p.regex, "g"),
-			};
-		} catch {
-			return { ...p };
-		}
-	});
-
-	return {
-		...rules,
-		patterns: compiledPatterns,
-	};
 }

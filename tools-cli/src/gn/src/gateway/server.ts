@@ -6,6 +6,7 @@
 
 import { calculateCost } from "../../telemetry/pricing";
 import { logTelemetry } from "../../telemetry/db";
+import { GN_VERSION } from "../version";
 import {
 	computePromptHash,
 	formatCachedStreamChunks,
@@ -199,7 +200,7 @@ export function createGatewayServer(
 						return new Response(
 							JSON.stringify({
 								status: "ok",
-								version: "2.1.0",
+								version: GN_VERSION,
 								port: config.port,
 								target: `http://${config.targetHost}:${config.targetPort}`,
 								uptime: Math.floor((Date.now() - startTime) / 1000),
