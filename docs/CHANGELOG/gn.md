@@ -19,7 +19,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **CI**: Step baru "Typecheck & Test gn" di `.github/workflows/ci.yml` agar regresi typecheck gn terdeteksi otomatis (sebelumnya hanya `sup` yang divalidasi).
 - **Dead Code Cleanup**: Menghapus field `compiled` yang tak terpakai di rules engine; sanitizer kini resilient terhadap regex user yang malformed (skip, bukan crash per-request).
 - **Topologi Port Non-Intrusif**: Default port interceptor dipindah dari 4000 (tabrakan dengan OMP ecosystem) ke **4010**, dengan upstream baru **gateway-proxy aggregator :4000** (`gn gw start` = 4010 -> 4000 -> 4002). Semua custom provider models.yml kini ter-cover oleh cache, fallback, dan privacy shield. Berlaku konsisten di `commands/gateway.ts`, `server.ts`, `README.md`, dan `gn-gateway.service`.
-- **Systemd Service Fix (`gn-gateway.service`)**: Menambahkan `ReadWritePaths=%h/.cache/gn` untuk prompt cache (sebelumnya EPERM diam-diam di bawah `ProtectSystem=strict`) dan menghapus path usang `%h/.config/goblin-nexus`.
+- **Systemd Service Fix (`gn-gateway.service`)**: Menambahkan `ReadWritePaths=%h/.cache/gn` untuk prompt cache (sebelumnya EPERM diam-diam di bawah `ProtectSystem=strict`) dan menghapus path usang `%h/.config/goblin-nexus`. ExecStart kini memakai path absolut `bun` karena systemd user service tidak mewarisi PATH shell (crash loop status 127).
 
 ---
 
