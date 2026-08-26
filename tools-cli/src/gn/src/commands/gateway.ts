@@ -15,7 +15,14 @@ import {
 	formatBoxTable,
 	printGnHeader,
 } from "../utils/formatter";
-import { createGatewayServer, PromptCacheManager } from "../gateway";
+import {
+	createGatewayServer,
+	PromptCacheManager,
+	AccessLogManager,
+	renderAccessLogsTable,
+	formatLiveLogLine,
+	type AccessLogFilter,
+} from "../gateway";
 
 /** Bentuk respons /gn/health dari gateway server. */
 interface GatewayHealthResponse {
@@ -64,19 +71,32 @@ function showGatewayHelp(): void {
 	console.log(
 		"  cache <action>\x1b[1;36m󰃨\x1b[0m Manajemen cache (prune: hapus expired, clear: kosongkan)",
 	);
+	console.log(
+		"  log, logs     \x1b[1;36m󰌱\x1b[0m Audit traffic real-time, status cache, & riwayat fallback",
+	);
 	console.log("");
 	console.log("FLAGS");
 	console.log("  -p, --port <port>          Port interceptor (default: 4010)");
 	console.log(
-		"  -t, --target-port <port>   Port upstream provider (default: 4002)",
+		"  -t, --target-port <port>   Port upstream provider (default: 4000)",
 	);
+	console.log(
+		"  -s, --stream               Live streaming log tail (tail -f style)",
+	);
+	console.log(
+		"  -l, --limit <N>            Jumlah riwayat entri log (default: 30, max: 1000)",
+	);
+	console.log(
+		"  -e, --errors               Filter hanya request yang gagal / error (>= 400)",
+	);
+	console.log("  -m, --model <id>           Filter log berdasarkan model ID");
 	console.log(
 		"  --no-cache                 Nonaktifkan deterministic prompt caching",
 	);
 	console.log(
 		"  --no-shield                Nonaktifkan privacy sanitization & mask",
 	);
-	console.log("  --json                     Output mentah format JSON");
+	console.log("  -j, --json                 Output mentah format JSON");
 	console.log("");
 	console.log("EXAMPLES");
 	console.log(
@@ -84,6 +104,18 @@ function showGatewayHelp(): void {
 	);
 	console.log("  $ gn gw status             # Cek status kesehatan gateway");
 	console.log("  $ gn gw stats --json       # Export telemetry & cache stats");
+	console.log(
+		"  $ gn gw log                # Tampilkan tabel riwayat request & fallback",
+	);
+	console.log(
+		"  $ gn gw log -s             # Stream live traffic interceptor real-time",
+	);
+	console.log(
+		"  $ gn gw log -e             # Tampilkan hanya request yang kena error",
+	);
+	console.log(
+		"  $ gn gw log -l 50 --json   # Export 50 log terakhir ke format JSON",
+	);
 	console.log(
 		"  $ gn gw record test-fix    # Record interaksi ke ~/.config/gn/fixtures/test-fix.jsonl",
 	);
@@ -373,6 +405,68 @@ export async function handleGatewayCommand(argv: string[]): Promise<number> {
 				`  ${ANSI_YELLOW}Unknown cache action '${action}'. Available: prune${ANSI_RESET}\n`,
 			);
 			return 1;
+		}
+
+		case "log":
+		case "logs": {
+			const logManager = new AccessLogManager();
+			const isStream = argv.includes("-s") || argv.includes("--stream");
+			const isJson = hasJsonFlag || argv.includes("-j");
+			const isErrorsOnly = argv.includes("-e") || argv.includes("--errors");
+			const limitStr = getFlagVal("-l", getFlagVal("--limit", "30"));
+			const limit = parseInt(limitStr, 10) || 30;
+			const modelFilter = getFlagVal("-m", getFlagVal("--model", ""));
+
+			const filter: AccessLogFilter = {
+				limit,
+				errorsOnly: isErrorsOnly,
+				model: modelFilter || undefined,
+			};
+
+			if (isStream) {
+				if (!isJson) {
+					printGnHeader("GATEWAY REAL-TIME TRAFFIC STREAM");
+					console.log(
+						`  ${ANSI_GRAY}Streaming live gateway requests... Tekan Ctrl+C untuk berhenti.${ANSI_RESET}\n`,
+					);
+				}
+
+				const ac = new AbortController();
+				process.on("SIGINT", () => {
+					ac.abort();
+					if (!isJson) {
+						console.log(
+							`\n  ${ANSI_YELLOW}Streaming log dihentikan.${ANSI_RESET}\n`,
+						);
+					}
+					process.exit(0);
+				});
+
+				await logManager.streamLogs(
+					filter,
+					(entry) => {
+						if (isJson) {
+							console.log(JSON.stringify(entry));
+						} else {
+							console.log(formatLiveLogLine(entry));
+						}
+					},
+					ac.signal,
+				);
+				return 0;
+			}
+
+			// Snapshot mode (default)
+			const entries = logManager.readLogs(filter);
+
+			if (isJson) {
+				console.log(JSON.stringify(entries, null, 2));
+				return 0;
+			}
+
+			printGnHeader("GATEWAY ACCESS & FALLBACK LOG");
+			console.log(renderAccessLogsTable(entries));
+			return 0;
 		}
 
 		default: {

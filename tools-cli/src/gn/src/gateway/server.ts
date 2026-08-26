@@ -27,6 +27,7 @@ import {
 } from "./rules";
 import { FixtureManager } from "./replay";
 import { sanitizeText } from "./sanitizer";
+import { AccessLogManager, type FallbackHop } from "./access-log";
 import type { GatewayServerConfig, GatewayStats } from "./types";
 
 export function createGatewayServer(
@@ -61,6 +62,7 @@ export function createGatewayServer(
 	const fixtureManager = new FixtureManager(
 		config.fixturesDir ? config.fixturesDir : undefined,
 	);
+	const accessLog = new AccessLogManager();
 
 	const stats: GatewayStats = {
 		uptimeSeconds: 0,
@@ -248,8 +250,10 @@ export function createGatewayServer(
 
 					// Shield sanitization
 					let finalReqBody = reqBodyStr;
+					let maskedTokensCount = 0;
 					if (config.shieldEnabled && !config.sanitizeLogsOnly && reqBodyStr) {
 						const { sanitized, maskedCount } = sanitizeText(reqBodyStr, rules);
+						maskedTokensCount = maskedCount;
 						if (maskedCount > 0) {
 							console.log(
 								`🛡️  [GN Gateway Shield] Redacted ${maskedCount} token(s) from incoming payload -> ${url.pathname}`,
@@ -266,7 +270,9 @@ export function createGatewayServer(
 						? extractModelFromBody(finalReqBody)
 						: null;
 					let primaryModel = parsedBodyInfo?.model ?? null;
+					const initialModel = primaryModel ?? "unknown";
 					const isStreamReq = parsedBodyInfo?.parsed?.stream === true;
+					const fallbackChain: FallbackHop[] = [];
 
 					// Caching check
 					let promptHash = "";
@@ -284,6 +290,19 @@ export function createGatewayServer(
 							const respHeaders = new Headers(cached.meta.headers || {});
 							respHeaders.set("X-GN-Cache", "HIT");
 							respHeaders.set("X-GN-Cache-Hash", promptHash);
+
+							accessLog.write({
+								ts: reqStartTime,
+								method,
+								path: url.pathname,
+								initialModel,
+								servedModel: cached.meta.model || primaryModel || "unknown",
+								status: cached.meta.status || 200,
+								latencyMs: Date.now() - reqStartTime,
+								cache: "HIT",
+								stream: cached.isStream,
+								shieldRedacted: maskedTokensCount,
+							});
 
 							if (cached.isStream && cached.chunks.length > 0) {
 								respHeaders.set(
@@ -374,6 +393,11 @@ export function createGatewayServer(
 						) {
 							stats.fallbacksTriggered++;
 							recordModelFailure(primaryModel!);
+							fallbackChain.push({
+								model: primaryModel!,
+								status: effectiveStatus,
+								ok: false,
+							});
 							try {
 								await upstreamResp.body?.cancel();
 							} catch {
@@ -409,11 +433,21 @@ export function createGatewayServer(
 											rules.fallback || DEFAULT_FALLBACK,
 										)
 									) {
+										fallbackChain.push({
+											model: candidate,
+											status: retryResp.status,
+											ok: true,
+										});
 										fallbackResp = retryResp;
 										successfulCandidate = candidate;
 										recordModelSuccess(candidate);
 										break;
 									} else {
+										fallbackChain.push({
+											model: candidate,
+											status: retryResp.status,
+											ok: false,
+										});
 										recordModelFailure(candidate);
 										try {
 											await retryResp.body?.cancel();
@@ -422,6 +456,11 @@ export function createGatewayServer(
 										}
 									}
 								} catch {
+									fallbackChain.push({
+										model: candidate,
+										status: 500,
+										ok: false,
+									});
 									recordModelFailure(candidate);
 								}
 							}
@@ -492,6 +531,27 @@ export function createGatewayServer(
 												);
 											}
 
+											// Catat access log untuk streaming selesai
+											accessLog.write({
+												ts: reqStartTime,
+												method,
+												path: url.pathname,
+												initialModel: initialModel || "unknown",
+												servedModel: primaryModel || initialModel || "unknown",
+												status: upstreamResp.status,
+												latencyMs: Date.now() - reqStartTime,
+												cache: promptHash ? "MISS" : "BYPASS",
+												stream: true,
+												fallback:
+													fallbackChain.length > 1
+														? {
+																chain: fallbackChain,
+																hopCount: fallbackChain.length,
+															}
+														: undefined,
+												shieldRedacted: maskedTokensCount,
+											});
+
 											// Record fixture if in record mode
 											if (config.mode === "record") {
 												const recordedReqBody = config.shieldEnabled
@@ -561,6 +621,27 @@ export function createGatewayServer(
 							);
 						}
 
+						// Catat access log untuk non-streaming request
+						accessLog.write({
+							ts: reqStartTime,
+							method,
+							path: url.pathname,
+							initialModel: initialModel || "unknown",
+							servedModel: primaryModel || initialModel || "unknown",
+							status: upstreamResp.status,
+							latencyMs: latency,
+							cache: promptHash ? "MISS" : "BYPASS",
+							stream: false,
+							fallback:
+								fallbackChain.length > 1
+									? {
+											chain: fallbackChain,
+											hopCount: fallbackChain.length,
+										}
+									: undefined,
+							shieldRedacted: maskedTokensCount,
+						});
+
 						if (config.cacheEnabled && promptHash && upstreamResp.ok) {
 							const headerObj: Record<string, string> = {};
 							respHeaders.forEach((v, k) => {
@@ -614,6 +695,26 @@ export function createGatewayServer(
 						});
 					} catch (err: any) {
 						stats.errorsCount++;
+						accessLog.write({
+							ts: reqStartTime,
+							method,
+							path: url.pathname,
+							initialModel: initialModel || "unknown",
+							servedModel: primaryModel || initialModel || "unknown",
+							status: 502,
+							latencyMs: Date.now() - reqStartTime,
+							cache: "NONE",
+							stream: isStreamReq,
+							fallback:
+								fallbackChain.length > 1
+									? {
+											chain: fallbackChain,
+											hopCount: fallbackChain.length,
+										}
+									: undefined,
+							shieldRedacted: maskedTokensCount,
+							error: err.message,
+						});
 						return new Response(
 							JSON.stringify({
 								error: "GN Gateway Connection Error",

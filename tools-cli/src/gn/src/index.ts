@@ -103,7 +103,7 @@ function showHelp(): void {
 	console.log("");
 	console.log("COMMANDS");
 	console.log(
-		"  gateway, gw   \x1b[1;36m󰐌\x1b[0m Gateway Interceptor Core (prompt cache, stream replay, fallback)",
+		"  gateway, gw   \x1b[1;36m󰐌\x1b[0m Gateway Interceptor Core (prompt cache, replay, fallback, log)",
 	);
 	console.log(
 		"  usage, u      \x1b[1;36m󰓅\x1b[0m Telemetry & Quota Engine (quota live, token activity, file audit)",

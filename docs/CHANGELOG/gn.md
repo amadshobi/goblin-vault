@@ -7,6 +7,18 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ## [v2.1.1] - 2026-08-26
 
+### Added
+
+- **Structured Access Logger & Live Analytics (`gateway/access-log.ts`, `gn gw log`)**:
+  - **Append-Only JSONL Access Logger**: Mencatat seluruh traffic request gateway ke `~/.cache/gn/gateway/access.jsonl` (timestamp, method, path, latency, cache status, model chain, shield redacted, error) dengan rotasi otomatis (10 MB -> `.old`).
+  - **Cascading Fallback Hop Visualization**: Melacak dan merender seluruh rantai hop fallback secara visual (misal `✖ kilo-auto (503) → ✓ minimax-m3` dengan status badge `⚠ FB×N`).
+  - **CLI `gn gw log` Subcommand**:
+    - Mode Boxed Table Default: Tabel bordered ANSI rapi dengan metrics agregasi di footer (`Total`, `Hits`, `Misses`, `Hit Rate %`, `Fallbacks`, `Errors`).
+    - Flag `--stream` (`-s`): Live tail real-time request stream dengan graceful exit (Ctrl+C).
+    - Flag `--json` (`-j`): Output pure JSONL machine-readable tanpa ANSI codes.
+    - Filter `--errors` (`-e`) & `--model <id>` (`-m`): Filter instan untuk troubleshooting & audit kegagalan model.
+    - Flag `--limit <N>` (`-l`): Kontrol jumlah riwayat log (default: 30, max: 1000).
+
 ### Fixed
 
 - **Typecheck Pipeline Rusak Total**: `tsconfig.json` yang hilang dibuat ulang (strict mode + `@types/bun`) sehingga `bun run typecheck` kembali berfungsi — sebelumnya hanya mencetak help tsc lalu exit 1 tanpa memvalidasi apa pun. Seluruh 46 error type yang tersembunyi kini terselesaikan (union type rusak pada fallback `new Map()` di `fetchAllSessionData`, parameter implicit any, `SQLQueryBindings` pada `safeQuery`, respons `/gn/health` & `/gn/stats` kini ter-type eksplisit).
