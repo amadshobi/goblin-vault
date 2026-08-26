@@ -21,14 +21,16 @@ Wants=network-online.target
 Type=simple
 
 # ── Environment ──
+# Listen 4010 (tidak mengganggu OMP ecosystem di 4000-4002):
+#   opencode -> gn-gateway:4010 -> gateway-proxy:4000 -> omp auth-gateway:4002
 Environment=GOBLIN_VAULT_ROOT=%h/civil/goblin-vault
-Environment=GN_GATEWAY_PORT=4000
-Environment=GN_GATEWAY_TARGET_PORT=4002
+Environment=GN_GATEWAY_PORT=4010
+Environment=GN_GATEWAY_TARGET_PORT=4000
 Environment=GN_GATEWAY_TARGET_HOST=127.0.0.1
 Environment=NODE_ENV=production
 
 # ── Runtime ──
-ExecStart=/usr/bin/env bun run %h/civil/goblin-vault/tools-cli/src/gn/src/index.ts gateway start --port 4000 --target-port 4002
+ExecStart=/usr/bin/env bun run %h/civil/goblin-vault/tools-cli/src/gn/src/index.ts gateway start --port 4010 --target-port 4000
 WorkingDirectory=%h/civil/goblin-vault
 
 # ── Resilience ──
@@ -40,10 +42,10 @@ ProtectSystem=strict
 PrivateTmp=true
 NoNewPrivileges=true
 
-# Allow write access to telemetry DB, cache, and fixtures
+# Allow write access to telemetry DB, prompt cache, and fixtures
+ReadWritePaths=%h/.cache/gn
 ReadWritePaths=%h/.cache/goblin-nexus
 ReadWritePaths=%h/.config/gn
-ReadWritePaths=%h/.config/goblin-nexus
 
 # Allow network loopback access (needed for proxy)
 PrivateNetwork=no

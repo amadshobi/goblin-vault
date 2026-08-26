@@ -34,13 +34,13 @@ export function createGatewayServer(
 ) {
 	const config: GatewayServerConfig = {
 		port:
-			customConfig.port ?? parseInt(process.env.GN_GATEWAY_PORT || "4000", 10),
+			customConfig.port ?? parseInt(process.env.GN_GATEWAY_PORT || "4010", 10),
 		targetHost:
 			customConfig.targetHost ??
 			(process.env.GN_GATEWAY_TARGET_HOST || "127.0.0.1"),
 		targetPort:
 			customConfig.targetPort ??
-			parseInt(process.env.GN_GATEWAY_TARGET_PORT || "4002", 10),
+			parseInt(process.env.GN_GATEWAY_TARGET_PORT || "4000", 10),
 		cacheEnabled: customConfig.cacheEnabled ?? true,
 		cacheTtlMs: customConfig.cacheTtlMs ?? 2 * 60 * 60 * 1000,
 		cacheDir: customConfig.cacheDir ?? "",

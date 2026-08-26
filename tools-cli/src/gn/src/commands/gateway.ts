@@ -47,7 +47,7 @@ function showGatewayHelp(): void {
 	console.log("");
 	console.log("SUBCOMMANDS");
 	console.log(
-		"  start         \x1b[1;36m󰐌\x1b[0m Jalankan gateway interceptor (Port 4000 -> Upstream 4002)",
+		"  start         \x1b[1;36m󰐌\x1b[0m Jalankan gateway interceptor (Port 4010 -> Upstream 4000)",
 	);
 	console.log(
 		"  status        \x1b[1;36m󰋼\x1b[0m Cek status gateway instance aktif & latency",
@@ -66,7 +66,7 @@ function showGatewayHelp(): void {
 	);
 	console.log("");
 	console.log("FLAGS");
-	console.log("  -p, --port <port>          Port interceptor (default: 4000)");
+	console.log("  -p, --port <port>          Port interceptor (default: 4010)");
 	console.log(
 		"  -t, --target-port <port>   Port upstream provider (default: 4002)",
 	);
@@ -80,7 +80,7 @@ function showGatewayHelp(): void {
 	console.log("");
 	console.log("EXAMPLES");
 	console.log(
-		"  $ gn gw start              # Start interceptor default (4000 -> 4002)",
+		"  $ gn gw start              # Start interceptor default (4010 -> 4000)",
 	);
 	console.log("  $ gn gw status             # Cek status kesehatan gateway");
 	console.log("  $ gn gw stats --json       # Export telemetry & cache stats");
@@ -112,9 +112,10 @@ export async function handleGatewayCommand(argv: string[]): Promise<number> {
 		return def;
 	};
 
-	const port = parseInt(getFlagVal("-p", getFlagVal("--port", "4000")), 10);
+	// Default 4010 agar tidak bentrok dengan OMP ecosystem (4000-4002)
+	const port = parseInt(getFlagVal("-p", getFlagVal("--port", "4010")), 10);
 	const targetPort = parseInt(
-		getFlagVal("-t", getFlagVal("--target-port", "4002")),
+		getFlagVal("-t", getFlagVal("--target-port", "4000")),
 		10,
 	);
 	const cacheEnabled = !argv.includes("--no-cache");
