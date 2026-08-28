@@ -51,3 +51,56 @@ export function sanitizeText(
 
 	return { sanitized: result, maskedCount };
 }
+
+/**
+ * Normalizes tool definitions for upstream providers (such as CommandCode)
+ * that expect Anthropic-format tools (`name` and `input_schema`) instead of
+ * OpenAI-format tools (`function: { name, parameters }`).
+ */
+export function normalizeUpstreamTools(
+	bodyStr: string,
+	targetUrl: string,
+	modelName: string,
+): string {
+	if (!bodyStr) return bodyStr;
+
+	const isCommandCode =
+		targetUrl.includes("commandcode.ai") ||
+		targetUrl.includes("commandcode") ||
+		modelName.toLowerCase().startsWith("commandcode/") ||
+		modelName.toLowerCase().includes("commandcode");
+
+	if (!isCommandCode) return bodyStr;
+
+	try {
+		const parsed = JSON.parse(bodyStr);
+		if (Array.isArray(parsed.tools) && parsed.tools.length > 0) {
+			let modified = false;
+			const transformedTools = parsed.tools.map((t: any) => {
+				if (t.type === "function" && t.function) {
+					modified = true;
+					return {
+						name: t.function.name,
+						description: t.function.description || "",
+						input_schema: t.function.parameters || {
+							type: "object",
+							properties: {},
+						},
+					};
+				}
+				return t;
+			});
+
+			if (modified) {
+				return JSON.stringify({
+					...parsed,
+					tools: transformedTools,
+				});
+			}
+		}
+	} catch {
+		// return unparsed body if JSON parse fails
+	}
+
+	return bodyStr;
+}

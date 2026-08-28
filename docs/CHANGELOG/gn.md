@@ -5,6 +5,17 @@
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
+## [v2.1.2] - 2026-08-28
+
+### Added
+
+- **CommandCode Tool Normalizer (`gateway/sanitizer.ts`)**:
+  - Auto-normalisasi format tools OpenAI standard (`type: "function", function: { name, description, parameters }`) menjadi format schema Anthropic (`name`, `description`, `input_schema`) khusus untuk request yang ditujukan ke endpoint upstream `commandcode.ai`.
+  - Mencegah error `400 BAD_REQUEST (Invalid input: expected string at "params.tools[0].name")` pada seluruh 61+ model CommandCode.
+- **Synthetic SSE Usage Injector (`gateway/server.ts`)**:
+  - Menginjeksi chunk `usage` standar OpenAI (`prompt_tokens`, `completion_tokens`, `total_tokens`, `choices: []`) di akhir stream SSE sebelum `data: [DONE]` saat upstream tidak mengirimkan metrik token (seperti CommandCode & Ollama).
+  - Mengaktifkan pelacakan token riil dan kalkulasi estimasi biaya (`cost`) otomatis di client (OpenCode TUI / telemetry).
+
 ## [v2.1.1] - 2026-08-26
 
 ### Added

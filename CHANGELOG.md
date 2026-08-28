@@ -14,6 +14,17 @@
 
 ---
 
+## [v0.5.1] - 2026-08-28
+
+### ⚡ Gateway Tool Normalization & Synthetic Telemetry (`gn v2.1.2`)
+
+- **`gn gateway` Upstream Tool Translation (`sanitizer.ts`)**:
+  - Auto-normalisasi OpenAI tools schema (`function.parameters`) menjadi Anthropic tools schema (`input_schema`) untuk upstream `commandcode.ai`, mencegah error 400 validation di 61+ model CommandCode.
+- **`gn gateway` Synthetic Stream Usage Injector (`server.ts`)**:
+  - Menginjeksi chunk `usage` standar OpenAI di akhir stream SSE ketika upstream tidak mengirimkan metrik token, memungkinkan kalkulasi biaya dan token tracking real-time di client OpenCode.
+
+---
+
 ## [v0.5.0] - 2026-08-25
 
 ### 🚀 Major Ecosystem Evolution: `gn gateway` & `pm` Rust Manager
@@ -41,6 +52,7 @@
 ---
 
 ## [v0.4.0] - 2026-08-24
+
 - **Automated All-in-One Installer & 1-Line Remote cURL Bootstrap (`scripts/install.sh`)**:
   - **Single-Entry Remote Bootstrap**: Dukungan eksekusi instan via `curl -fsSL https://raw.githubusercontent.com/amadshobi/goblin-vault/main/scripts/install.sh | bash` dengan auto-clone ke `~/civil/goblin-vault` dan delegasi instalasi otomatis.
   - **Dynamic Braille Spinner UX**: Tampilan langkah instalasi 1-baris halus (`⠋ ⠙ ⠹...`) dengan pelacakan durasi per-task dan box error log merah saat terjadi kegagalan.

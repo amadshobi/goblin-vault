@@ -26,7 +26,7 @@ import {
 	loadPrivacyHeaders,
 } from "./rules";
 import { FixtureManager } from "./replay";
-import { sanitizeText } from "./sanitizer";
+import { sanitizeText, normalizeUpstreamTools } from "./sanitizer";
 import { AccessLogManager, type FallbackHop } from "./access-log";
 import type { GatewayServerConfig, GatewayStats } from "./types";
 
@@ -274,6 +274,15 @@ export function createGatewayServer(
 					const isStreamReq = parsedBodyInfo?.parsed?.stream === true;
 					const fallbackChain: FallbackHop[] = [];
 
+					// Upstream tool schema normalization (e.g. CommandCode Anthropic tools)
+					if (isLlmEndpoint && finalReqBody) {
+						finalReqBody = normalizeUpstreamTools(
+							finalReqBody,
+							targetUrl,
+							initialModel,
+						);
+					}
+
 					// Caching check
 					let promptHash = "";
 					if (
@@ -493,13 +502,48 @@ export function createGatewayServer(
 							stats.activeStreams++;
 							const reader = upstreamResp.body.getReader();
 							const decoder = new TextDecoder();
+							const encoder = new TextEncoder();
 							const recordedChunks: string[] = [];
+							let hasUsageChunk = false;
+							let streamedContentLength = 0;
+
+							// Approximate prompt token size from input payload
+							const approxPromptTokens = Math.max(
+								1,
+								Math.ceil((reqBodyStr?.length || 100) / 3.8),
+							);
 
 							const stream = new ReadableStream({
 								async pull(controller) {
 									try {
 										const { done, value } = await reader.read();
 										if (done) {
+											// If upstream did not provide a usage chunk (e.g. CommandCode), synthesize one before closing
+											if (!hasUsageChunk && upstreamResp.ok) {
+												const approxCompletionTokens = Math.max(
+													1,
+													Math.ceil(streamedContentLength / 3.5),
+												);
+												const usageChunkStr = `data: {"id":"chatcmpl-gn-usage","object":"chat.completion.chunk","created":${Math.floor(Date.now() / 1000)},"model":"${primaryModel || initialModel}","choices":[],"usage":{"prompt_tokens":${approxPromptTokens},"completion_tokens":${approxCompletionTokens},"total_tokens":${approxPromptTokens + approxCompletionTokens}}}\n\n`;
+												recordedChunks.push(usageChunkStr);
+												controller.enqueue(encoder.encode(usageChunkStr));
+
+												// Fire telemetry for stream
+												fireTelemetry(
+													primaryModel || initialModel,
+													JSON.stringify({
+														usage: {
+															prompt_tokens: approxPromptTokens,
+															completion_tokens: approxCompletionTokens,
+															total_tokens:
+																approxPromptTokens + approxCompletionTokens,
+														},
+													}),
+													upstreamResp.status,
+													Date.now() - reqStartTime,
+												);
+											}
+
 											stats.activeStreams = Math.max(
 												0,
 												stats.activeStreams - 1,
@@ -587,6 +631,13 @@ export function createGatewayServer(
 										if (value) {
 											const text = decoder.decode(value, { stream: true });
 											recordedChunks.push(text);
+											if (
+												text.includes('"usage":') ||
+												text.includes('"prompt_tokens":')
+											) {
+												hasUsageChunk = true;
+											}
+											streamedContentLength += text.length;
 											controller.enqueue(value);
 										}
 									} catch (err) {
