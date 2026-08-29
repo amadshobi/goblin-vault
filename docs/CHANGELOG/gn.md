@@ -5,6 +5,20 @@
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
+## [v2.1.3] - 2026-08-29
+
+### Fixed
+
+- **`gn-gateway.service` Systemd NAMESPACE Failure (`gn-gateway.service`)**:
+  - Mengganti `ReadWritePaths` untuk direktori cache (`~/.cache/gn`, `~/.cache/goblin-nexus`) dengan directive `CacheDirectory=gn goblin-nexus` — systemd otomatis membuat direktori sebelum service start, sehingga survive cache cleanup tanpa `status=226/NAMESPACE`.
+  - Menambahkan `ReadWritePaths=%h/.config/goblin-nexus` yang sebelumnya terlewat (dipakai oleh `pricing.ts` untuk `prices.json`).
+- **OMP Runner Script Restore to Canonical Architecture (`omp-daemon-runner.sh`)**:
+  - Mengembalikan `omp-daemon-runner.sh` ke arsitektur asli OMP: auth-gateway langsung bind di port `4000` (bukan `4002`), menghapus step 3 orphan yang menjalankan `gateway-proxy.ts` yang sudah tidak ada.
+  - Menghapus env vars usang (`OMP_INTERNAL_GATEWAY_URL`, `OMP_GATEWAY_PORT`).
+  - Chain sekarang: `opencode → gn-gateway:4010 → omp auth-gateway:4000` (2 layer, bukan 3).
+- **Port Range Comment Alignment (`gateway.ts`, `gn-gateway.service`)**:
+  - Menyelaraskan komentar referensi port OMP ecosystem dari `4000-4002` ke `4000-4001` di `gateway.ts` dan `gn-gateway.service`.
+
 ## [v2.1.2] - 2026-08-28
 
 ### Added

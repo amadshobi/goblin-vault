@@ -144,7 +144,7 @@ export async function handleGatewayCommand(argv: string[]): Promise<number> {
 		return def;
 	};
 
-	// Default 4010 agar tidak bentrok dengan OMP ecosystem (4000-4002)
+	// Default 4010 agar tidak bentrok dengan OMP ecosystem (4000-4001)
 	const port = parseInt(getFlagVal("-p", getFlagVal("--port", "4010")), 10);
 	const targetPort = parseInt(
 		getFlagVal("-t", getFlagVal("--target-port", "4000")),
