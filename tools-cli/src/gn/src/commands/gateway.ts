@@ -15,7 +15,36 @@ import {
 	formatBoxTable,
 	printGnHeader,
 } from "../utils/formatter";
-import { createGatewayServer, PromptCacheManager } from "../gateway";
+import {
+	createGatewayServer,
+	PromptCacheManager,
+	AccessLogManager,
+	renderAccessLogsTable,
+	formatLiveLogLine,
+	type AccessLogFilter,
+} from "../gateway";
+
+/** Bentuk respons /gn/health dari gateway server. */
+interface GatewayHealthResponse {
+	version?: string;
+	port?: number;
+	target?: string;
+	uptime?: number;
+	mode?: string;
+	cacheEnabled?: boolean;
+	shieldEnabled?: boolean;
+}
+
+/** Bentuk respons /gn/stats dari gateway server. */
+interface GatewayStatsResponse {
+	totalRequests?: number;
+	cacheHits?: number;
+	cacheMisses?: number;
+	fallbacksTriggered?: number;
+	activeStreams?: number;
+	errorsCount?: number;
+	uptimeSeconds?: number;
+}
 
 function showGatewayHelp(): void {
 	printGnHeader("GATEWAY INTERCEPTOR MANUAL");
@@ -25,7 +54,7 @@ function showGatewayHelp(): void {
 	console.log("");
 	console.log("SUBCOMMANDS");
 	console.log(
-		"  start         \x1b[1;36m󰐌\x1b[0m Jalankan gateway interceptor (Port 4000 -> Upstream 4002)",
+		"  start         \x1b[1;36m󰐌\x1b[0m Jalankan gateway interceptor (Port 4010 -> Upstream 4000)",
 	);
 	console.log(
 		"  status        \x1b[1;36m󰋼\x1b[0m Cek status gateway instance aktif & latency",
@@ -42,26 +71,51 @@ function showGatewayHelp(): void {
 	console.log(
 		"  cache <action>\x1b[1;36m󰃨\x1b[0m Manajemen cache (prune: hapus expired, clear: kosongkan)",
 	);
+	console.log(
+		"  log, logs     \x1b[1;36m󰌱\x1b[0m Audit traffic real-time, status cache, & riwayat fallback",
+	);
 	console.log("");
 	console.log("FLAGS");
-	console.log("  -p, --port <port>          Port interceptor (default: 4000)");
+	console.log("  -p, --port <port>          Port interceptor (default: 4010)");
 	console.log(
-		"  -t, --target-port <port>   Port upstream provider (default: 4002)",
+		"  -t, --target-port <port>   Port upstream provider (default: 4000)",
 	);
+	console.log(
+		"  -s, --stream               Live streaming log tail (tail -f style)",
+	);
+	console.log(
+		"  -l, --limit <N>            Jumlah riwayat entri log (default: 30, max: 1000)",
+	);
+	console.log(
+		"  -e, --errors               Filter hanya request yang gagal / error (>= 400)",
+	);
+	console.log("  -m, --model <id>           Filter log berdasarkan model ID");
 	console.log(
 		"  --no-cache                 Nonaktifkan deterministic prompt caching",
 	);
 	console.log(
 		"  --no-shield                Nonaktifkan privacy sanitization & mask",
 	);
-	console.log("  --json                     Output mentah format JSON");
+	console.log("  -j, --json                 Output mentah format JSON");
 	console.log("");
 	console.log("EXAMPLES");
 	console.log(
-		"  $ gn gw start              # Start interceptor default (4000 -> 4002)",
+		"  $ gn gw start              # Start interceptor default (4010 -> 4000)",
 	);
 	console.log("  $ gn gw status             # Cek status kesehatan gateway");
 	console.log("  $ gn gw stats --json       # Export telemetry & cache stats");
+	console.log(
+		"  $ gn gw log                # Tampilkan tabel riwayat request & fallback",
+	);
+	console.log(
+		"  $ gn gw log -s             # Stream live traffic interceptor real-time",
+	);
+	console.log(
+		"  $ gn gw log -e             # Tampilkan hanya request yang kena error",
+	);
+	console.log(
+		"  $ gn gw log -l 50 --json   # Export 50 log terakhir ke format JSON",
+	);
 	console.log(
 		"  $ gn gw record test-fix    # Record interaksi ke ~/.config/gn/fixtures/test-fix.jsonl",
 	);
@@ -90,9 +144,10 @@ export async function handleGatewayCommand(argv: string[]): Promise<number> {
 		return def;
 	};
 
-	const port = parseInt(getFlagVal("-p", getFlagVal("--port", "4000")), 10);
+	// Default 4010 agar tidak bentrok dengan OMP ecosystem (4000-4001)
+	const port = parseInt(getFlagVal("-p", getFlagVal("--port", "4010")), 10);
 	const targetPort = parseInt(
-		getFlagVal("-t", getFlagVal("--target-port", "4002")),
+		getFlagVal("-t", getFlagVal("--target-port", "4000")),
 		10,
 	);
 	const cacheEnabled = !argv.includes("--no-cache");
@@ -222,7 +277,7 @@ export async function handleGatewayCommand(argv: string[]): Promise<number> {
 					throw new Error(`HTTP ${res.status}`);
 				}
 
-				const data = await res.json();
+				const data = (await res.json()) as GatewayHealthResponse;
 				if (hasJsonFlag) {
 					console.log(JSON.stringify(data, null, 2));
 					return 0;
@@ -231,7 +286,7 @@ export async function handleGatewayCommand(argv: string[]): Promise<number> {
 				printGnHeader("GATEWAY INSTANCE STATUS");
 				const rows = [
 					["Service Status", `${ANSI_GREEN}󰄬 ONLINE (200 OK)${ANSI_RESET}`],
-					["Version", data.version || "2.0.2"],
+					["Version", data.version || "-"],
 					["Port", String(data.port || port)],
 					["Target Upstream", data.target || `http://127.0.0.1:${targetPort}`],
 					["Uptime", `${data.uptime}s`],
@@ -281,7 +336,7 @@ export async function handleGatewayCommand(argv: string[]): Promise<number> {
 				});
 
 				if (!res.ok) throw new Error(`HTTP ${res.status}`);
-				const data = await res.json();
+				const data = (await res.json()) as GatewayStatsResponse;
 
 				if (hasJsonFlag) {
 					console.log(JSON.stringify(data, null, 2));
@@ -295,15 +350,15 @@ export async function handleGatewayCommand(argv: string[]): Promise<number> {
 					["Cache Misses", String(data.cacheMisses || 0)],
 					[
 						"Fallbacks Triggered",
-						data.fallbacksTriggered > 0
-							? `${ANSI_YELLOW}${data.fallbacksTriggered}${ANSI_RESET}`
+						(data.fallbacksTriggered ?? 0) > 0
+							? `${ANSI_YELLOW}${data.fallbacksTriggered ?? 0}${ANSI_RESET}`
 							: "0",
 					],
 					["Active Streams", String(data.activeStreams || 0)],
 					[
 						"Errors Encountered",
-						data.errorsCount > 0
-							? `${ANSI_RED}${data.errorsCount}${ANSI_RESET}`
+						(data.errorsCount ?? 0) > 0
+							? `${ANSI_RED}${data.errorsCount ?? 0}${ANSI_RESET}`
 							: "0",
 					],
 					["Uptime", `${data.uptimeSeconds || 0}s`],
@@ -350,6 +405,68 @@ export async function handleGatewayCommand(argv: string[]): Promise<number> {
 				`  ${ANSI_YELLOW}Unknown cache action '${action}'. Available: prune${ANSI_RESET}\n`,
 			);
 			return 1;
+		}
+
+		case "log":
+		case "logs": {
+			const logManager = new AccessLogManager();
+			const isStream = argv.includes("-s") || argv.includes("--stream");
+			const isJson = hasJsonFlag || argv.includes("-j");
+			const isErrorsOnly = argv.includes("-e") || argv.includes("--errors");
+			const limitStr = getFlagVal("-l", getFlagVal("--limit", "30"));
+			const limit = parseInt(limitStr, 10) || 30;
+			const modelFilter = getFlagVal("-m", getFlagVal("--model", ""));
+
+			const filter: AccessLogFilter = {
+				limit,
+				errorsOnly: isErrorsOnly,
+				model: modelFilter || undefined,
+			};
+
+			if (isStream) {
+				if (!isJson) {
+					printGnHeader("GATEWAY REAL-TIME TRAFFIC STREAM");
+					console.log(
+						`  ${ANSI_GRAY}Streaming live gateway requests... Tekan Ctrl+C untuk berhenti.${ANSI_RESET}\n`,
+					);
+				}
+
+				const ac = new AbortController();
+				process.on("SIGINT", () => {
+					ac.abort();
+					if (!isJson) {
+						console.log(
+							`\n  ${ANSI_YELLOW}Streaming log dihentikan.${ANSI_RESET}\n`,
+						);
+					}
+					process.exit(0);
+				});
+
+				await logManager.streamLogs(
+					filter,
+					(entry) => {
+						if (isJson) {
+							console.log(JSON.stringify(entry));
+						} else {
+							console.log(formatLiveLogLine(entry));
+						}
+					},
+					ac.signal,
+				);
+				return 0;
+			}
+
+			// Snapshot mode (default)
+			const entries = logManager.readLogs(filter);
+
+			if (isJson) {
+				console.log(JSON.stringify(entries, null, 2));
+				return 0;
+			}
+
+			printGnHeader("GATEWAY ACCESS & FALLBACK LOG");
+			console.log(renderAccessLogsTable(entries));
+			return 0;
 		}
 
 		default: {

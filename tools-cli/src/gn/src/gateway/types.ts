@@ -10,7 +10,6 @@
 export interface MaskRule {
 	name: string;
 	regex: string;
-	compiled?: RegExp;
 }
 
 export interface FallbackConfig {

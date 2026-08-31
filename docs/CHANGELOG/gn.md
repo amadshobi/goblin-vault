@@ -5,6 +5,61 @@
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
+## [v2.1.3] - 2026-08-29
+
+### Fixed
+
+- **`gn-gateway.service` Systemd NAMESPACE Failure (`gn-gateway.service`)**:
+  - Mengganti `ReadWritePaths` untuk direktori cache (`~/.cache/gn`, `~/.cache/goblin-nexus`) dengan directive `CacheDirectory=gn goblin-nexus` — systemd otomatis membuat direktori sebelum service start, sehingga survive cache cleanup tanpa `status=226/NAMESPACE`.
+  - Menambahkan `ReadWritePaths=%h/.config/goblin-nexus` yang sebelumnya terlewat (dipakai oleh `pricing.ts` untuk `prices.json`).
+- **OMP Runner Script Restore to Canonical Architecture (`omp-daemon-runner.sh`)**:
+  - Mengembalikan `omp-daemon-runner.sh` ke arsitektur asli OMP: auth-gateway langsung bind di port `4000` (bukan `4002`), menghapus step 3 orphan yang menjalankan `gateway-proxy.ts` yang sudah tidak ada.
+  - Menghapus env vars usang (`OMP_INTERNAL_GATEWAY_URL`, `OMP_GATEWAY_PORT`).
+  - Chain sekarang: `opencode → gn-gateway:4010 → omp auth-gateway:4000` (2 layer, bukan 3).
+- **Port Range Comment Alignment (`gateway.ts`, `gn-gateway.service`)**:
+  - Menyelaraskan komentar referensi port OMP ecosystem dari `4000-4002` ke `4000-4001` di `gateway.ts` dan `gn-gateway.service`.
+
+## [v2.1.2] - 2026-08-28
+
+### Added
+
+- **CommandCode Tool Normalizer (`gateway/sanitizer.ts`)**:
+  - Auto-normalisasi format tools OpenAI standard (`type: "function", function: { name, description, parameters }`) menjadi format schema Anthropic (`name`, `description`, `input_schema`) khusus untuk request yang ditujukan ke endpoint upstream `commandcode.ai`.
+  - Mencegah error `400 BAD_REQUEST (Invalid input: expected string at "params.tools[0].name")` pada seluruh 61+ model CommandCode.
+- **Synthetic SSE Usage Injector (`gateway/server.ts`)**:
+  - Menginjeksi chunk `usage` standar OpenAI (`prompt_tokens`, `completion_tokens`, `total_tokens`, `choices: []`) di akhir stream SSE sebelum `data: [DONE]` saat upstream tidak mengirimkan metrik token (seperti CommandCode & Ollama).
+  - Mengaktifkan pelacakan token riil dan kalkulasi estimasi biaya (`cost`) otomatis di client (OpenCode TUI / telemetry).
+
+## [v2.1.1] - 2026-08-26
+
+### Added
+
+- **Structured Access Logger & Live Analytics (`gateway/access-log.ts`, `gn gw log`)**:
+  - **Append-Only JSONL Access Logger**: Mencatat seluruh traffic request gateway ke `~/.cache/gn/gateway/access.jsonl` (timestamp, method, path, latency, cache status, model chain, shield redacted, error) dengan rotasi otomatis (10 MB -> `.old`).
+  - **Cascading Fallback Hop Visualization**: Melacak dan merender seluruh rantai hop fallback secara visual (misal `✖ kilo-auto (503) → ✓ minimax-m3` dengan status badge `⚠ FB×N`).
+  - **CLI `gn gw log` Subcommand**:
+    - Mode Boxed Table Default: Tabel bordered ANSI rapi dengan metrics agregasi di footer (`Total`, `Hits`, `Misses`, `Hit Rate %`, `Fallbacks`, `Errors`).
+    - Flag `--stream` (`-s`): Live tail real-time request stream dengan graceful exit (Ctrl+C).
+    - Flag `--json` (`-j`): Output pure JSONL machine-readable tanpa ANSI codes.
+    - Filter `--errors` (`-e`) & `--model <id>` (`-m`): Filter instan untuk troubleshooting & audit kegagalan model.
+    - Flag `--limit <N>` (`-l`): Kontrol jumlah riwayat log (default: 30, max: 1000).
+
+### Fixed
+
+- **Typecheck Pipeline Rusak Total**: `tsconfig.json` yang hilang dibuat ulang (strict mode + `@types/bun`) sehingga `bun run typecheck` kembali berfungsi — sebelumnya hanya mencetak help tsc lalu exit 1 tanpa memvalidasi apa pun. Seluruh 46 error type yang tersembunyi kini terselesaikan (union type rusak pada fallback `new Map()` di `fetchAllSessionData`, parameter implicit any, `SQLQueryBindings` pada `safeQuery`, respons `/gn/health` & `/gn/stats` kini ter-type eksplisit).
+- **Latent Crash `reportDeprecated()`**: Fungsi dipanggil di `src/index.ts` tanpa pernah didefinisikan — kini diimplementasikan sebagai fungsi murni dengan pesan deprecation + saran pengganti.
+- **Cache Key Tidak Lengkap (`gateway/cache.ts`)**: `computePromptHash` dinaikkan ke **v2** dan kini menyertakan `max_tokens`, `stop`, `response_format`, presence/frequency penalty, dan `n`. Sebelumnya dua request yang hanya berbeda di parameter output tersebut salah dilayani respons cache yang sama. Cache lama otomatis invalid via version bump.
+- **Version Drift**: `GN_VERSION` diekstrak ke `src/version.ts` sebagai single source of truth; health endpoint server tidak lagi hardcode string versi.
+
+### Changed
+
+- **CI**: Step baru "Typecheck & Test gn" di `.github/workflows/ci.yml` agar regresi typecheck gn terdeteksi otomatis (sebelumnya hanya `sup` yang divalidasi).
+- **Dead Code Cleanup**: Menghapus field `compiled` yang tak terpakai di rules engine; sanitizer kini resilient terhadap regex user yang malformed (skip, bukan crash per-request).
+- **Topologi Port Non-Intrusif**: Default port interceptor dipindah dari 4000 (tabrakan dengan OMP ecosystem) ke **4010**, dengan upstream baru **gateway-proxy aggregator :4000** (`gn gw start` = 4010 -> 4000 -> 4002). Semua custom provider models.yml kini ter-cover oleh cache, fallback, dan privacy shield. Berlaku konsisten di `commands/gateway.ts`, `server.ts`, `README.md`, dan `gn-gateway.service`.
+- **Systemd Service Fix (`gn-gateway.service`)**: Menambahkan `ReadWritePaths=%h/.cache/gn` untuk prompt cache (sebelumnya EPERM diam-diam di bawah `ProtectSystem=strict`) dan menghapus path usang `%h/.config/goblin-nexus`. ExecStart kini memakai path absolut `bun` karena systemd user service tidak mewarisi PATH shell (crash loop status 127).
+
+---
+
 ## [v2.1.0] - 2026-08-24
 
 ### Added

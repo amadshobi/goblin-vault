@@ -79,7 +79,7 @@
 
 ### 4. 󰒓 Smart Gateway Interceptor (`gateway`, `gw`)
 
-- **Takeover Transparent Port 4000**: Meneruskan request OpenCode/client ke Upstream Native OMP Gateway (Port 4002) tanpa mengubah konfigurasi client.
+- **Interceptor Port 4010**: Meneruskan request OpenCode/client ke Upstream Aggregator OMP Gateway (Port 4000 -> 4002) tanpa mengganggu ekosistem OMP yang sudah berjalan.
 - **SSE Zero-Copy Pass-Through**: Menyalurkan event-stream tanpa de-framing dengan latensi sangat rendah (<2ms).
 - **Deterministic SHA-256 Prompt Caching**: Menghitung hash payload prompt & stream response secara deterministik ke disk (`0600`) dengan regenerasi ID token unik dan TTL auto-pruning.
 - **Cascading Fallback & Circuit Breaker**: Intersepsi otomatis 429 rate limit & 5xx server error sebelum headers terkirim, beralih ke model alternatif cadangan dengan jeda cooldown 60s setelah 3 kegagalan beruntun.
@@ -124,7 +124,7 @@ gn b agy --top 5
 # 8. Full system health diagnostic & auth matrix
 gn doctor
 
-# 9. Jalankan Gateway Interceptor (Port 4000 -> 4002)
+# 9. Jalankan Gateway Interceptor (Port 4010 -> 4000)
 gn gw start
 
 # 10. Periksa status & metrik performa gateway aktif

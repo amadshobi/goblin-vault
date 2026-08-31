@@ -45,8 +45,10 @@ export function computePromptHash(bodyObj: any): string {
 	}
 
 	// Canonical tuple structure
+	// v2: menyertakan sampling/output params agar request yang hanya beda
+	// di max_tokens/stop/response_format tidak salah dilayani respons cache lama
 	const canonical = {
-		v: 1,
+		v: 2,
 		model: bodyObj.model ?? "",
 		messages: bodyObj.messages ?? [],
 		temperature: bodyObj.temperature ?? null,
@@ -54,6 +56,12 @@ export function computePromptHash(bodyObj: any): string {
 		system_prompt: bodyObj.system ?? bodyObj.system_prompt ?? null,
 		seed: bodyObj.seed ?? null,
 		tools: bodyObj.tools ?? null,
+		max_tokens: bodyObj.max_tokens ?? bodyObj.maxOutputTokens ?? null,
+		stop: bodyObj.stop ?? bodyObj.stop_sequences ?? null,
+		response_format: bodyObj.response_format ?? null,
+		presence_penalty: bodyObj.presence_penalty ?? null,
+		frequency_penalty: bodyObj.frequency_penalty ?? null,
+		n: bodyObj.n ?? null,
 	};
 
 	const serialized = JSON.stringify(canonical);

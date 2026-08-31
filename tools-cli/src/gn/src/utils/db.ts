@@ -12,7 +12,7 @@
 // Adapter tidak boleh import `bun:sqlite` secara langsung.
 // ─────────────────────────────────────────────────────────────
 
-import { Database } from "bun:sqlite";
+import { Database, type SQLQueryBindings } from "bun:sqlite";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -21,19 +21,23 @@ import { join } from "node:path";
 
 /** Default path ke SQLite OpenCode telemetry DB. */
 export const OPENCODE_DB_PATH: string = join(
-  homedir(),
-  ".local", "share", "opencode", "opencode.db"
+	homedir(),
+	".local",
+	"share",
+	"opencode",
+	"opencode.db",
 );
 
 /** Default path ke SQLite OMP broker agent DB. */
 export const OMP_AGENT_DB_PATH: string = join(
-  homedir(), ".omp", "agent", "agent.db"
+	homedir(),
+	".omp",
+	"agent",
+	"agent.db",
 );
 
 /** Default path ke SQLite OMP native stats DB (opsional, mungkin tidak ada). */
-export const OMP_STATS_DB_PATH: string = join(
-  homedir(), ".omp", "stats.db"
-);
+export const OMP_STATS_DB_PATH: string = join(homedir(), ".omp", "stats.db");
 
 // ─── Low-level: openReadOnly ─────────────────────────────────
 
@@ -49,21 +53,20 @@ export const OMP_STATS_DB_PATH: string = join(
  * atau gunakan withDb() / safeQuery() yang auto-close.
  */
 export function openReadOnly(dbPath: string): Database {
-  if (!existsSync(dbPath)) {
-    throw new Error(
-      `Database tidak ditemukan: ${dbPath}\n` +
-      `Pastikan service terkait pernah dijalankan untuk membuat file ini.`
-    );
-  }
-  try {
-    return new Database(dbPath, { readonly: true, create: false });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(
-      `Gagal membuka database (read-only): ${dbPath}\n` +
-      `Detail: ${msg}`
-    );
-  }
+	if (!existsSync(dbPath)) {
+		throw new Error(
+			`Database tidak ditemukan: ${dbPath}\n` +
+				`Pastikan service terkait pernah dijalankan untuk membuat file ini.`,
+		);
+	}
+	try {
+		return new Database(dbPath, { readonly: true, create: false });
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		throw new Error(
+			`Gagal membuka database (read-only): ${dbPath}\n` + `Detail: ${msg}`,
+		);
+	}
 }
 
 // ─── Mid-level: withDb (auto-close) ──────────────────────────
@@ -79,12 +82,12 @@ export function openReadOnly(dbPath: string): Database {
  * });
  */
 export function withDb<T>(dbPath: string, fn: (db: Database) => T): T {
-  const db = openReadOnly(dbPath);
-  try {
-    return fn(db);
-  } finally {
-    db.close();
-  }
+	const db = openReadOnly(dbPath);
+	try {
+		return fn(db);
+	} finally {
+		db.close();
+	}
 }
 
 // ─── High-level: safeQuery (graceful missing) ───────────────
@@ -97,7 +100,7 @@ export function withDb<T>(dbPath: string, fn: (db: Database) => T): T {
  * if (!isDatabaseAvailable(OMP_AGENT_DB_PATH)) return [];
  */
 export function isDatabaseAvailable(dbPath: string): boolean {
-  return existsSync(dbPath);
+	return existsSync(dbPath);
 }
 
 /**
@@ -116,17 +119,17 @@ export function isDatabaseAvailable(dbPath: string): boolean {
  * @returns       Array of rows, atau [] jika DB tidak ada
  */
 export function safeQuery<T = unknown>(
-  dbPath: string,
-  sql: string,
-  params: unknown[] = []
+	dbPath: string,
+	sql: string,
+	params: SQLQueryBindings[] = [],
 ): T[] {
-  if (!existsSync(dbPath)) {
-    return [];
-  }
-  return withDb(dbPath, (db) => {
-    // bun:sqlite's .all() expects variadic args, hence spread.
-    return db.query<T, unknown[]>(sql).all(...params) as T[];
-  });
+	if (!existsSync(dbPath)) {
+		return [];
+	}
+	return withDb(dbPath, (db) => {
+		// bun:sqlite's .all() expects variadic args, hence spread.
+		return db.query<T, SQLQueryBindings[]>(sql).all(...params);
+	});
 }
 
 // ─── Typed path getters (env-overrideable) ───────────────────
@@ -136,7 +139,7 @@ export function safeQuery<T = unknown>(
  * Bisa di-override via env GN_OPENCODE_DB_PATH (untuk testing).
  */
 export function getOpenCodeDb(): string {
-  return process.env.GN_OPENCODE_DB_PATH || OPENCODE_DB_PATH;
+	return process.env.GN_OPENCODE_DB_PATH || OPENCODE_DB_PATH;
 }
 
 /**
@@ -144,7 +147,7 @@ export function getOpenCodeDb(): string {
  * Bisa di-override via env GN_OMP_AGENT_DB_PATH (untuk testing).
  */
 export function getOmpAgentDb(): string {
-  return process.env.GN_OMP_AGENT_DB_PATH || OMP_AGENT_DB_PATH;
+	return process.env.GN_OMP_AGENT_DB_PATH || OMP_AGENT_DB_PATH;
 }
 
 /**
@@ -156,5 +159,5 @@ export function getOmpAgentDb(): string {
  * gunakan safeQuery() yang sudah handle missing file.
  */
 export function getOmpStatsDb(): string {
-  return process.env.GN_OMP_STATS_DB_PATH || OMP_STATS_DB_PATH;
+	return process.env.GN_OMP_STATS_DB_PATH || OMP_STATS_DB_PATH;
 }

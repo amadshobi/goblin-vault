@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Wrapper executable for ZF Navigation Engine inside Goblin Vault
 
-# Resolve physical path in case of symlinks in ~/.local/bin/
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
   DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
@@ -11,6 +10,16 @@ done
 BIN_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
 export GOBLIN_VAULT_ROOT="$(cd -P "$BIN_DIR/../.." >/dev/null 2>&1 && pwd)"
 
-source "$GOBLIN_VAULT_ROOT/tools-cli/src/zf/zf.sh"
+# Build binary jika belum ada atau source berubah
+ZF_BIN="$BIN_DIR/zf-bin"
+if [ ! -f "$ZF_BIN" ] || [ "$GOBLIN_VAULT_ROOT/tools-cli/src/zf/main.go" -nt "$ZF_BIN" ]; then
+    (cd "$GOBLIN_VAULT_ROOT/tools-cli/src/zf" && go build -o "$ZF_BIN" . 2>/dev/null)
+fi
 
-zf "$@"
+if [ -f "$ZF_BIN" ]; then
+    exec "$ZF_BIN" "$@"
+else
+    # Fallback to source
+    source "$GOBLIN_VAULT_ROOT/tools-cli/src/zf/legacy/zf.sh" 2>/dev/null || true
+    zf "$@"
+fi

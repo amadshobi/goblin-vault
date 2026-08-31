@@ -24,6 +24,12 @@ import {
 import { DEFAULT_FALLBACK, DEFAULT_RULES, loadGatewayRules } from "./rules";
 import { sanitizeText } from "./sanitizer";
 import { FixtureManager } from "./replay";
+import {
+	AccessLogManager,
+	formatModelChain,
+	renderAccessLogsTable,
+	type AccessLogEntry,
+} from "./access-log";
 import { createGatewayServer } from "./server";
 
 const TEST_DIR = join(process.cwd(), ".tmp-test-gateway");
@@ -222,7 +228,7 @@ describe("5. Replay & Fixture Engine", () => {
 		const mockResp = fixtureManager.mock("test-session", reqBody);
 		expect(mockResp).not.toBeNull();
 		expect(mockResp?.status).toBe(200);
-		const mockData = await mockResp?.json();
+		const mockData: any = await mockResp?.json();
 		expect(mockData.choices[0].message.content).toBe("recorded response");
 	});
 });
@@ -251,7 +257,7 @@ describe("6. Master Gateway Server End-to-End Integration", () => {
 				}
 
 				if (url.pathname === "/v1/chat/completions") {
-					const body = await req.json();
+					const body: any = await req.json();
 
 					// Trigger simulated 429 for model "trigger-429"
 					if (body.model === "trigger-429") {
@@ -335,7 +341,7 @@ describe("6. Master Gateway Server End-to-End Integration", () => {
 	test("serves health and status check on /gn/health", async () => {
 		const res = await fetch(`http://127.0.0.1:${gwPort}/gn/health`);
 		expect(res.status).toBe(200);
-		const data = await res.json();
+		const data: any = await res.json();
 		expect(data.status).toBe("ok");
 		expect(data.port).toBe(gwPort);
 	});
@@ -355,7 +361,7 @@ describe("6. Master Gateway Server End-to-End Integration", () => {
 
 		expect(res1.status).toBe(200);
 		expect(res1.headers.get("X-GN-Cache")).toBe("MISS");
-		const data1 = await res1.json();
+		const data1: any = await res1.json();
 		expect(data1.choices[0].message.content).toContain("Hello world");
 
 		// Second request: Cache HIT
@@ -367,7 +373,7 @@ describe("6. Master Gateway Server End-to-End Integration", () => {
 
 		expect(res2.status).toBe(200);
 		expect(res2.headers.get("X-GN-Cache")).toBe("HIT");
-		const data2 = await res2.json();
+		const data2: any = await res2.json();
 		expect(data2.choices[0].message.content).toContain("Hello world");
 	});
 
@@ -389,5 +395,106 @@ describe("6. Master Gateway Server End-to-End Integration", () => {
 		const text = await res.text();
 		expect(text).toContain("Hi");
 		expect(text).toContain("[DONE]");
+	});
+});
+
+describe("7. Access Log & Fallback Chain Analytics", () => {
+	const logFile = join(TEST_DIR, "test-access.jsonl");
+	let logManager: AccessLogManager;
+
+	beforeAll(() => {
+		if (!existsSync(TEST_DIR)) {
+			mkdirSync(TEST_DIR, { recursive: true });
+		}
+		logManager = new AccessLogManager(logFile);
+	});
+
+	afterAll(() => {
+		if (existsSync(logFile)) rmSync(logFile, { force: true });
+	});
+
+	test("records and filters access log entries", () => {
+		const entry1: AccessLogEntry = {
+			ts: Date.now(),
+			method: "POST",
+			path: "/v1/chat/completions",
+			initialModel: "kilo-auto/free",
+			servedModel: "minimax-m3",
+			status: 200,
+			latencyMs: 1500,
+			cache: "MISS",
+			stream: true,
+			fallback: {
+				chain: [
+					{ model: "kilo-auto/free", status: 503, ok: false },
+					{ model: "minimax-m3", status: 200, ok: true },
+				],
+				hopCount: 2,
+			},
+			shieldRedacted: 2,
+		};
+
+		const entry2: AccessLogEntry = {
+			ts: Date.now(),
+			method: "POST",
+			path: "/v1/chat/completions",
+			initialModel: "minimax-m3",
+			servedModel: "minimax-m3",
+			status: 200,
+			latencyMs: 12,
+			cache: "HIT",
+			stream: false,
+			shieldRedacted: 0,
+		};
+
+		logManager.write(entry1);
+		logManager.write(entry2);
+
+		const all = logManager.readLogs({ limit: 10 });
+		expect(all.length).toBe(2);
+		expect(all[0].servedModel).toBe("minimax-m3");
+		expect(all[0].fallback?.hopCount).toBe(2);
+
+		// Filter by model
+		const filtered = logManager.readLogs({ model: "kilo" });
+		expect(filtered.length).toBe(1);
+		expect(filtered[0].initialModel).toBe("kilo-auto/free");
+	});
+
+	test("formats cascading fallback chains with symbols", () => {
+		const fallbackEntry: AccessLogEntry = {
+			ts: Date.now(),
+			method: "POST",
+			path: "/v1/chat/completions",
+			initialModel: "kilo-auto/free",
+			servedModel: "gemini-flash",
+			status: 200,
+			latencyMs: 2200,
+			cache: "MISS",
+			stream: true,
+			fallback: {
+				chain: [
+					{ model: "kilo-auto/free", status: 503, ok: false },
+					{ model: "minimax-m3", status: 503, ok: false },
+					{ model: "gemini-flash", status: 200, ok: true },
+				],
+				hopCount: 3,
+			},
+			shieldRedacted: 0,
+		};
+
+		const chainStr = formatModelChain(fallbackEntry);
+		expect(chainStr).toContain("✖ free");
+		expect(chainStr).toContain("503");
+		expect(chainStr).toContain("✖ minimax-m3");
+		expect(chainStr).toContain("✓ gemini-flash");
+	});
+
+	test("renders visual box table with summary metrics", () => {
+		const entries = logManager.readLogs({ limit: 10 });
+		const table = renderAccessLogsTable(entries);
+		expect(table).toContain("GATEWAY TRAFFIC & FALLBACK LOGS");
+		expect(table).toContain("Traffic Summary");
+		expect(table).toContain("Hit Rate");
 	});
 });

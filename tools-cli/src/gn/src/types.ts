@@ -29,12 +29,12 @@ export type QuotaStatus = "ok" | "warn" | "error" | "critical";
  *   - Provider baru TIDAK menyebabkan TS error (extensible)
  */
 export type QuotaProvider =
-  | "google-antigravity"
-  | "openai-codex"
-  | "anthropic-claude"
-  | "github-copilot"
-  | "ollama-cloud"
-  | (string & {});
+	| "google-antigravity"
+	| "openai-codex"
+	| "anthropic-claude"
+	| "github-copilot"
+	| "ollama-cloud"
+	| (string & {});
 
 /**
  * Snapshot terkini penggunaan kuota dari satu provider + akun.
@@ -45,20 +45,20 @@ export type QuotaProvider =
  * ini agar command layer tidak peduli schema source.
  */
 export interface QuotaEntry {
-  /** ID provider, misal "google-antigravity" | "openai-codex" */
-  provider: string;
-  /** Email akun jika tersedia dari broker */
-  email?: string;
-  /** Label quota, misal "Usage (Google)" | "30 days" */
-  label: string;
-  /** Window label, misal "Daily" | "30 days" */
-  windowLabel?: string;
-  /** Fraksi terpakai 0.0 – 1.0 (dari used_fraction di agent.db) */
-  usedFraction: number;
-  /** Status level (sudah dihitung adapter berdasarkan threshold) */
-  status: QuotaStatus | string;
-  /** Unix timestamp ms kapan quota reset */
-  resetsAt?: number;
+	/** ID provider, misal "google-antigravity" | "openai-codex" */
+	provider: string;
+	/** Email akun jika tersedia dari broker */
+	email?: string;
+	/** Label quota, misal "Usage (Google)" | "30 days" */
+	label: string;
+	/** Window label, misal "Daily" | "30 days" */
+	windowLabel?: string;
+	/** Fraksi terpakai 0.0 – 1.0 (dari used_fraction di agent.db) */
+	usedFraction: number;
+	/** Status level (sudah dihitung adapter berdasarkan threshold) */
+	status: QuotaStatus | string;
+	/** Unix timestamp ms kapan quota reset */
+	resetsAt?: number;
 }
 
 // ─── Session / OpenCode Telemetry ────────────────────────────
@@ -69,19 +69,19 @@ export interface QuotaEntry {
  * (id, title, model_id, cost, tokens_*, dll).
  */
 export interface OpenCodeSession {
-  id: string;
-  title: string;
-  /** Model id lengkap dengan provider prefix, misal "google-antigravity/claude-sonnet-4-6" */
-  modelId: string;
-  /** Total biaya sesi dalam USD */
-  cost: number;
-  tokensInput: number;
-  tokensOutput: number;
-  tokensReasoning: number;
-  tokensCacheRead: number;
-  tokensCacheWrite: number;
-  /** Unix ms; di-best-effort dari event/session.time_updated */
-  timeCreated: number;
+	id: string;
+	title: string;
+	/** Model id lengkap dengan provider prefix, misal "google-antigravity/claude-sonnet-4-6" */
+	modelId: string;
+	/** Total biaya sesi dalam USD */
+	cost: number;
+	tokensInput: number;
+	tokensOutput: number;
+	tokensReasoning: number;
+	tokensCacheRead: number;
+	tokensCacheWrite: number;
+	/** Unix ms; di-best-effort dari event/session.time_updated */
+	timeCreated: number;
 }
 
 /**
@@ -90,20 +90,20 @@ export interface OpenCodeSession {
  * per-sesi termasuk metadata tambahan.
  */
 export interface SessionDetail extends OpenCodeSession {
-  /** Jumlah sub-session jika sesi ini punya parent */
-  childCount?: number;
-  /** Durasi total sesi dalam ms (jika tersedia) */
-  durationMs?: number;
-  /** Project directory sesi (jika ada) */
-  directory?: string;
-  /** Parent session id (jika ini adalah sub-session) */
-  parentId?: string;
-  /** Per-tool call count breakdown, misal {bash: 5, edit: 3, todowrite: 2} */
-  toolCount?: Record<string, number>;
-  /** Unique file paths yang di-edit/ditulis selama session */
-  modifiedFiles?: string[];
-  /** Aggregate todo status count */
-  todoProgress?: TodoProgress;
+	/** Jumlah sub-session jika sesi ini punya parent */
+	childCount?: number;
+	/** Durasi total sesi dalam ms (jika tersedia) */
+	durationMs?: number;
+	/** Project directory sesi (jika ada) */
+	directory?: string;
+	/** Parent session id (jika ini adalah sub-session) */
+	parentId?: string;
+	/** Per-tool call count breakdown, misal {bash: 5, edit: 3, todowrite: 2} */
+	toolCount?: Record<string, number>;
+	/** Unique file paths yang di-edit/ditulis selama session */
+	modifiedFiles?: string[];
+	/** Aggregate todo status count */
+	todoProgress?: TodoProgress;
 }
 
 /**
@@ -111,18 +111,18 @@ export interface SessionDetail extends OpenCodeSession {
  * Dipakai oleh `gn stats --models`.
  */
 export interface ModelUsageSummary {
-  /** Combined identifier, misal "google-antigravity/claude-sonnet-4-6" */
-  modelId: string;
-  /** Provider only, misal "google-antigravity" (opsional — untuk filter/breakdown) */
-  provider?: string;
-  /** Variant (opsional, misal "default" atau null untuk default) */
-  variant?: string | null;
-  totalCost: number;
-  totalTokensInput: number;
-  totalTokensOutput: number;
-  /** Total token (input + output, tidak termasuk cache) */
-  totalTokens: number;
-  sessionCount: number;
+	/** Combined identifier, misal "google-antigravity/claude-sonnet-4-6" */
+	modelId: string;
+	/** Provider only, misal "google-antigravity" (opsional — untuk filter/breakdown) */
+	provider?: string;
+	/** Variant (opsional, misal "default" atau null untuk default) */
+	variant?: string | null;
+	totalCost: number;
+	totalTokensInput: number;
+	totalTokensOutput: number;
+	/** Total token (input + output, tidak termasuk cache) */
+	totalTokens: number;
+	sessionCount: number;
 }
 
 /**
@@ -130,11 +130,11 @@ export interface ModelUsageSummary {
  * Status di-aggregate dari tabel `todo` opencode.db.
  */
 export interface TodoProgress {
-  total: number;
-  pending: number;
-  inProgress: number;
-  completed: number;
-  cancelled: number;
+	total: number;
+	pending: number;
+	inProgress: number;
+	completed: number;
+	cancelled: number;
 }
 
 /**
@@ -142,16 +142,16 @@ export interface TodoProgress {
  * Dikembalikan oleh ISessionAdapter.getStatsSummary().
  */
 export interface StatsSummary {
-  /** Label window: "Today" | "7 days" | "30 days" */
-  periodLabel: string;
-  /** Total biaya dalam USD untuk window ini */
-  totalCost: number;
-  /** Total input tokens */
-  totalTokensInput: number;
-  /** Total output tokens */
-  totalTokensOutput: number;
-  /** Breakdown per model */
-  perModel: ModelUsageSummary[];
+	/** Label window: "Today" | "7 days" | "30 days" */
+	periodLabel: string;
+	/** Total biaya dalam USD untuk window ini */
+	totalCost: number;
+	/** Total input tokens */
+	totalTokensInput: number;
+	/** Total output tokens */
+	totalTokensOutput: number;
+	/** Breakdown per model */
+	perModel: ModelUsageSummary[];
 }
 
 // ─── Health Check (Doctor) ───────────────────────────────────
@@ -161,14 +161,14 @@ export interface StatsSummary {
  * Urutan check di doctor.ts menentukan urutan tampil.
  */
 export interface DoctorCheckResult {
-  /** Nama check, misal "omp-broker" | "omp-gateway" | "agent.db" */
-  name: string;
-  /** Status hasil check */
-  status: "ok" | "warn" | "error";
-  /** Pesan deskriptif hasil check */
-  detail: string;
-  /** Goblin Roast Hint jika status error/warn */
-  hint?: string;
+	/** Nama check, misal "omp-broker" | "omp-gateway" | "agent.db" */
+	name: string;
+	/** Status hasil check */
+	status: "ok" | "warn" | "error";
+	/** Pesan deskriptif hasil check */
+	detail: string;
+	/** Goblin Roast Hint jika status error/warn */
+	hint?: string;
 }
 
 // ─── Ollama Account (Live Stream) ────────────────────────────
@@ -184,14 +184,14 @@ export interface DoctorCheckResult {
  * saat dipakai di commands/ollama.ts.
  */
 export interface OllamaAccountMeta {
-  email: string;
-  plan: string;
-  id: string;
-  suspended: boolean;
-  sessionUsagePct: number;
-  weeklyUsagePct: number;
-  sessionResetsAt?: string;
-  hasCookie: boolean;
+	email: string;
+	plan: string;
+	id: string;
+	suspended: boolean;
+	sessionUsagePct: number;
+	weeklyUsagePct: number;
+	sessionResetsAt?: string;
+	hasCookie: boolean;
 }
 
 // ─── Native OMP Stats Summary ─────────────────────────────────
@@ -206,14 +206,14 @@ export interface OllamaAccountMeta {
  * secara eksplisit.
  */
 export interface OmpNativeMessageSummary {
-  provider: string;
-  model: string;
-  totalRequests: number;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  totalCacheReadTokens: number;
-  totalCacheWriteTokens: number;
-  totalCost: number;
+	provider: string;
+	model: string;
+	totalRequests: number;
+	totalInputTokens: number;
+	totalOutputTokens: number;
+	totalCacheReadTokens: number;
+	totalCacheWriteTokens: number;
+	totalCost: number;
 }
 
 // ─── Adapter Contracts (architect spec section 5.2) ──────────
@@ -233,60 +233,60 @@ export interface OmpNativeMessageSummary {
 // ─── OpenCode Config Standard (Milestone 1) ───────────────────
 
 export interface AgentPermission {
-  name: string;
-  allow: boolean;
-  patterns?: string[];
-  warning_only?: boolean;
+	name: string;
+	allow: boolean;
+	patterns?: string[];
+	warning_only?: boolean;
 }
 
 export interface AgentConfigItem {
-  id: string;
-  name: string;
-  persona?: string;
-  model: string;
-  max_tokens?: number;
-  temperature?: number;
-  permissions?: AgentPermission[];
-  tools?: string[];
-  system_instructions?: string;
+	id: string;
+	name: string;
+	persona?: string;
+	model: string;
+	max_tokens?: number;
+	temperature?: number;
+	permissions?: AgentPermission[];
+	tools?: string[];
+	system_instructions?: string;
 }
 
 export interface MCPServerConfig {
-  command: string;
-  args?: string[];
-  env?: Record<string, string>;
-  disabled?: boolean;
+	command: string;
+	args?: string[];
+	env?: Record<string, string>;
+	disabled?: boolean;
 }
 
 export interface CompactionConfig {
-  enabled: boolean;
-  trigger_token_count?: number;
-  keep_percent?: number;
+	// Optional karena berasal dari parse config eksternal (opencode.jsonc)
+	enabled?: boolean;
+	trigger_token_count?: number;
+	keep_percent?: number;
 }
 
 export interface AIModel {
-  id: string;
-  name: string;
-  provider: string;
-  input_price_per_m?: number;
-  output_price_per_m?: number;
-  context_window?: number;
+	id: string;
+	name: string;
+	provider: string;
+	input_price_per_m?: number;
+	output_price_per_m?: number;
+	context_window?: number;
 }
 
 export interface ModelCategory {
-  default: string;
-  fast?: string;
-  reasoning?: string;
+	default: string;
+	fast?: string;
+	reasoning?: string;
 }
 
 export interface OpenCodeConfig {
-  version: string;
-  models?: AIModel[];
-  model_categories?: ModelCategory;
-  agents?: AgentConfigItem[];
-  mcp_servers?: Record<string, MCPServerConfig>;
-  compaction?: CompactionConfig;
-  features?: Record<string, any>;
-  [key: string]: any;
+	version: string;
+	models?: AIModel[];
+	model_categories?: ModelCategory;
+	agents?: AgentConfigItem[];
+	mcp_servers?: Record<string, MCPServerConfig>;
+	compaction?: CompactionConfig;
+	features?: Record<string, any>;
+	[key: string]: any;
 }
-

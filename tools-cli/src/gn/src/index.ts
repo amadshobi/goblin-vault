@@ -17,6 +17,7 @@
 
 import { printGnHeader } from "./utils/formatter";
 import { handleUnknownCommand } from "./utils/error";
+import { GN_VERSION } from "./version";
 import { handleUsageCommand } from "./commands/usage";
 import { handleSessionsCommand } from "./commands/sessions";
 import { handleConfigCommand } from "./commands/config";
@@ -26,7 +27,7 @@ import { handleDoctorCommand, handleRestartCommand } from "./commands/doctor";
 import { handleGatewayCommand } from "./commands/gateway";
 
 /** Versi gn standalone (Control Plane & Telemetry Core). */
-export const GN_VERSION = "2.1.0";
+export { GN_VERSION };
 
 /**
  * Peta subcommand → handler.
@@ -77,6 +78,20 @@ function printBanner(): void {
 	printGnHeader("Powered by OMP Engine");
 }
 
+/**
+ * Cetak pesan deprecation + sarankan penggantinya.
+ * Dipisah sebagai fungsi murni agar mudah di-test tanpa side-effect exit.
+ */
+function reportDeprecated(cmd: string, replacement: string): void {
+	printBanner();
+	console.error(
+		`\x1b[1;33m⚠️  Command \x1b[0m\x1b[1;37m${cmd}\x1b[0m\x1b[1;33m sudah deprecated.\x1b[0m`,
+	);
+	console.error(
+		`\x1b[0m   Gunakan \x1b[1;36m${replacement}\x1b[0m\x1b[0m sebagai gantinya.\x1b[0m`,
+	);
+}
+
 /** Cetak bantuan level-1 (banner + daftar command makro). */
 function showHelp(): void {
 	printBanner();
@@ -88,7 +103,7 @@ function showHelp(): void {
 	console.log("");
 	console.log("COMMANDS");
 	console.log(
-		"  gateway, gw   \x1b[1;36m󰐌\x1b[0m Gateway Interceptor Core (prompt cache, stream replay, fallback)",
+		"  gateway, gw   \x1b[1;36m󰐌\x1b[0m Gateway Interceptor Core (prompt cache, replay, fallback, log)",
 	);
 	console.log(
 		"  usage, u      \x1b[1;36m󰓅\x1b[0m Telemetry & Quota Engine (quota live, token activity, file audit)",

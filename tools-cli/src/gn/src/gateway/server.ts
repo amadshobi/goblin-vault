@@ -6,6 +6,7 @@
 
 import { calculateCost } from "../../telemetry/pricing";
 import { logTelemetry } from "../../telemetry/db";
+import { GN_VERSION } from "../version";
 import {
 	computePromptHash,
 	formatCachedStreamChunks,
@@ -25,7 +26,8 @@ import {
 	loadPrivacyHeaders,
 } from "./rules";
 import { FixtureManager } from "./replay";
-import { sanitizeText } from "./sanitizer";
+import { sanitizeText, normalizeUpstreamTools } from "./sanitizer";
+import { AccessLogManager, type FallbackHop } from "./access-log";
 import type { GatewayServerConfig, GatewayStats } from "./types";
 
 export function createGatewayServer(
@@ -33,13 +35,13 @@ export function createGatewayServer(
 ) {
 	const config: GatewayServerConfig = {
 		port:
-			customConfig.port ?? parseInt(process.env.GN_GATEWAY_PORT || "4000", 10),
+			customConfig.port ?? parseInt(process.env.GN_GATEWAY_PORT || "4010", 10),
 		targetHost:
 			customConfig.targetHost ??
 			(process.env.GN_GATEWAY_TARGET_HOST || "127.0.0.1"),
 		targetPort:
 			customConfig.targetPort ??
-			parseInt(process.env.GN_GATEWAY_TARGET_PORT || "4002", 10),
+			parseInt(process.env.GN_GATEWAY_TARGET_PORT || "4000", 10),
 		cacheEnabled: customConfig.cacheEnabled ?? true,
 		cacheTtlMs: customConfig.cacheTtlMs ?? 2 * 60 * 60 * 1000,
 		cacheDir: customConfig.cacheDir ?? "",
@@ -60,6 +62,7 @@ export function createGatewayServer(
 	const fixtureManager = new FixtureManager(
 		config.fixturesDir ? config.fixturesDir : undefined,
 	);
+	const accessLog = new AccessLogManager();
 
 	const stats: GatewayStats = {
 		uptimeSeconds: 0,
@@ -199,7 +202,7 @@ export function createGatewayServer(
 						return new Response(
 							JSON.stringify({
 								status: "ok",
-								version: "2.1.0",
+								version: GN_VERSION,
 								port: config.port,
 								target: `http://${config.targetHost}:${config.targetPort}`,
 								uptime: Math.floor((Date.now() - startTime) / 1000),
@@ -247,8 +250,10 @@ export function createGatewayServer(
 
 					// Shield sanitization
 					let finalReqBody = reqBodyStr;
+					let maskedTokensCount = 0;
 					if (config.shieldEnabled && !config.sanitizeLogsOnly && reqBodyStr) {
 						const { sanitized, maskedCount } = sanitizeText(reqBodyStr, rules);
+						maskedTokensCount = maskedCount;
 						if (maskedCount > 0) {
 							console.log(
 								`🛡️  [GN Gateway Shield] Redacted ${maskedCount} token(s) from incoming payload -> ${url.pathname}`,
@@ -265,7 +270,18 @@ export function createGatewayServer(
 						? extractModelFromBody(finalReqBody)
 						: null;
 					let primaryModel = parsedBodyInfo?.model ?? null;
+					const initialModel = primaryModel ?? "unknown";
 					const isStreamReq = parsedBodyInfo?.parsed?.stream === true;
+					const fallbackChain: FallbackHop[] = [];
+
+					// Upstream tool schema normalization (e.g. CommandCode Anthropic tools)
+					if (isLlmEndpoint && finalReqBody) {
+						finalReqBody = normalizeUpstreamTools(
+							finalReqBody,
+							targetUrl,
+							initialModel,
+						);
+					}
 
 					// Caching check
 					let promptHash = "";
@@ -283,6 +299,19 @@ export function createGatewayServer(
 							const respHeaders = new Headers(cached.meta.headers || {});
 							respHeaders.set("X-GN-Cache", "HIT");
 							respHeaders.set("X-GN-Cache-Hash", promptHash);
+
+							accessLog.write({
+								ts: reqStartTime,
+								method,
+								path: url.pathname,
+								initialModel,
+								servedModel: cached.meta.model || primaryModel || "unknown",
+								status: cached.meta.status || 200,
+								latencyMs: Date.now() - reqStartTime,
+								cache: "HIT",
+								stream: cached.isStream,
+								shieldRedacted: maskedTokensCount,
+							});
 
 							if (cached.isStream && cached.chunks.length > 0) {
 								respHeaders.set(
@@ -373,6 +402,11 @@ export function createGatewayServer(
 						) {
 							stats.fallbacksTriggered++;
 							recordModelFailure(primaryModel!);
+							fallbackChain.push({
+								model: primaryModel!,
+								status: effectiveStatus,
+								ok: false,
+							});
 							try {
 								await upstreamResp.body?.cancel();
 							} catch {
@@ -408,11 +442,21 @@ export function createGatewayServer(
 											rules.fallback || DEFAULT_FALLBACK,
 										)
 									) {
+										fallbackChain.push({
+											model: candidate,
+											status: retryResp.status,
+											ok: true,
+										});
 										fallbackResp = retryResp;
 										successfulCandidate = candidate;
 										recordModelSuccess(candidate);
 										break;
 									} else {
+										fallbackChain.push({
+											model: candidate,
+											status: retryResp.status,
+											ok: false,
+										});
 										recordModelFailure(candidate);
 										try {
 											await retryResp.body?.cancel();
@@ -421,6 +465,11 @@ export function createGatewayServer(
 										}
 									}
 								} catch {
+									fallbackChain.push({
+										model: candidate,
+										status: 500,
+										ok: false,
+									});
 									recordModelFailure(candidate);
 								}
 							}
@@ -453,13 +502,61 @@ export function createGatewayServer(
 							stats.activeStreams++;
 							const reader = upstreamResp.body.getReader();
 							const decoder = new TextDecoder();
+							const encoder = new TextEncoder();
 							const recordedChunks: string[] = [];
+							let hasUsageChunk = false;
+							let streamedContentLength = 0;
+
+							// Approximate prompt token size from input payload
+							const approxPromptTokens = Math.max(
+								1,
+								Math.ceil((reqBodyStr?.length || 100) / 3.8),
+							);
 
 							const stream = new ReadableStream({
 								async pull(controller) {
 									try {
 										const { done, value } = await reader.read();
 										if (done) {
+											// If upstream did not provide a usage chunk (e.g. CommandCode), synthesize one before closing
+											if (!hasUsageChunk && upstreamResp.ok) {
+												const approxCompletionTokens = Math.max(
+													1,
+													Math.ceil(streamedContentLength / 3.5),
+												);
+												const usagePayload = {
+													id: "chatcmpl-gn-usage",
+													object: "chat.completion.chunk",
+													created: Math.floor(Date.now() / 1000),
+													model: primaryModel || initialModel,
+													choices: [],
+													usage: {
+														prompt_tokens: approxPromptTokens,
+														completion_tokens: approxCompletionTokens,
+														total_tokens:
+															approxPromptTokens + approxCompletionTokens,
+													},
+												};
+												const usageChunkStr = `data: ${JSON.stringify(usagePayload)}\n\n`;
+												recordedChunks.push(usageChunkStr);
+												controller.enqueue(encoder.encode(usageChunkStr));
+
+												// Fire telemetry for stream
+												fireTelemetry(
+													primaryModel || initialModel,
+													JSON.stringify({
+														usage: {
+															prompt_tokens: approxPromptTokens,
+															completion_tokens: approxCompletionTokens,
+															total_tokens:
+																approxPromptTokens + approxCompletionTokens,
+														},
+													}),
+													upstreamResp.status,
+													Date.now() - reqStartTime,
+												);
+											}
+
 											stats.activeStreams = Math.max(
 												0,
 												stats.activeStreams - 1,
@@ -490,6 +587,27 @@ export function createGatewayServer(
 													config.cacheTtlMs,
 												);
 											}
+
+											// Catat access log untuk streaming selesai
+											accessLog.write({
+												ts: reqStartTime,
+												method,
+												path: url.pathname,
+												initialModel: initialModel || "unknown",
+												servedModel: primaryModel || initialModel || "unknown",
+												status: upstreamResp.status,
+												latencyMs: Date.now() - reqStartTime,
+												cache: promptHash ? "MISS" : "BYPASS",
+												stream: true,
+												fallback:
+													fallbackChain.length > 1
+														? {
+																chain: fallbackChain,
+																hopCount: fallbackChain.length,
+															}
+														: undefined,
+												shieldRedacted: maskedTokensCount,
+											});
 
 											// Record fixture if in record mode
 											if (config.mode === "record") {
@@ -526,6 +644,13 @@ export function createGatewayServer(
 										if (value) {
 											const text = decoder.decode(value, { stream: true });
 											recordedChunks.push(text);
+											if (
+												text.includes('"usage":') ||
+												text.includes('"prompt_tokens":')
+											) {
+												hasUsageChunk = true;
+											}
+											streamedContentLength += text.length;
 											controller.enqueue(value);
 										}
 									} catch (err) {
@@ -559,6 +684,27 @@ export function createGatewayServer(
 								latency,
 							);
 						}
+
+						// Catat access log untuk non-streaming request
+						accessLog.write({
+							ts: reqStartTime,
+							method,
+							path: url.pathname,
+							initialModel: initialModel || "unknown",
+							servedModel: primaryModel || initialModel || "unknown",
+							status: upstreamResp.status,
+							latencyMs: latency,
+							cache: promptHash ? "MISS" : "BYPASS",
+							stream: false,
+							fallback:
+								fallbackChain.length > 1
+									? {
+											chain: fallbackChain,
+											hopCount: fallbackChain.length,
+										}
+									: undefined,
+							shieldRedacted: maskedTokensCount,
+						});
 
 						if (config.cacheEnabled && promptHash && upstreamResp.ok) {
 							const headerObj: Record<string, string> = {};
@@ -613,6 +759,26 @@ export function createGatewayServer(
 						});
 					} catch (err: any) {
 						stats.errorsCount++;
+						accessLog.write({
+							ts: reqStartTime,
+							method,
+							path: url.pathname,
+							initialModel: initialModel || "unknown",
+							servedModel: primaryModel || initialModel || "unknown",
+							status: 502,
+							latencyMs: Date.now() - reqStartTime,
+							cache: "NONE",
+							stream: isStreamReq,
+							fallback:
+								fallbackChain.length > 1
+									? {
+											chain: fallbackChain,
+											hopCount: fallbackChain.length,
+										}
+									: undefined,
+							shieldRedacted: maskedTokensCount,
+							error: err.message,
+						});
 						return new Response(
 							JSON.stringify({
 								error: "GN Gateway Connection Error",
