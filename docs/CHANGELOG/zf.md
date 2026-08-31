@@ -48,6 +48,8 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - **Tmux Interactive Session Picker & Flag Contracts (Issue #33)**:
   - Mengembalikan interaktivitas penuh pada subcommand `zf tm` (`zf tmux`) untuk flag `-i` (in/attach), `-n` (new), dan `-d` (del) saat dipanggil tanpa argumen baik dari shell langsung maupun Tmux popup (`display-popup`).
   - Menghilangkan crash `flag needs an argument` dengan konfigurasi `NoOptDefVal` pada Cobra parser serta fallback interaktif via prompt/picker.
+  - Menambahkan dukungan flag `-t` / `--tmux` pada `zf` root command untuk memilih direktori via 3-Pane TUI dan membuka prompt pembuatan sesi tmux baru di path tersebut.
+  - Memperbaiki penanganan tombol `Esc` pada 3-Pane TUI dan interactive prompt agar membatalkan popup secara bersih tanpa error.
   - Memperbaiki infinite recursion pada Cobra subcommand help printer (`zf <subcommand> --help`).
   - Menambahkan test suite `cmd/tmux_test.go` untuk validasi flag contract.
 - **Border Kanan Meleyot di Terminal Mobile (Termius)**:
