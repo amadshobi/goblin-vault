@@ -52,7 +52,18 @@ EXAMPLES:
         if test -d "$dest"
             builtin cd $dest
             if test (count $parts) -gt 1
-                eval $parts[2]
+                set -l act $parts[2]
+                switch $act
+                    case "fex" "gb" "lazygit" "code ." "code" "nvim" "micro" "vim"
+                        eval $act
+                    case "*"
+                        if not string match -r '[;|\&$]' -- $act
+                            eval $act
+                        else
+                            echo "zf: invalid or unpermitted action: $act" >&2
+                            return 1
+                        end
+                end
             end
         end
     end
@@ -85,7 +96,22 @@ end
         if [ -d "$dest" ]; then
             builtin cd "$dest" || return 1
             if [ "$action" != "$dest" ] && [ -n "$action" ]; then
-                eval "$action"
+                case "$action" in
+                    fex|gb|lazygit|"code ."|code|nvim|micro|vim)
+                        eval "$action"
+                        ;;
+                    *)
+                        case "$action" in
+                            *[;\|\&\$]*)
+                                echo "zf: invalid or unpermitted action '$action'" >&2
+                                return 1
+                                ;;
+                            *)
+                                eval "$action"
+                                ;;
+                        esac
+                        ;;
+                esac
             fi
         fi
     fi

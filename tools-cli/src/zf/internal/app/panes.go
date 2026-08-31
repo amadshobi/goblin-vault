@@ -257,14 +257,3 @@ func (m Model) renderTreePane(width, height int) string {
 	}
 	return ui.DecoratePane(content, width, height, m.Focus == FocusTree, baseTitle)
 }
-
-func splitPath(path string) (parent, project string) {
-	if path == "" {
-		return "", ""
-	}
-	idx := strings.LastIndex(path, "/")
-	if idx == -1 {
-		return "", path
-	}
-	return path[:idx+1], path[idx+1:]
-}

@@ -524,7 +524,20 @@ export function createGatewayServer(
 													1,
 													Math.ceil(streamedContentLength / 3.5),
 												);
-												const usageChunkStr = `data: {"id":"chatcmpl-gn-usage","object":"chat.completion.chunk","created":${Math.floor(Date.now() / 1000)},"model":"${primaryModel || initialModel}","choices":[],"usage":{"prompt_tokens":${approxPromptTokens},"completion_tokens":${approxCompletionTokens},"total_tokens":${approxPromptTokens + approxCompletionTokens}}}\n\n`;
+												const usagePayload = {
+													id: "chatcmpl-gn-usage",
+													object: "chat.completion.chunk",
+													created: Math.floor(Date.now() / 1000),
+													model: primaryModel || initialModel,
+													choices: [],
+													usage: {
+														prompt_tokens: approxPromptTokens,
+														completion_tokens: approxCompletionTokens,
+														total_tokens:
+															approxPromptTokens + approxCompletionTokens,
+													},
+												};
+												const usageChunkStr = `data: ${JSON.stringify(usagePayload)}\n\n`;
 												recordedChunks.push(usageChunkStr);
 												controller.enqueue(encoder.encode(usageChunkStr));
 
