@@ -242,6 +242,12 @@ build_fex() {
 # ── Step 4: Universal Symlinking ─────────────────────────────────────────────
 link_binaries() {
     mkdir -p "$LOCAL_BIN" "$TOOLS_BIN"
+    # Deploy ZF Go binary
+    local zf_src="$ROOT_DIR/tools-cli/src/zf"
+    if [[ -d "$zf_src" ]]; then
+        (cd "$zf_src" && go build -o "$ROOT_DIR/tools-cli/bin/zf-bin" . 2>/dev/null || true)
+    fi
+
     local tools=("fex" "gn" "gb" "pm" "sup" "zf")
     for t in "${tools[@]}"; do
         if [[ -f "$TOOLS_BIN/$t" ]]; then
@@ -508,6 +514,6 @@ printf "${BOLD}${GREEN}│${RESET}  ${BOLD}${CYAN}🌐 %-5s${RESET} %-8s │ Con
 printf "${BOLD}${GREEN}│${RESET}  ${BOLD}${MAGENTA}🐙 %-5s${RESET} %-8s │ GitHub Assistant & Bot Manager                       ${BOLD}${GREEN}│${RESET}\n" "gb" "$GB_DISP"
 printf "${BOLD}${GREEN}│${RESET}  ${BOLD}${RED}🦀 %-5s${RESET} %-8s │ Universal Package & Registry Manager                 ${BOLD}${GREEN}│${RESET}\n" "pm" "$PM_DISP"
 printf "${BOLD}${GREEN}│${RESET}  ${BOLD}${BLUE}📦 %-5s${RESET} %-8s │ Universal Granular Package Updater                   ${BOLD}${GREEN}│${RESET}\n" "sup" "$SUP_DISP"
-printf "${BOLD}${GREEN}│${RESET}  ${BOLD}${WHITE}⚡ %-5s${RESET} %-8s │ Zoxide & Tmux Rapid Directory Engine                 ${BOLD}${GREEN}│${RESET}\n" "zf" "v0.2.0"
+printf "${BOLD}${GREEN}│${RESET}  ${BOLD}${WHITE}⚡ %-5s${RESET} %-8s │ Zoxide & Tmux Rapid Directory Engine                 ${BOLD}${GREEN}│${RESET}\n" "zf" "v2.0.0"
 echo -e "${BOLD}${GREEN}╰──────────────────────────────────────────────────────────────────────────╯${RESET}"
 echo -e "💡 ${DIM}Tips: Jalankan 'source ~/.zshrc' atau 'source ~/.bashrc' bila ini instalasi pertama.${RESET}\n"
