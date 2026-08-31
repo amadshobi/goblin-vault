@@ -94,12 +94,12 @@ func MeasureGlyphWidthsWithLog(glyphs []rune) (map[rune]int, []string) {
 	consecutiveFails := 0
 	for k, rep := range reps {
 		fmt.Fprintf(out, "%s\x1b[6n\r", string(rep))
-		col, err := readCursorColumn(os.Stdin.Fd(), 700*time.Millisecond)
+		col, err := readCursorColumn(os.Stdin.Fd(), 25*time.Millisecond)
 		if err != nil {
 			consecutiveFails++
 			log = append(log, fmt.Sprintf("PROBE U+%05X FAIL: %v", rep, err))
-			// Terminal tidak menjawab CPR sama sekali -> hentikan lebih awal
-			if consecutiveFails >= 2 && len(measured) == 0 {
+			// Terminal tidak menjawab CPR sama sekali -> fail-fast hentikan segera
+			if consecutiveFails >= 1 && len(measured) == 0 {
 				log = append(log, "ABORT: terminal tidak merespons DSR 6n")
 				break
 			}
@@ -155,7 +155,7 @@ func readCursorColumn(fd uintptr, timeout time.Duration) (int, error) {
 		if time.Now().After(deadline) {
 			return 0, errors.New("timeout menunggu respons DSR 6n")
 		}
-		time.Sleep(4 * time.Millisecond)
+		time.Sleep(1 * time.Millisecond)
 	}
 }
 
@@ -176,7 +176,7 @@ func cleanupCalibration(out *os.File) {
 	_, _ = out.WriteString("\r\x1b[2K")
 	_ = unix.SetNonblock(0, true)
 	defer func() { _ = unix.SetNonblock(0, false) }()
-	deadline := time.Now().Add(30 * time.Millisecond)
+	deadline := time.Now().Add(10 * time.Millisecond)
 	buf := make([]byte, 64)
 	for time.Now().Before(deadline) {
 		n, err := unix.Read(0, buf)

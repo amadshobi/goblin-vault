@@ -45,6 +45,8 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 - Menghapus pembatasan truncate `...dan X file lainnya` pada Git Status, digantikan dengan scrollable viewport utuh.
 
 ### Fixed
+- **Startup Latency & DSR 6n Optimization**:
+  - Mengurangi timeout probe DSR dari 700ms ke 25ms dengan *fail-fast* pada kegagalan probe pertama, memangkas waktu startup `zf` dari **1.400 ms (1,4 detik)** menjadi **< 40 ms (36x lebih cepat)** dan menghilangkan glitch kedip probe.
 - **Tmux Interactive Session Picker & Flag Contracts (Issue #33)**:
   - Mengembalikan interaktivitas penuh pada subcommand `zf tm` (`zf tmux`) untuk flag `-i` (in/attach), `-n` (new), dan `-d` (del) saat dipanggil tanpa argumen baik dari shell langsung maupun Tmux popup (`display-popup`).
   - Menghilangkan crash `flag needs an argument` dengan konfigurasi `NoOptDefVal` pada Cobra parser serta fallback interaktif via prompt/picker.
