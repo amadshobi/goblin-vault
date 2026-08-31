@@ -14,6 +14,19 @@
 
 ---
 
+## [v0.5.2] - 2026-08-31
+
+### ⚡ ZF v2.0.0 Architecture Evolution & Tmux Controller
+
+- **ZF Next-Gen Go Rewrite (`tools-cli/src/zf/`)**:
+  - Full rewrite dari shell script lama menjadi compiled native binary Go + Bubble Tea + Lipgloss yang ultra-responsif (<40ms startup).
+  - **Pixel-Perfect 3-Pane Layout**: Workspace, Live Git Status, dan File Tree dengan inverted full-pill highlight style.
+  - **Tmux Controller & Interactive Picker (Fixes #33)**: Restorasi flag contracts `-i`, `-n`, `-d`, dan peluncuran sesi baru via `-t` / `--tmux` workspace picker dengan FZF selector dan prompt nama bersih.
+  - **Runtime Glyph Calibration**: Deteksi lebar glyph DSR 6n dengan fail-fast 25ms agar border lurus sempurna di Termius & SSH mobile.
+  - **Security & Hardening**: Strict action whitelisting di shell wrapper `zf init` dan safe stringify pada SSE usage telemetry.
+
+---
+
 ## [v0.5.1] - 2026-08-28
 
 ### ⚡ Gateway Tool Normalization & Synthetic Telemetry (`gn v2.1.2`)
