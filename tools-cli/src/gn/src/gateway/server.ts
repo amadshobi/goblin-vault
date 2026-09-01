@@ -495,8 +495,10 @@ export function createGatewayServer(
 
 						// If streaming response
 						const contentType = upstreamResp.headers.get("content-type") || "";
+						const isMessagesReq = url.pathname.includes("/messages");
 						const isStreamingResponse =
-							contentType.includes("text/event-stream") || isStreamReq;
+							(contentType.includes("text/event-stream") || isStreamReq) &&
+							(!isMessagesReq || isStreamReq || contentType.includes("text/event-stream"));
 
 						if (isStreamingResponse && upstreamResp.body) {
 							stats.activeStreams++;
@@ -518,8 +520,8 @@ export function createGatewayServer(
 									try {
 										const { done, value } = await reader.read();
 										if (done) {
-											// If upstream did not provide a usage chunk (e.g. CommandCode), synthesize one before closing
-											if (!hasUsageChunk && upstreamResp.ok) {
+											// If upstream did not provide a usage chunk (e.g. CommandCode for OpenAI chat completions)
+											if (!hasUsageChunk && upstreamResp.ok && !isMessagesReq) {
 												const approxCompletionTokens = Math.max(
 													1,
 													Math.ceil(streamedContentLength / 3.5),

@@ -43,3 +43,4 @@ Thumbs.db
 opencode.jsonc
 opencode.json
 .opencode/
+.commandcode

@@ -7,6 +7,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v2.0.1] - 2026-09-01
+
+### Fixed
+
+- **Shell Wrapper Eval Sanitization (`cmd/init.go`)**:
+  - Menyempurnakan regex filter pattern pada Fish shell (`[;|&$]`) dengan menghapus escape redundan.
+  - Memperbaiki pattern matching sanitasi aksi eval pada POSIX/Zsh wrapper (`*";"*|*"&"*|*"|"*|*"$"*`) untuk memastikan filtering karakter injeksi berbahaya berjalan andal lintas shell (Zsh, Bash, Dash).
+
+---
+
 ## [v2.0.0] - 2026-08-25
 
 ### Added

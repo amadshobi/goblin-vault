@@ -5,6 +5,14 @@
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/).
 
+## [v2.1.4] - 2026-09-01
+
+### Fixed
+
+- **Anthropic Messages Endpoint Streaming Guard (`gateway/server.ts`)**:
+  - Menambahkan deteksi endpoint `isMessagesReq` (`/messages`) pada streaming response handler.
+  - Mematikan injeksi synthetic OpenAI completion usage chunk (`chat.completion.chunk`) pada endpoint Anthropic Messages agar tidak merusak format streaming SSE pada client Anthropic.
+
 ## [v2.1.3] - 2026-08-29
 
 ### Fixed
