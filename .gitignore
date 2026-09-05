@@ -39,8 +39,9 @@ Thumbs.db
 *.swp
 *.swo
 
-# OpenCode Local Configuration
+# OpenCode & Coding Agents Local Configuration
 opencode.jsonc
 opencode.json
 .opencode/
-.commandcode
+.commandcode/
+.claude/
